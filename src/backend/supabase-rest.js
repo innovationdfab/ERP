@@ -71,6 +71,16 @@ export async function signInWithPassword(email, password) {
   });
 }
 
+
+export async function refreshSession(refreshToken) {
+  if (!refreshToken) throw new Error('No refresh token is available.');
+  return request('/auth/v1/token?grant_type=refresh_token', {
+    method: 'POST',
+    headers: headers(),
+    body: JSON.stringify({ refresh_token: refreshToken }),
+  });
+}
+
 export async function signOut(accessToken) {
   if (!accessToken) return;
   await request('/auth/v1/logout', { method: 'POST', headers: headers(accessToken) });

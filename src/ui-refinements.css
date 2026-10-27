@@ -194,3 +194,12 @@ input[type="file"]{white-space:normal;min-width:0}
   .erp-home .home-support-card{padding:14px!important}
   .erp-home .home-shortcuts{grid-template-columns:1fr!important}
 }
+
+/* Database-driven notification drawer */
+.notification-drawer .notify-list{max-height:min(58vh,520px);overflow:auto;padding:8px}
+.notification-drawer .notify-item{grid-template-columns:10px minmax(0,1fr) auto;gap:10px;border:0;width:100%;cursor:pointer}
+.notification-drawer .notify-item .notify-dot{width:7px;height:7px;border-radius:999px;background:#f59e0b;box-shadow:0 0 0 4px rgba(245,158,11,.12)}
+.notification-drawer .notify-item>span:nth-child(2){display:flex;min-width:0;flex-direction:column;gap:3px}
+.notification-drawer .notify-item b{font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.notification-drawer .notify-item small{font-size:9px;color:#718096;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.notification-drawer .notify-item em{font-size:8px;font-style:normal;font-weight:700;color:#9a3412;background:#fff7ed;border:1px solid #fed7aa;border-radius:999px;padding:4px 6px;white-space:nowrap}
