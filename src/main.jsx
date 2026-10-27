@@ -15,6 +15,7 @@ import {
 import logo from './assets/dfab-logo.png';
 import './styles.css';
 import './ui-refinements.css';
+import './sap-enterprise.css';
 import './premium-forms.css';
 import { PremiumUploadField, PremiumImportPage, FormSectionHeading, FormDialogBackdrop } from './premium-forms.jsx';
 import { todayISO, isoDate, displayDate, readStored, writeStored, fieldType, validateFields, parseCsv, csvCell, validateBackup, readAttachment } from './erp-utils.js';
@@ -55,6 +56,11 @@ function databaseSuggestions(label=''){
   if(/sales order|so no/.test(name)) values.push(...valuesAt('dfab-erp-Sales Orders',[0]));
   if(/purchase order|po no/.test(name)) values.push(...valuesAt('dfab-erp-Purchase Orders',[0]));
   if(/grn/.test(name)) values.push(...valuesAt('dfab-erp-GRN',[0]));
+  if(/output no/.test(name)) values.push(...valuesAt('dfab-erp-Production Output',[0]));
+  if(/issue dc/.test(name)) values.push(...valuesAt('dfab-erp-Outsource Issue DC',[0]));
+  if(/inward no/.test(name)) values.push(...valuesAt('dfab-erp-Job Work Inward',[0]));
+  if(/^qc no$|inspection no/.test(name)) values.push(...valuesAt('dfab-erp-Inward QC',[0]),...valuesAt('dfab-erp-Outward QC',[0]));
+  if(/^dc no$|delivery challan/.test(name)) values.push(...valuesAt('dfab-erp-Delivery Challan',[0]));
   if(/enquiry/.test(name)) values.push(...valuesAt('dfab-erp-Sales Enquiries',[0]));
   if(/quotation/.test(name)) values.push(...valuesAt('dfab-erp-Sales Quotations',[0]));
   if(/invoice/.test(name)) values.push(...arrayRows('dfab-erp-sales-invoices-v2').map(r=>r?.[1]),...valuesAt('dfab-erp-Purchase',[0]));
@@ -68,6 +74,43 @@ function databaseSuggestions(label=''){
 function productFromDatabase(value=''){
   const term=String(value).trim().toLowerCase();
   return arrayRows('dfab-erp-products-v3').find(r=>String(r?.[0]||'').toLowerCase()===term||String(r?.[1]||'').toLowerCase()===term);
+}
+
+function findCloudRow(key,value,indexes=[0]){
+  const term=String(value??'').trim().toLowerCase();
+  if(!term)return null;
+  return arrayRows(key).find(row=>Array.isArray(row)&&indexes.some(index=>String(row?.[index]??'').trim().toLowerCase()===term))||null;
+}
+
+function referenceAutofill(label,value){
+  const name=String(label).replaceAll('*','').trim().toLowerCase();
+  let row=null,data={};
+  if(/enquiry/.test(name)){
+    row=findCloudRow('dfab-erp-Sales Enquiries',value);if(row)data={Customer:row[1],Product:row[2],Item:row[2],Qty:row[3],'Expected Delivery':row[4]};
+  }else if(/quotation no/.test(name)){
+    row=findCloudRow('dfab-erp-Sales Quotations',value);if(row)data={Customer:row[1],Enquiry:row[2],Amount:row[3]};
+  }else if(/sales order|so no/.test(name)){
+    row=findCloudRow('dfab-erp-Sales Orders',value);if(row)data={Customer:row[1],Product:row[3],Item:row[3],Qty:row[4],Delivery:row[5]};
+  }else if(/work order|wo no/.test(name)){
+    row=findCloudRow('dfab-erp-Work Order',value);if(row)data={'SO No':row[1],Product:row[2],Item:row[2],Material:row[2],Qty:row[3],Machine:row[4]};
+  }else if(/purchase order|po no/.test(name)){
+    row=findCloudRow('dfab-erp-Purchase Orders',value);if(row)data={Vendor:row[1],'PO Date':row[2],Amount:row[3],'Delivery Date':row[4]};
+  }else if(/grn no|^grn$/.test(name)){
+    row=findCloudRow('dfab-erp-GRN',value);if(row)data={'PO No':row[1],Vendor:row[2],Item:row[3],Product:row[3],Qty:row[4],'Received Qty':row[4]};
+  }else if(/output no/.test(name)){
+    row=findCloudRow('dfab-erp-Production Output',value);if(row)data={'WO No':row[1],Product:row[2],Item:row[2],Qty:row[3],'Good Qty':row[3]};
+  }else if(/issue dc/.test(name)){
+    row=findCloudRow('dfab-erp-Outsource Issue DC',value);if(row)data={Vendor:row[1],'Work Order':row[2],Process:row[3],Qty:row[4]};
+  }else if(/inward no/.test(name)){
+    row=findCloudRow('dfab-erp-Job Work Inward',value);if(row)data={Customer:row[1],Product:row[3],Material:row[3],Qty:row[4]};
+  }else if(/purchase invoice/.test(name)){
+    row=findCloudRow('dfab-erp-Purchase',value);if(row)data={Vendor:row[1],'PO No':row[2],Amount:row[4]};
+  }else if(/invoice/.test(name)){
+    row=findCloudRow('dfab-erp-sales-invoices-v2',value,[1]);if(row)data={Customer:row[3],Amount:row[7]};
+  }
+  const product=productFromDatabase(value);
+  if(product)data={...data,'Product Code':product[0],Product:product[1]||product[0],Item:product[1]||product[0],Material:product[1]||product[0],UOM:product[4],Group:product[3],'Product Group':product[3]};
+  return Object.fromEntries(Object.entries(data).filter(([,item])=>item!==undefined&&item!==null&&String(item).trim()!==''));
 }
 
 function DatabaseSuggestInput({label,value,onChange,type='text',placeholder='',min,step,max,required=false,className='',onResolved}){
@@ -135,15 +178,6 @@ const menuTree = [
     ['Database Backup',Database],
     { label:'User Administration', icon:Users, children:[['Users',Users]] }
   ]}
-];
-
-const quickLinks = [
-  {label:'Products',cls:'quick-red',icon:Package,page:'Products'},
-  {label:'Sales',cls:'quick-green',icon:ShoppingCart,page:'Sales Invoice'},
-  {label:'Customers',cls:'quick-orange',icon:Users,page:'Customers'},
-  {label:'Vendors',cls:'quick-gray',icon:Building2,page:'Vendors'},
-  {label:'Product Groups',cls:'quick-maroon',icon:Layers3,page:'Groups'},
-  {label:'Logout',cls:'quick-blue',icon:LogOut,page:null}
 ];
 
 const pageAliases = { List:'Products', Groups:'Groups' };
@@ -216,7 +250,7 @@ const coreConfigs = {
   'Production Output': {columns:['Output No','WO No','Product','Good Qty','Reject Qty','Status'],fields:['Output No','WO No','Product','Good Qty','Reject Qty'],statuses:['Draft','QC Pending','Accepted'],next:'Outward QC'},
   'Outward QC': {columns:['QC No','Output No','Product','Qty','Inspector','Status'],fields:['QC No','Output No','Product','Qty','Inspector'],statuses:['Pending','Passed','Rejected'],next:'Delivery Challan'},
   'Delivery Challan': {columns:['DC No','Customer','SO No','Product','Qty','Vehicle','Status'],fields:['DC No','Customer','SO No','Product','Qty','Vehicle'],statuses:['Draft','Approved','Dispatched','Delivered'],next:'Sales Invoice'},
-  'Sales Return': {columns:['Return No','Invoice','Customer','Product','Qty','Decision'],fields:['Return No','Invoice','Customer','Product','Qty'],statuses:['Inspection','Repair','Replace','Credit Note','Closed']},
+  'Sales Return': {columns:['Return No','Invoice','Customer','Product','Qty','Decision'],fields:['Return No','Invoice','Customer','Product','Qty'],statuses:['Inspection','Repair','Replace','Credit Note','Closed'],next:'Credit Note'},
   'Vendor Payments': {columns:['Payment No','Vendor','Invoice','Date','Amount','Status'],fields:['Payment No','Vendor','Invoice','Date','Amount'],statuses:['Pending Approval','Approved','Paid']},
   'Customer Payments': {columns:['Receipt No','Customer','Invoice','Date','Amount','Status'],fields:['Receipt No','Customer','Invoice','Date','Amount'],statuses:['Pending','Part Paid','Settled']},
   'Pending Approvals': {columns:['Document','Reference No','Requested By','Amount','Status'],fields:['Document','Reference No','Requested By','Amount'],statuses:['Pending','Approved','Rejected']},
@@ -239,11 +273,11 @@ const coreConfigs = {
   , 'SO Number Details': {columns:['SO Number','Customer','Product','Qty','Delivery Date','Status'],fields:['SO Number','Customer','Product','Qty','Delivery Date'],statuses:['Open','In Production','Completed']}
   , 'Vendor Price List': {columns:['Price Ref','Vendor','Item','UOM','Rate','Valid Until','Status'],fields:['Price Ref','Vendor','Item','UOM','Rate','Valid Until'],statuses:['Draft','Active','Expired']}
   , 'Customer Price List': {columns:['Price Ref','Customer','Product','UOM','Rate','Valid Until','Status'],fields:['Price Ref','Customer','Product','UOM','Rate','Valid Until'],statuses:['Draft','Active','Expired']}
-  , 'Purchase': {columns:['Invoice No','Vendor','PO No','Invoice Date','Taxable Amount','Status'],fields:['Invoice No','Vendor','PO No','Invoice Date','Taxable Amount'],statuses:['Draft','QC Cleared','Posted','Paid']}
+  , 'Purchase': {columns:['Invoice No','Vendor','PO No','Invoice Date','Taxable Amount','Status'],fields:['Invoice No','Vendor','PO No','Invoice Date','Taxable Amount'],statuses:['Draft','QC Cleared','Posted','Paid'],next:'Vendor Payments'}
   , 'Tally Link - Purchase': {columns:['Voucher No','Purchase Invoice','Vendor','Amount','Sync Status'],fields:['Voucher No','Purchase Invoice','Vendor','Amount'],statuses:['Pending','Synced','Failed']}
   , 'Tally Link - Sales': {columns:['Voucher No','Sales Invoice','Customer','Amount','Sync Status'],fields:['Voucher No','Sales Invoice','Customer','Amount'],statuses:['Pending','Synced','Failed']}
   , 'Proforma Invoice': {columns:['Proforma No','Customer','SO No','Date','Amount','Status'],fields:['Proforma No','Customer','SO No','Date','Amount'],statuses:['Draft','Approved','Sent','Converted']}
-  , 'Credit Note': {columns:['Credit Note No','Invoice','Customer','Date','Amount','Status'],fields:['Credit Note No','Invoice','Customer','Date','Amount'],statuses:['Draft','Approved','Posted']}
+  , 'Credit Note': {columns:['Credit Note No','Invoice','Customer','Date','Amount','Status'],fields:['Credit Note No','Invoice','Customer','Date','Amount'],statuses:['Draft','Approved','Posted'],next:'Customer Payments'}
   , 'Scrap Entry': {columns:['Scrap No','Work Order','Material','Qty','Reason','Status'],fields:['Scrap No','Work Order','Material','Qty','Reason'],statuses:['Draft','Approved','Disposed']}
   , 'Opening Stock': {columns:['Entry No','Item','Warehouse','Qty','Rate','Status'],fields:['Entry No','Item','Warehouse','Qty','Rate'],statuses:['Draft','Posted']}
   , 'Excess Stock': {columns:['Entry No','Item','Warehouse','Excess Qty','Reason','Status'],fields:['Entry No','Item','Warehouse','Excess Qty','Reason'],statuses:['Identified','Approved','Adjusted']}
@@ -251,7 +285,7 @@ const coreConfigs = {
   , 'Inward Quality Rejection': {columns:['Rejection No','QC No','Vendor','Item','Rejected Qty','Status'],fields:['Rejection No','QC No','Vendor','Item','Rejected Qty'],statuses:['Open','Return Pending','Returned','Closed']}
   , 'Inward Quality': {columns:['Inspection No','GRN No','Item','Accepted Qty','Rejected Qty','Status'],fields:['Inspection No','GRN No','Item','Accepted Qty','Rejected Qty'],statuses:['Pending','Inspected','Posted']}
   , 'Outsource Issue DC': {columns:['DC No','Vendor','Work Order','Process','Qty','Status'],fields:['DC No','Vendor','Work Order','Process','Qty'],statuses:['Draft','Dispatched','Part Received','Closed'],next:'Outsource Receipt'}
-  , 'Job Work Inward': {columns:['Inward No','Customer','DC No','Material','Qty','Status'],fields:['Inward No','Customer','DC No','Material','Qty'],statuses:['Received','QC Pending','Accepted','Closed']}
+  , 'Job Work Inward': {columns:['Inward No','Customer','DC No','Material','Qty','Status'],fields:['Inward No','Customer','DC No','Material','Qty'],statuses:['Received','QC Pending','Accepted','Closed'],next:'Job Work Return DC'}
   , 'Job Work Return DC': {columns:['Return DC No','Customer','Inward No','Product','Qty','Status'],fields:['Return DC No','Customer','Inward No','Product','Qty'],statuses:['Draft','Dispatched','Delivered']}
   , 'Outsource Receipt': {columns:['Receipt No','Issue DC','Vendor','Process','Received Qty','Status'],fields:['Receipt No','Issue DC','Vendor','Process','Received Qty'],statuses:['Received','QC Pending','Accepted','Closed']}
   , 'Rejection Note': {columns:['Rejection No','Work Order','Product','Qty','Reason','Status'],fields:['Rejection No','Work Order','Product','Qty','Reason'],statuses:['Open','Disposition Pending','Rework','Scrap','Closed']}
@@ -338,7 +372,7 @@ function App(){
       </div>
     </header>
     <div className="workspace">
-      <aside className={`sidebar premium-sidebar ${sidebarOpen?'':'collapsed'}`}><div className="side-scroll"><div className="side-content"><div className="side-title">MENU</div>{menuTree.map(n=><NavNode key={n.label} node={n} path="" depth={0} openMenus={openMenus} toggleMenu={toggleMenu} activePage={activePage} goToPage={goToPage}/>) }<div className="side-title quick-title">QUICK LINKS</div><div className="quick-links premium-quick-links">{quickLinks.map(({label,cls,icon:Icon,page})=><button key={label} className={`quick-btn premium-quick ${cls}`} onClick={()=>label==='Logout'?logout():goToPage(page)}><Icon size={14}/><span>{label}</span></button>)}</div></div></div><div className="company-card premium-company-card"><div><span>Company : <b>DFAB</b></span><span>Fin Year : <b>2026-2027</b></span><span>User : <b>{loginValues.userId.toUpperCase()||'KABILG'}</b></span><span>Supabase cloud workspace</span></div></div></aside>
+      <aside className={`sidebar premium-sidebar ${sidebarOpen?'':'collapsed'}`}><div className="side-scroll"><div className="side-content"><div className="side-title">WORKSPACE</div>{menuTree.map(n=><NavNode key={n.label} node={n} path="" depth={0} openMenus={openMenus} toggleMenu={toggleMenu} activePage={activePage} goToPage={goToPage}/>)}</div></div><div className="sidebar-status-panel"><span className="sidebar-status-dot"/><div><b>Cloud workspace</b><small>Supabase connected</small></div></div><div className="company-card premium-company-card"><div><span>Company : <b>DFAB</b></span><span>Fin Year : <b>2026-2027</b></span><span>User : <b>{loginValues.userId.toUpperCase()||'KABILG'}</b></span></div><button className="sidebar-logout-btn" type="button" onClick={logout} title="Logout"><LogOut size={14}/></button></div></aside>
       <div className="page-transition-shell" key={activePage}>{renderPage(activePage,{goToPage,filter,setFilter,filteredGroups,selected,setSelected})}</div>
     </div>
     {notifyOpen&&<aside className="notification-drawer"><div className="drawer-head"><div><span>CONTROL CENTER</span><h3>Notifications</h3></div><button onClick={()=>setNotifyOpen(false)}><X size={18}/></button></div><div className="notify-list">{notifications.length?notifications.map((notice,index)=><button className="notify-item" key={`${notice.module}-${notice.reference}-${index}`} onClick={()=>goToPage(resolvePage(notice.page))}><span className="notify-dot"/><span><b>{notice.module}</b><small>{notice.reference}</small></span><em>{notice.status}</em></button>):<p className="empty-cell">No pending notifications</p>}</div><button className="drawer-footer" onClick={()=>goToPage('Pending Approvals')}>Open control tower <ArrowUpRight size={15}/></button></aside>}
@@ -391,7 +425,7 @@ function renderPage(activePage,ctx){
   if(activePage==='Users') return <SystemUsersPage/>;
   if(activePage==='Role Permissions') return <RolePermissionsPage/>;
   if(activePage==='Activity Log') return <ActivityLogPage/>;
-  return <WorkflowPage title={activePage} goToPage={ctx.goToPage}/>;
+  return <WorkflowPage key={activePage} title={activePage} goToPage={ctx.goToPage}/>;
 }
 
 const workflowLanes=[
@@ -410,11 +444,15 @@ const forwardRules={
   'Inward QC':['Passed'],
   'Work Order':['Released','Running','QC Pending','Completed'],
   'Material Request':['Approved','Issued'],
-  'Material Issue':['Issued','Returned'],
+  'Material Issue':['Issued'],
   'Route Cards':['Running','Completed'],
   'Production Output':['QC Pending','Accepted'],
   'Outward QC':['Passed'],
-  'Delivery Challan':['Approved','Dispatched','Delivered']
+  'Delivery Challan':['Approved','Dispatched','Delivered'],
+  'Purchase':['Posted'],
+  'Sales Return':['Credit Note'],
+  'Credit Note':['Approved','Posted'],
+  'Job Work Inward':['Accepted','Closed']
 };
 
 function buildHomeSuggestions(goToPage){
@@ -441,8 +479,21 @@ function buildHomeSuggestions(goToPage){
   if(counts.pos && !counts.grns) suggestions.push({title:'Receive Procured Material', text:'Purchase Orders exist. Post GRN and inward QC so the items can reach stock correctly.', page:'GRN', tone:'info'});
   if(counts.quotations && !counts.salesOrders) suggestions.push({title:'Convert Quotations to Orders', text:'Commercial quotations are available. Move confirmed quotations into Sales Orders to continue the operational chain.', page:'Sales Orders', tone:'success'});
   if(counts.workOrders && !counts.invoices) suggestions.push({title:'Continue to Dispatch & Billing', text:'Work orders exist. Complete production, outward QC, delivery challan and invoice to close the order-to-cash cycle.', page:'Production Output', tone:'info'});
-  if(!suggestions.length) suggestions.push({title:'ERP data is ready', text:'Masters and operational flows already have active records. Use Workflow Guide to validate each connected stage.', page:'Workflow Guide', tone:'success'});
   return suggestions.slice(0,4);
+}
+
+function enterpriseDashboardData(){
+  const approvals=readStored('dfab-erp-Pending Approvals',[]);
+  const salesOrders=readStored('dfab-erp-Sales Orders',[]);
+  const purchaseOrders=readStored('dfab-erp-Purchase Orders',[]);
+  const workOrders=readStored('dfab-erp-Work Order',[]);
+  const qc=[...readStored('dfab-erp-Inward QC',[]),...readStored('dfab-erp-Outward QC',[])];
+  const pendingApprovals=approvals.filter(r=>String(r?.at?.(-1)||r?.[4]||'').toLowerCase().includes('pending')).length;
+  const activeSales=salesOrders.filter(r=>!/closed|completed|cancel/i.test(String(r?.at?.(-1)||''))).length;
+  const openPO=purchaseOrders.filter(r=>!/closed|completed|cancel/i.test(String(r?.at?.(-1)||''))).length;
+  const activeWO=workOrders.filter(r=>!/closed|completed|cancel/i.test(String(r?.at?.(-1)||''))).length;
+  const qcPending=qc.filter(r=>/pending|await/i.test(String(r?.at?.(-1)||''))).length;
+  return {pendingApprovals,activeSales,openPO,activeWO,qcPending};
 }
 
 function HomePage({goToPage}){
@@ -459,18 +510,39 @@ function HomePage({goToPage}){
         <p className="eyebrow">DFAB · MANUFACTURING OPERATIONS</p>
         <h1>Operations workspace</h1>
         <p>{displayDate(todayISO())} · Connected commercial, material, production, quality and finance control.</p>
-        <div className="home-hero-meta"><span><Database size={14}/> Supabase PostgreSQL</span><span><ShieldCheck size={14}/> Authenticated workspace</span><span><Activity size={14}/> Production data model</span></div>
       </div>
       <div className="home-hero-actions"><button className="action-pill blue" onClick={()=>goToPage('Workflow Guide')}><Route size={16}/> Workflow guide</button></div>
       <div className="home-flow-health">{flowHealth.map(item=><div key={item.label}><small>{item.label}</small><b>{item.value}</b></div>)}</div>
     </section>
 
+    <section className="sap-exec-strip" aria-label="Executive process status">{(()=>{const d=enterpriseDashboardData();return [
+      ['My Inbox',d.pendingApprovals,'Pending approvals','Pending Approvals',BadgeCheck,'critical'],
+      ['Sales Orders',d.activeSales,'Open commercial demand','Sales Orders',ShoppingCart,'info'],
+      ['Purchase Orders',d.openPO,'Open procurement','Purchase Orders',CreditCard,'warning'],
+      ['Work Orders',d.activeWO,'Production in execution','Work Order',Factory,'success'],
+      ['QC Queue',d.qcPending,'Inspections waiting','Inward QC',CheckCircle2,'neutral']
+    ].map(([label,value,caption,page,Icon,tone])=><button key={label} className={`sap-exec-tile ${tone}`} onClick={()=>goToPage(page)}><span className="sap-exec-icon"><Icon size={18}/></span><span><small>{label}</small><b>{Number(value||0).toLocaleString('en-IN')}</b><em>{caption}</em></span><ChevronRight size={15}/></button>)})()}</section>
+
     <section className="home-metrics" aria-label="ERP master summary">{stats.map(([label,key,fallback,page,Icon])=>{const count=readStored(key,fallback).length;return <button className="home-metric" key={label} onClick={()=>goToPage(page)}><span className="metric-icon"><Icon size={21}/></span><span className="home-metric-copy"><small>{label}</small><b>{count.toLocaleString('en-IN')}</b><em>View records <ArrowUpRight size={13}/></em></span></button>})}</section>
 
-    <section className="card home-guidance-card">
+    <section className="card home-command-center">
+      <div className="section-intro"><div><p className="eyebrow">OPERATIONS CONTROL</p><h2>Daily command center</h2><p>Open the most-used operational areas directly from the dashboard while the sidebar stays focused on structured navigation.</p></div><span>Live workspace</span></div>
+      <div className="home-command-grid">
+        {[
+          ['Sales pipeline','Sales Enquiries',FileText,'sales',readStored('dfab-erp-Sales Enquiries',[]).length],
+          ['Purchase control','Purchase Orders',ShoppingCart,'purchase',readStored('dfab-erp-Purchase Orders',[]).length],
+          ['Production','Work Order',Factory,'production',readStored('dfab-erp-Work Order',[]).length],
+          ['Quality','Inward QC',BadgeCheck,'quality',readStored('dfab-erp-Inward QC',[]).length],
+          ['Approvals','Pending Approvals',ShieldCheck,'approval',readStored('dfab-erp-Pending Approvals',[]).length],
+          ['Inventory','Material Issue',StockIcon,'inventory',readStored('dfab-erp-Material Issue',[]).length]
+        ].map(([label,page,Icon,tone,count])=><button className={`home-command-tile ${tone}`} key={label} onClick={()=>goToPage(page)}><span className="command-tile-icon"><Icon size={18}/></span><span className="command-tile-copy"><small>{label}</small><b>{Number(count||0).toLocaleString('en-IN')}</b><em>Open module</em></span><ArrowUpRight size={14}/></button>)}
+      </div>
+    </section>
+
+    {guidance.length>0&&<section className="card home-guidance-card">
       <div className="section-intro"><div><p className="eyebrow">SMART DATA GUIDANCE</p><h2>Suggested next actions from your ERP data</h2><p>The system reads your current masters and transactions, then recommends the next best module to continue the flow correctly.</p></div><span>{guidance.length} suggestions</span></div>
       <div className="home-guidance-grid">{guidance.map(item=><article className={`home-guidance-item ${item.tone||'info'}`} key={item.title}><div><h3>{item.title}</h3><p>{item.text}</p></div><button onClick={()=>goToPage(item.page)}><span>Open {item.page}</span><ArrowUpRight size={14}/></button></article>)}</div>
-    </section>
+    </section>}
 
     <section className="card home-process">
       <div className="section-intro"><div><p className="eyebrow">CONNECTED ERP FLOWS</p><h2>Run the company by document lineage</h2><p>Every downstream document keeps its source reference, quantity gate and approval trail.</p></div><span>{workflowLanes.reduce((sum,lane)=>sum+lane.steps.length,0)} connected stages</span></div>
@@ -986,7 +1058,7 @@ function WorkflowPage({title,goToPage}){
     }
     const target=coreConfigs[targetTitle]||getGenericConfig(targetTitle),targetKey=`dfab-erp-${targetTitle}`,targetRows=readStored(targetKey,seeds[targetTitle]||[]);
     let n=targetRows.length+1;const prefix=targetTitle.split(' ').map(w=>w[0]).join('');while(targetRows.some(r=>r[0]===`${prefix}/${new Date().getFullYear()}/${String(n).padStart(5,'0')}`))n++;
-    const sourceReferenceFields={'Sales Quotations':'Enquiry','Sales Orders':'Quotation No','Work Order':'SO No','GRN':'PO No','Inward QC':'GRN No','Route Cards':'WO No','Production Output':'WO No','Outward QC':'Output No','Delivery Challan':'Output No','Outsource Receipt':'Issue DC','Indent To Order':'Indent No','Material Issue':'Work Order','Material Request':'Work Order'};
+    const sourceReferenceFields={'Sales Quotations':'Enquiry','Sales Orders':'Quotation No','Work Order':'SO No','GRN':'PO No','Inward QC':'GRN No','Route Cards':'WO No','Production Output':'WO No','Outward QC':'Output No','Delivery Challan':'Output No','Outsource Receipt':'Issue DC','Indent To Order':'Indent No','Material Issue':'Work Order','Material Request':'Work Order','Vendor Payments':'Invoice','Credit Note':'Invoice','Customer Payments':'Invoice','Job Work Return DC':'Inward No'};
     const sourceField=sourceReferenceFields[targetTitle];
     const created=target.columns.map((column,index)=>{
       if(index===0)return `${prefix}/${new Date().getFullYear()}/${String(n).padStart(5,'0')}`;
@@ -996,12 +1068,21 @@ function WorkflowPage({title,goToPage}){
         if(targetTitle==='Material Issue')return source['Work Order']||row[0];
         if(targetTitle==='Route Cards')return source['Work Order']||source['WO No']||row[0];
         if(targetTitle==='Production Output')return source['WO No']||source['Work Order']||row[0];
+        if(targetTitle==='Credit Note'||targetTitle==='Customer Payments')return source.Invoice||row[0];
         return row[0];
       }
+      if(targetTitle==='Route Cards'&&column==='Completed Qty')return '0';
+      if(targetTitle==='Production Output'&&column==='Good Qty')return source['Completed Qty']||source.Qty||'0';
+      if(targetTitle==='Production Output'&&column==='Reject Qty')return '0';
       if(source[column]!==undefined)return source[column];
+      if(column==='Invoice')return source['Invoice No']||source.Invoice||row[0];
+      if(column==='Customer')return source.Customer||'';
+      if(column==='Vendor')return source.Vendor||'';
+      if(column==='Amount')return source.Amount||source['Taxable Amount']||'';
+      if(column==='Inward No')return source['Inward No']||row[0];
       if(/qty|quantity/i.test(column))return source['Good Qty']||source['Received Qty']||source.Qty||'';
       if(/date|delivery/i.test(column))return todayISO();
-      if(/item|product/i.test(column))return source.Item||source.Product||'';
+      if(/item|product|material/i.test(column))return source.Item||source.Product||source.Material||'';
       return '';
     });
     if(!writeStored(targetKey,[created,...targetRows]))return;
@@ -1009,13 +1090,15 @@ function WorkflowPage({title,goToPage}){
   };
   const openCreate=()=>{setEditing(-1);setForm(Object.fromEntries(config.fields.filter(f=>fieldType(f)==='date').map(f=>[f,todayISO()])));setModal(true)};
   const openEdit=row=>{setEditing(rows.indexOf(row));const data={};config.columns.forEach((c,i)=>data[c]=fieldType(c)==='date'?isoDate(row[i]):row[i]??'');setForm(data);setModal(true)};
+  const updateFormField=(field,value)=>setForm(current=>{const fetched=referenceAutofill(field,value);const allowed=new Set(config.fields);const merged={...current,[field]:value};for(const [key,item] of Object.entries(fetched)){if(allowed.has(key)&&(!merged[key]||key===field))merged[key]=item}return merged});
   const saveRecord=()=>{const error=validateFields(config.fields,form);if(error){alert(error);return}if(rows.some((r,i)=>i!==editing&&String(r[0]).toLowerCase()===String(form[config.columns[0]]).trim().toLowerCase())){alert('Reference already exists.');return}const row=config.columns.map(c=>form[c]||((/status|stage|decision/i.test(c)&&config.statuses)?config.statuses[0]:'-'));setRows(prev=>editing>=0?prev.map((r,i)=>i===editing?row:r):[row,...prev]);setModal(false);setForm({});setEditing(-1)};
   const remove=i=>{if(confirm('Delete this record?'))setRows(prev=>prev.filter((_,idx)=>idx!==i))};
   const isReport=!!config.readOnly;
-  return <main className="content master-page page-shell"><div className="page-title-row"><div><h1>{title}</h1>{config.description&&<div className="page-subtitle">{config.description}</div>}</div><div className="action-pills">{isReport&&<button className="action-pill green" onClick={()=>downloadCsv(`${title}.csv`,config.columns,filtered)}><FileSpreadsheet size={15}/> Export Excel</button>}{config.next&&<button className="action-pill green" onClick={()=>goToPage(config.next)}>Next: {config.next} <ArrowRight size={15}/></button>}{!isReport&&<button className="action-pill green" onClick={()=>downloadCsv(`${title}.csv`,config.columns,filtered)}><FileSpreadsheet size={15}/> Export CSV</button>}{!isReport&&<button className="primary-pill" onClick={openCreate}><Plus size={17}/> Create {shortLabel(title)}</button>}</div></div><div className="divider"/>
+  return <main className="content master-page page-shell sap-object-page"><div className="page-title-row sap-object-header"><div><span className="sap-object-eyebrow">ENTERPRISE TRANSACTION</span><h1>{title}</h1>{config.description&&<div className="page-subtitle">{config.description}</div>}</div><div className="action-pills">{isReport&&<button className="action-pill green" onClick={()=>downloadCsv(`${title}.csv`,config.columns,filtered)}><FileSpreadsheet size={15}/> Export Excel</button>}{config.next&&<button className="action-pill green" onClick={()=>goToPage(config.next)}>Next: {config.next} <ArrowRight size={15}/></button>}{!isReport&&<button className="action-pill green" onClick={()=>downloadCsv(`${title}.csv`,config.columns,filtered)}><FileSpreadsheet size={15}/> Export CSV</button>}{!isReport&&<button className="primary-pill" onClick={openCreate}><Plus size={17}/> Create {shortLabel(title)}</button>}</div></div><div className="divider"/>
+    <section className="sap-lifecycle-strip"><div><small>Total records</small><b>{rows.length.toLocaleString('en-IN')}</b></div><div><small>Visible results</small><b>{filtered.length.toLocaleString('en-IN')}</b></div><div><small>Process status</small><b>{config.next?`Connected → ${config.next}`:isReport?'Reporting':'Standalone'}</b></div><div><small>Persistence</small><b>Supabase Cloud</b></div></section>
     {config.statuses&&<div className="mini-status-row">{config.statuses.slice(0,6).map((s,i)=><div className={`mini-status ${['tone-blue','tone-green','tone-yellow','tone-navy','tone-red','tone-teal'][i%6]}`} key={s}><span>{s}</span><b>{rows.filter(r=>r[statusIndex]===s).length}</b></div>)}</div>}
     <section className="card master-card"><div className="master-toolbar"><div className="workflow-toolbar-left">{config.next&&<span className="workflow-hint">Connected flow → <b>{config.next}</b></span>}{isReport&&<span className="workflow-hint">Report preview · <b>{displayDate(todayISO())}</b></span>}</div><div className="master-search"><input aria-label={`Search ${title}`} placeholder={`Search ${title}...`} value={search} onChange={e=>setSearch(e.target.value)}/><button title="Search records" onClick={e=>e.currentTarget.previousElementSibling?.focus()}><Search size={18}/></button></div></div><div className="table-wrap"><table><thead><tr><th>#</th>{config.columns.map(c=><th key={c}>{c}</th>)}{!isReport&&<th>Action</th>}</tr></thead><tbody>{filtered.length?filtered.map((r,ri)=><tr key={`${r[0]}-${ri}`}><td>{ri+1}</td>{config.columns.map((c,ci)=><td key={c}>{ci===0?<button className="link-button" onClick={()=>openEdit(r)}>{r[ci]}</button>:(ci===statusIndex?<span className={`status-pill ${String(r[ci]).toLowerCase().includes('reject')||String(r[ci]).toLowerCase().includes('fail')?'rejected':'approved'}`}>{r[ci]}</span>:r[ci])}</td>)}{!isReport&&<td><div className="row-actions"><button title="Edit" onClick={()=>openEdit(r)}><PencilLine size={15}/></button>{statusIndex>=0&&config.statuses&&<button title="Advance status" onClick={()=>advance(rows.indexOf(r))}><ArrowRight size={15}/></button>}{config.next&&<button title={`Create ${config.next}`} onClick={()=>forwardRecord(r)}><Send size={15}/></button>}<button title="Delete" onClick={()=>remove(rows.indexOf(r))}><Trash2 size={15}/></button></div></td>}</tr>):<tr><td colSpan={config.columns.length+2} className="empty-cell">No records available</td></tr>}</tbody></table></div></section>
-    {modal&&<FormDialogBackdrop className="modal-backdrop" onMouseDown={e=>{if(e.target===e.currentTarget)setModal(false)}}><div className="erp-modal"><div className="modal-head"><div><h2>{editing>=0?'Edit':'Create'} {shortLabel(title)}</h2><p>{title}</p></div><button className="icon-btn dark" onClick={()=>setModal(false)}><X size={20}/></button></div><div className="modal-grid">{config.fields.map(f=><label key={f}><span>{f}</span>{fieldType(f)==='date'?<input type="date" value={form[f]||''} onChange={e=>setForm({...form,[f]:e.target.value})}/>:<DatabaseSuggestInput label={f} type={fieldType(f)} min={fieldType(f)==='number'?0:undefined} step={fieldType(f)==='number'?'any':undefined} value={form[f]??''} onChange={e=>setForm({...form,[f]:e.target.value})} placeholder={f}/>}</label>)}</div><div className="modal-actions"><button className="action-pill gray" onClick={()=>setModal(false)}>Cancel</button><button className="action-pill blue" onClick={saveRecord}><Save size={15}/> Save</button></div></div></FormDialogBackdrop>}
+    {modal&&<FormDialogBackdrop className="modal-backdrop" onMouseDown={e=>{if(e.target===e.currentTarget)setModal(false)}}><div className="erp-modal"><div className="modal-head"><div><h2>{editing>=0?'Edit':'Create'} {shortLabel(title)}</h2><p>{title}</p></div><button className="icon-btn dark" onClick={()=>setModal(false)}><X size={20}/></button></div><div className="modal-grid">{config.fields.map(f=><label key={f}><span>{f}</span>{fieldType(f)==='date'?<input type="date" value={form[f]||''} onChange={e=>setForm({...form,[f]:e.target.value})}/>:<DatabaseSuggestInput label={f} type={fieldType(f)} min={fieldType(f)==='number'?0:undefined} step={fieldType(f)==='number'?'any':undefined} value={form[f]??''} onChange={e=>updateFormField(f,e.target.value)} placeholder={f}/>}</label>)}</div><div className="modal-actions"><button className="action-pill gray" onClick={()=>setModal(false)}>Cancel</button><button className="action-pill blue" onClick={saveRecord}><Save size={15}/> Save</button></div></div></FormDialogBackdrop>}
   </main>;
 }
 
