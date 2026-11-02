@@ -1,0 +1,4883 @@
+{
+  "baseline": "DFAB-OneERP-Transactions-Clear-UI.zip",
+  "baseline_sha256": "27a3888579c612a4c413f9fcf54b16d4425b353032a058336321db1bf9224b7f",
+  "unchanged_count": 57,
+  "unchanged_files": [
+    ".env.example",
+    ".gitignore",
+    "BUTTON-AUDIT.json",
+    "BUTTON-LOCK-CHECK.json",
+    "BUTTON-VISIBILITY.md",
+    "CLARITY-AUDIT.json",
+    "CLARITY-LOCK-CHECK.json",
+    "DATABASE-DRIVEN-UPDATE.md",
+    "DATABASE-SETUP.md",
+    "ERP-REVIEW.md",
+    "FETCH-LOCK-CHECK.json",
+    "FLOW-AUTOFETCH-VERIFICATION.md",
+    "FULL-DATA-RESTORE.md",
+    "PRESERVATION-CHECK.json",
+    "README.md",
+    "RESTORED-DATA-UPDATE.md",
+    "SAP-ENTERPRISE-UPGRADE.md",
+    "START-HERE-SOP.md",
+    "TRANSACTION-REVIEW.json",
+    "TRANSACTION-REVIEW.md",
+    "VERIFICATION-SOP.md",
+    "VERIFICATION.md",
+    "dfab-erp-home.code-workspace",
+    "erp.code-workspace",
+    "eslint.config.js",
+    "index.html",
+    "package-lock.json",
+    "package.json",
+    "src/assets/dfab-logo.png",
+    "src/backend/cloud-store.js",
+    "src/backend/supabase-rest.js",
+    "src/erp-utils.js",
+    "src/main.jsx",
+    "src/page-clarity.css",
+    "src/premium-forms.css",
+    "src/premium-forms.jsx",
+    "src/process-rules.js",
+    "src/process-schema.js",
+    "src/process-store.js",
+    "src/process-workspace.css",
+    "src/process-workspace.jsx",
+    "src/restored-seed-data.js",
+    "src/sap-enterprise.css",
+    "src/styles.css",
+    "src/transaction-context.js",
+    "src/transaction-context.jsx",
+    "src/ui-refinements.css",
+    "supabase/DFAB_ERP_PRODUCTION.sql",
+    "supabase/DFAB_PROCESS_UPGRADE.sql",
+    "tests/browser-advanced.mjs",
+    "tests/browser-premium.mjs",
+    "tests/browser-routes.json",
+    "tests/browser-smoke.mjs",
+    "tests/database-process.mjs",
+    "tests/erp-utils.test.js",
+    "tests/process-rules.test.js",
+    "tests/transaction-context.test.js"
+  ],
+  "modified_files": [
+    {
+      "path": "FETCH-UPDATE.md",
+      "before_sha256": "3b279a2d71822ca71aa9579b0cb154bd2b6193401889ad306a65d519713b026b",
+      "after_sha256": "8161741c2932c9fc204dd7a5eb138c6f9e8b7957a880740ac387aef198a67b8e"
+    },
+    {
+      "path": "src/process-fetch-ui.jsx",
+      "before_sha256": "5f623274ad9912758bc9918b23e1d37faeca01f9a31ea5a60299dd2bc29e146c",
+      "after_sha256": "6767ae7cf14c1c3455b77d3927502d58f2bce3059b0218d038f8da2187e58f82"
+    },
+    {
+      "path": "src/process-fetch.js",
+      "before_sha256": "0cbe8d8a340688f049afeb9063333e994b665e67b417943c46e1c079728255a6",
+      "after_sha256": "575bbb55ead24295112f57073a2cfe38262bbc226189b1c1d2a24491764bfeb1"
+    },
+    {
+      "path": "tests/browser-process.mjs",
+      "before_sha256": "3d8e6986cc39622d7d8437ff4c3508c07fb6b65317eff8ac36ee905043ebbed3",
+      "after_sha256": "0b1cb4dd007ece1d3c9ddf99a69cf6b8ce318e5d6b9e46c2c56d43953a7b5751"
+    },
+    {
+      "path": "tests/process-fetch.test.js",
+      "before_sha256": "d790c03d5b1784c492645b5af459ecd4801f9501e12285eda7921475eb00028b",
+      "after_sha256": "5b008f4100d21ac20c25cc8a3caa6c35ecfc141c5a1c9a002d1ef6247f0dff91"
+    }
+  ],
+  "missing_files": [],
+  "added_files": [
+    "AUTOFILL-VERIFICATION.json",
+    "FETCH-AUTOFILL-FIX.md"
+  ],
+  "locked_files": [
+    "src/main.jsx",
+    "src/process-workspace.jsx",
+    "src/process-schema.js",
+    "src/process-rules.js",
+    "src/process-store.js",
+    "src/backend/cloud-store.js",
+    "src/backend/supabase-rest.js",
+    "src/page-clarity.css",
+    "supabase/DFAB_ERP_PRODUCTION.sql",
+    "supabase/DFAB_PROCESS_UPGRADE.sql"
+  ],
+  "checks": {
+    "lint": "passed",
+    "configured_typecheck": "passed (existing utility/backend scope)",
+    "unit_tests": "36/36 passed; includes all 37 source/target pair transfers across 20 Fetch-enabled pages",
+    "build": "passed; existing non-blocking bundle-size/lucide warnings",
+    "browser_form_regression": {
+      "results": [
+        "Original torch login + Supabase hydration",
+        "0 existing/new routes rendered",
+        "30 transaction editors, draft saves, read-only tabs and deletes",
+        "Item removal remains reachable after horizontal scrolling",
+        "Enquiry \u2192 quotation with charge/attachment \u2192 approved order and preserved source lines",
+        "Save failure/retry + labour inward \u2192 QC passed \u2192 sales order gate",
+        "Invoice \u2192 receipt allocation, overpayment rejection, history",
+        "Payment compatibility projection and finance report balances",
+        "Route process pricing save",
+        "Fetch selection/quantity errors, partial draft reservation, reference mapping, atomic lineage, overwrite cancellation and keyboard close",
+        "Automatic pending selection + re-fetch field refresh + manual value preservation + saved source replacement + released old reservation",
+        "Transaction flow opens the exact saved source document",
+        "Reload restores session and confirmed document details",
+        "Assigned task opens its actual document",
+        "Desktop/tablet/mobile document overflow checks",
+        "No runtime errors"
+      ],
+      "errors": []
+    },
+    "browser_focused_final_handoff": {
+      "results": [
+        "Original torch login + Supabase hydration",
+        "0 existing/new routes rendered",
+        "0 transaction editors, draft saves, read-only tabs and deletes",
+        "Item removal remains reachable after horizontal scrolling",
+        "Enquiry \u2192 quotation with charge/attachment \u2192 approved order and preserved source lines",
+        "Save failure/retry + labour inward \u2192 QC passed \u2192 sales order gate",
+        "Fresh labour Fetch uses the actual flow and next department",
+        "Invoice \u2192 receipt allocation, overpayment rejection, history",
+        "Payment compatibility projection and finance report balances",
+        "Route process pricing save",
+        "Fetch selection/quantity errors, partial draft reservation, reference mapping, atomic lineage, overwrite cancellation and keyboard close",
+        "Automatic pending selection + re-fetch field refresh + manual value preservation + saved source replacement + released old reservation",
+        "Transaction flow opens the exact saved source document",
+        "Reload restores session and confirmed document details",
+        "Assigned task opens its actual document",
+        "Desktop/tablet/mobile document overflow checks",
+        "No runtime errors"
+      ],
+      "errors": []
+    },
+    "browser_scope": "30-form regression, then targeted final labour-department/default check and complete focused Fetch/workflow/payment/reload suite. Unrelated route layouts retained from the previous verified ZIP. Local mocked Supabase only.",
+    "forms_button_visibility": [
+      {
+        "page": "Sales Enquiries",
+        "section": "Marketing",
+        "mode": "editor",
+        "fetchSources": [],
+        "views": [
+          {
+            "width": 1440,
+            "visibleButtons": 11,
+            "actions": [
+              {
+                "label": "Back to register",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Save as Draft",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Submit & Release",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              }
+            ],
+            "error": false
+          },
+          {
+            "width": 390,
+            "visibleButtons": 11,
+            "actions": [
+              {
+                "label": "Back to register",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Save as Draft",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Submit & Release",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              }
+            ],
+            "error": false
+          }
+        ]
+      },
+      {
+        "page": "Sales Enquiries",
+        "section": "Marketing",
+        "mode": "saved record",
+        "fetchSources": [],
+        "views": [
+          {
+            "width": 1440,
+            "visibleButtons": 13,
+            "actions": [
+              {
+                "label": "Back to register",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Print",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Edit",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Delete",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Continue to Sales Quotations",
+                "disabled": true,
+                "horizontal": true,
+                "clipped": false
+              }
+            ],
+            "error": false
+          },
+          {
+            "width": 390,
+            "visibleButtons": 13,
+            "actions": [
+              {
+                "label": "Back to register",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Print",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Edit",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Delete",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Continue to Sales Quotations",
+                "disabled": true,
+                "horizontal": true,
+                "clipped": false
+              }
+            ],
+            "error": false
+          }
+        ]
+      },
+      {
+        "page": "Sales Quotations",
+        "section": "Marketing",
+        "mode": "editor",
+        "fetchSources": [
+          "Sales Orders",
+          "Sales Enquiries"
+        ],
+        "views": [
+          {
+            "width": 1440,
+            "visibleButtons": 14,
+            "actions": [
+              {
+                "label": "Back to register",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Fetch",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Save as Draft",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Submit for Approval",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              }
+            ],
+            "error": false
+          },
+          {
+            "width": 390,
+            "visibleButtons": 14,
+            "actions": [
+              {
+                "label": "Back to register",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Fetch",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Save as Draft",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Submit for Approval",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              }
+            ],
+            "error": false
+          }
+        ]
+      },
+      {
+        "page": "Sales Quotations",
+        "section": "Marketing",
+        "mode": "saved record",
+        "fetchSources": [
+          "Sales Orders",
+          "Sales Enquiries"
+        ],
+        "views": [
+          {
+            "width": 1440,
+            "visibleButtons": 16,
+            "actions": [
+              {
+                "label": "Back to register",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Print",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Edit",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Delete",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Fetch",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Continue to Sales Orders",
+                "disabled": true,
+                "horizontal": true,
+                "clipped": false
+              }
+            ],
+            "error": false
+          },
+          {
+            "width": 390,
+            "visibleButtons": 16,
+            "actions": [
+              {
+                "label": "Back to register",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Print",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Edit",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Delete",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Fetch",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Continue to Sales Orders",
+                "disabled": true,
+                "horizontal": true,
+                "clipped": false
+              }
+            ],
+            "error": false
+          }
+        ]
+      },
+      {
+        "page": "Sales Orders",
+        "section": "Marketing",
+        "mode": "editor",
+        "fetchSources": [
+          "Sales Quotations",
+          "Job Work Inward",
+          "Inward QC"
+        ],
+        "views": [
+          {
+            "width": 1440,
+            "visibleButtons": 13,
+            "actions": [
+              {
+                "label": "Back to register",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Fetch",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Save as Draft",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Submit for Approval",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              }
+            ],
+            "error": false
+          },
+          {
+            "width": 390,
+            "visibleButtons": 13,
+            "actions": [
+              {
+                "label": "Back to register",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Fetch",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Save as Draft",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Submit for Approval",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              }
+            ],
+            "error": false
+          }
+        ]
+      },
+      {
+        "page": "Sales Orders",
+        "section": "Marketing",
+        "mode": "saved record",
+        "fetchSources": [
+          "Sales Quotations",
+          "Job Work Inward",
+          "Inward QC"
+        ],
+        "views": [
+          {
+            "width": 1440,
+            "visibleButtons": 15,
+            "actions": [
+              {
+                "label": "Back to register",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Print",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Edit",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Delete",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Fetch",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Continue to Purchase Orders",
+                "disabled": true,
+                "horizontal": true,
+                "clipped": false
+              }
+            ],
+            "error": false
+          },
+          {
+            "width": 390,
+            "visibleButtons": 15,
+            "actions": [
+              {
+                "label": "Back to register",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Print",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Edit",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Delete",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Fetch",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Continue to Purchase Orders",
+                "disabled": true,
+                "horizontal": true,
+                "clipped": false
+              }
+            ],
+            "error": false
+          }
+        ]
+      },
+      {
+        "page": "Purchase Orders",
+        "section": "Purchase",
+        "mode": "editor",
+        "fetchSources": [
+          "Purchase Indents",
+          "Outsource Issue DC",
+          "Sales Orders"
+        ],
+        "views": [
+          {
+            "width": 1440,
+            "visibleButtons": 13,
+            "actions": [
+              {
+                "label": "Back to register",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Fetch",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Save as Draft",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Submit for Approval",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              }
+            ],
+            "error": false
+          },
+          {
+            "width": 390,
+            "visibleButtons": 13,
+            "actions": [
+              {
+                "label": "Back to register",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Fetch",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Save as Draft",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Submit for Approval",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              }
+            ],
+            "error": false
+          }
+        ]
+      },
+      {
+        "page": "Purchase Orders",
+        "section": "Purchase",
+        "mode": "saved record",
+        "fetchSources": [
+          "Purchase Indents",
+          "Outsource Issue DC",
+          "Sales Orders"
+        ],
+        "views": [
+          {
+            "width": 1440,
+            "visibleButtons": 15,
+            "actions": [
+              {
+                "label": "Back to register",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Print",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Edit",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Delete",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Fetch",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Continue to GRN",
+                "disabled": true,
+                "horizontal": true,
+                "clipped": false
+              }
+            ],
+            "error": false
+          },
+          {
+            "width": 390,
+            "visibleButtons": 15,
+            "actions": [
+              {
+                "label": "Back to register",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Print",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Edit",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Delete",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Fetch",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Continue to GRN",
+                "disabled": true,
+                "horizontal": true,
+                "clipped": false
+              }
+            ],
+            "error": false
+          }
+        ]
+      },
+      {
+        "page": "Purchase Indents",
+        "section": "Purchase",
+        "mode": "editor",
+        "fetchSources": [],
+        "views": [
+          {
+            "width": 1440,
+            "visibleButtons": 10,
+            "actions": [
+              {
+                "label": "Back to register",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Save as Draft",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Submit for Approval",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              }
+            ],
+            "error": false
+          },
+          {
+            "width": 390,
+            "visibleButtons": 10,
+            "actions": [
+              {
+                "label": "Back to register",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Save as Draft",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Submit for Approval",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              }
+            ],
+            "error": false
+          }
+        ]
+      },
+      {
+        "page": "Purchase Indents",
+        "section": "Purchase",
+        "mode": "saved record",
+        "fetchSources": [],
+        "views": [
+          {
+            "width": 1440,
+            "visibleButtons": 12,
+            "actions": [
+              {
+                "label": "Back to register",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Print",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Edit",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Delete",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Continue to Purchase Orders",
+                "disabled": true,
+                "horizontal": true,
+                "clipped": false
+              }
+            ],
+            "error": false
+          },
+          {
+            "width": 390,
+            "visibleButtons": 12,
+            "actions": [
+              {
+                "label": "Back to register",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Print",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Edit",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Delete",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Continue to Purchase Orders",
+                "disabled": true,
+                "horizontal": true,
+                "clipped": false
+              }
+            ],
+            "error": false
+          }
+        ]
+      },
+      {
+        "page": "GRN",
+        "section": "Purchase",
+        "mode": "editor",
+        "fetchSources": [
+          "Purchase Orders"
+        ],
+        "views": [
+          {
+            "width": 1440,
+            "visibleButtons": 13,
+            "actions": [
+              {
+                "label": "Back to register",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Fetch",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Save as Draft",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Submit & Release",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              }
+            ],
+            "error": false
+          },
+          {
+            "width": 390,
+            "visibleButtons": 13,
+            "actions": [
+              {
+                "label": "Back to register",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Fetch",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Save as Draft",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Submit & Release",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              }
+            ],
+            "error": false
+          }
+        ]
+      },
+      {
+        "page": "GRN",
+        "section": "Purchase",
+        "mode": "saved record",
+        "fetchSources": [
+          "Purchase Orders"
+        ],
+        "views": [
+          {
+            "width": 1440,
+            "visibleButtons": 15,
+            "actions": [
+              {
+                "label": "Back to register",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Print",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Edit",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Delete",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Fetch",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Continue to Inward QC",
+                "disabled": true,
+                "horizontal": true,
+                "clipped": false
+              }
+            ],
+            "error": false
+          },
+          {
+            "width": 390,
+            "visibleButtons": 15,
+            "actions": [
+              {
+                "label": "Back to register",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Print",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Edit",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Delete",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Fetch",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Continue to Inward QC",
+                "disabled": true,
+                "horizontal": true,
+                "clipped": false
+              }
+            ],
+            "error": false
+          }
+        ]
+      },
+      {
+        "page": "Work Order",
+        "section": "Production",
+        "mode": "editor",
+        "fetchSources": [
+          "Sales Orders",
+          "Rejection Note"
+        ],
+        "views": [
+          {
+            "width": 1440,
+            "visibleButtons": 12,
+            "actions": [
+              {
+                "label": "Back to register",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Fetch",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Save as Draft",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Submit for Approval",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              }
+            ],
+            "error": false
+          },
+          {
+            "width": 390,
+            "visibleButtons": 12,
+            "actions": [
+              {
+                "label": "Back to register",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Fetch",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Save as Draft",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Submit for Approval",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              }
+            ],
+            "error": false
+          }
+        ]
+      },
+      {
+        "page": "Work Order",
+        "section": "Production",
+        "mode": "saved record",
+        "fetchSources": [
+          "Sales Orders",
+          "Rejection Note"
+        ],
+        "views": [
+          {
+            "width": 1440,
+            "visibleButtons": 16,
+            "actions": [
+              {
+                "label": "Back to register",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Print",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Edit",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Delete",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Fetch",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Continue to Route Cards",
+                "disabled": true,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Continue to Material Request",
+                "disabled": true,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Continue to Outsource Issue DC",
+                "disabled": true,
+                "horizontal": true,
+                "clipped": false
+              }
+            ],
+            "error": false
+          },
+          {
+            "width": 390,
+            "visibleButtons": 16,
+            "actions": [
+              {
+                "label": "Back to register",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Print",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Edit",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Delete",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Fetch",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Continue to Route Cards",
+                "disabled": true,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Continue to Material Request",
+                "disabled": true,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Continue to Outsource Issue DC",
+                "disabled": true,
+                "horizontal": true,
+                "clipped": false
+              }
+            ],
+            "error": false
+          }
+        ]
+      },
+      {
+        "page": "Material Request",
+        "section": "Production",
+        "mode": "editor",
+        "fetchSources": [
+          "Work Order"
+        ],
+        "views": [
+          {
+            "width": 1440,
+            "visibleButtons": 11,
+            "actions": [
+              {
+                "label": "Back to register",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Fetch",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Save as Draft",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Submit & Release",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              }
+            ],
+            "error": false
+          },
+          {
+            "width": 390,
+            "visibleButtons": 11,
+            "actions": [
+              {
+                "label": "Back to register",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Fetch",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Save as Draft",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Submit & Release",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              }
+            ],
+            "error": false
+          }
+        ]
+      },
+      {
+        "page": "Material Request",
+        "section": "Production",
+        "mode": "saved record",
+        "fetchSources": [
+          "Work Order"
+        ],
+        "views": [
+          {
+            "width": 1440,
+            "visibleButtons": 13,
+            "actions": [
+              {
+                "label": "Back to register",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Print",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Edit",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Delete",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Fetch",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Continue to Material Issue",
+                "disabled": true,
+                "horizontal": true,
+                "clipped": false
+              }
+            ],
+            "error": false
+          },
+          {
+            "width": 390,
+            "visibleButtons": 13,
+            "actions": [
+              {
+                "label": "Back to register",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Print",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Edit",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Delete",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Fetch",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Continue to Material Issue",
+                "disabled": true,
+                "horizontal": true,
+                "clipped": false
+              }
+            ],
+            "error": false
+          }
+        ]
+      },
+      {
+        "page": "Material Issue",
+        "section": "Stores",
+        "mode": "editor",
+        "fetchSources": [
+          "Material Request"
+        ],
+        "views": [
+          {
+            "width": 1440,
+            "visibleButtons": 11,
+            "actions": [
+              {
+                "label": "Back to register",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Fetch",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Save as Draft",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Submit & Release",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              }
+            ],
+            "error": false
+          },
+          {
+            "width": 390,
+            "visibleButtons": 11,
+            "actions": [
+              {
+                "label": "Back to register",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Fetch",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Save as Draft",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Submit & Release",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              }
+            ],
+            "error": false
+          }
+        ]
+      },
+      {
+        "page": "Material Issue",
+        "section": "Stores",
+        "mode": "saved record",
+        "fetchSources": [
+          "Material Request"
+        ],
+        "views": [
+          {
+            "width": 1440,
+            "visibleButtons": 13,
+            "actions": [
+              {
+                "label": "Back to register",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Print",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Edit",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Delete",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Fetch",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Continue to Route Cards",
+                "disabled": true,
+                "horizontal": true,
+                "clipped": false
+              }
+            ],
+            "error": false
+          },
+          {
+            "width": 390,
+            "visibleButtons": 13,
+            "actions": [
+              {
+                "label": "Back to register",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Print",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Edit",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Delete",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Fetch",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Continue to Route Cards",
+                "disabled": true,
+                "horizontal": true,
+                "clipped": false
+              }
+            ],
+            "error": false
+          }
+        ]
+      },
+      {
+        "page": "Production Output",
+        "section": "Stores",
+        "mode": "editor",
+        "fetchSources": [
+          "Work Order",
+          "Route Cards"
+        ],
+        "views": [
+          {
+            "width": 1440,
+            "visibleButtons": 11,
+            "actions": [
+              {
+                "label": "Back to register",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Fetch",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Save as Draft",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Submit & Release",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              }
+            ],
+            "error": false
+          },
+          {
+            "width": 390,
+            "visibleButtons": 11,
+            "actions": [
+              {
+                "label": "Back to register",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Fetch",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Save as Draft",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Submit & Release",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              }
+            ],
+            "error": false
+          }
+        ]
+      },
+      {
+        "page": "Production Output",
+        "section": "Stores",
+        "mode": "saved record",
+        "fetchSources": [
+          "Work Order",
+          "Route Cards"
+        ],
+        "views": [
+          {
+            "width": 1440,
+            "visibleButtons": 13,
+            "actions": [
+              {
+                "label": "Back to register",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Print",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Edit",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Delete",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Fetch",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Continue to Outward QC",
+                "disabled": true,
+                "horizontal": true,
+                "clipped": false
+              }
+            ],
+            "error": false
+          },
+          {
+            "width": 390,
+            "visibleButtons": 13,
+            "actions": [
+              {
+                "label": "Back to register",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Print",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Edit",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Delete",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Fetch",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Continue to Outward QC",
+                "disabled": true,
+                "horizontal": true,
+                "clipped": false
+              }
+            ],
+            "error": false
+          }
+        ]
+      },
+      {
+        "page": "Outward QC",
+        "section": "Quality Control",
+        "mode": "editor",
+        "fetchSources": [
+          "Production Output",
+          "Route Cards"
+        ],
+        "views": [
+          {
+            "width": 1440,
+            "visibleButtons": 13,
+            "actions": [
+              {
+                "label": "Back to register",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Fetch",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Save as Draft",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Submit & Release",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              }
+            ],
+            "error": false
+          },
+          {
+            "width": 390,
+            "visibleButtons": 13,
+            "actions": [
+              {
+                "label": "Back to register",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Fetch",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Save as Draft",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Submit & Release",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              }
+            ],
+            "error": false
+          }
+        ]
+      },
+      {
+        "page": "Outward QC",
+        "section": "Quality Control",
+        "mode": "saved record",
+        "fetchSources": [
+          "Production Output",
+          "Route Cards"
+        ],
+        "views": [
+          {
+            "width": 1440,
+            "visibleButtons": 15,
+            "actions": [
+              {
+                "label": "Back to register",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Print",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Edit",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Delete",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Fetch",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Continue to Delivery Challan",
+                "disabled": true,
+                "horizontal": true,
+                "clipped": false
+              }
+            ],
+            "error": false
+          },
+          {
+            "width": 390,
+            "visibleButtons": 15,
+            "actions": [
+              {
+                "label": "Back to register",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Print",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Edit",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Delete",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Fetch",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Continue to Delivery Challan",
+                "disabled": true,
+                "horizontal": true,
+                "clipped": false
+              }
+            ],
+            "error": false
+          }
+        ]
+      },
+      {
+        "page": "Delivery Challan",
+        "section": "Sales",
+        "mode": "editor",
+        "fetchSources": [
+          "Sales Orders",
+          "Outward QC"
+        ],
+        "views": [
+          {
+            "width": 1440,
+            "visibleButtons": 13,
+            "actions": [
+              {
+                "label": "Back to register",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Fetch",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Save as Draft",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Submit for Approval",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              }
+            ],
+            "error": false
+          },
+          {
+            "width": 390,
+            "visibleButtons": 13,
+            "actions": [
+              {
+                "label": "Back to register",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Fetch",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Save as Draft",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Submit for Approval",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              }
+            ],
+            "error": false
+          }
+        ]
+      },
+      {
+        "page": "Delivery Challan",
+        "section": "Sales",
+        "mode": "saved record",
+        "fetchSources": [
+          "Sales Orders",
+          "Outward QC"
+        ],
+        "views": [
+          {
+            "width": 1440,
+            "visibleButtons": 15,
+            "actions": [
+              {
+                "label": "Back to register",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Print",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Edit",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Delete",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Fetch",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Continue to Sales Invoice",
+                "disabled": true,
+                "horizontal": true,
+                "clipped": false
+              }
+            ],
+            "error": false
+          },
+          {
+            "width": 390,
+            "visibleButtons": 15,
+            "actions": [
+              {
+                "label": "Back to register",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Print",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Edit",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Delete",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Fetch",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Continue to Sales Invoice",
+                "disabled": true,
+                "horizontal": true,
+                "clipped": false
+              }
+            ],
+            "error": false
+          }
+        ]
+      },
+      {
+        "page": "Sales Invoice",
+        "section": "Sales",
+        "mode": "editor",
+        "fetchSources": [
+          "Sales Orders",
+          "Delivery Challan",
+          "Job Work Return DC"
+        ],
+        "views": [
+          {
+            "width": 1440,
+            "visibleButtons": 15,
+            "actions": [
+              {
+                "label": "Back to register",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Fetch",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Save as Draft",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Submit & Release",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              }
+            ],
+            "error": false
+          },
+          {
+            "width": 390,
+            "visibleButtons": 15,
+            "actions": [
+              {
+                "label": "Back to register",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Fetch",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Save as Draft",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Submit & Release",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              }
+            ],
+            "error": false
+          }
+        ]
+      },
+      {
+        "page": "Sales Invoice",
+        "section": "Sales",
+        "mode": "saved record",
+        "fetchSources": [
+          "Sales Orders",
+          "Delivery Challan",
+          "Job Work Return DC"
+        ],
+        "views": [
+          {
+            "width": 1440,
+            "visibleButtons": 17,
+            "actions": [
+              {
+                "label": "Back to register",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Print",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Edit",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Delete",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Fetch",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Continue to Customer Payments",
+                "disabled": true,
+                "horizontal": true,
+                "clipped": false
+              }
+            ],
+            "error": false
+          },
+          {
+            "width": 390,
+            "visibleButtons": 17,
+            "actions": [
+              {
+                "label": "Back to register",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Print",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Edit",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Delete",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Fetch",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Continue to Customer Payments",
+                "disabled": true,
+                "horizontal": true,
+                "clipped": false
+              }
+            ],
+            "error": false
+          }
+        ]
+      },
+      {
+        "page": "Purchase",
+        "section": "Purchase",
+        "mode": "editor",
+        "fetchSources": [
+          "GRN",
+          "Inward QC"
+        ],
+        "views": [
+          {
+            "width": 1440,
+            "visibleButtons": 12,
+            "actions": [
+              {
+                "label": "Back to register",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Fetch",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Save as Draft",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Submit for Approval",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              }
+            ],
+            "error": false
+          },
+          {
+            "width": 390,
+            "visibleButtons": 12,
+            "actions": [
+              {
+                "label": "Back to register",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Fetch",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Save as Draft",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Submit for Approval",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              }
+            ],
+            "error": false
+          }
+        ]
+      },
+      {
+        "page": "Purchase",
+        "section": "Purchase",
+        "mode": "saved record",
+        "fetchSources": [
+          "GRN",
+          "Inward QC"
+        ],
+        "views": [
+          {
+            "width": 1440,
+            "visibleButtons": 14,
+            "actions": [
+              {
+                "label": "Back to register",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Print",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Edit",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Delete",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Fetch",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Continue to Vendor Payments",
+                "disabled": true,
+                "horizontal": true,
+                "clipped": false
+              }
+            ],
+            "error": false
+          },
+          {
+            "width": 390,
+            "visibleButtons": 14,
+            "actions": [
+              {
+                "label": "Back to register",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Print",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Edit",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Delete",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Fetch",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Continue to Vendor Payments",
+                "disabled": true,
+                "horizontal": true,
+                "clipped": false
+              }
+            ],
+            "error": false
+          }
+        ]
+      },
+      {
+        "page": "Job Work Inward",
+        "section": "Production",
+        "mode": "editor",
+        "fetchSources": [],
+        "views": [
+          {
+            "width": 1440,
+            "visibleButtons": 12,
+            "actions": [
+              {
+                "label": "Back to register",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Save as Draft",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Submit for Approval",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              }
+            ],
+            "error": false
+          },
+          {
+            "width": 390,
+            "visibleButtons": 12,
+            "actions": [
+              {
+                "label": "Back to register",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Save as Draft",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Submit for Approval",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              }
+            ],
+            "error": false
+          }
+        ]
+      },
+      {
+        "page": "Job Work Inward",
+        "section": "Production",
+        "mode": "saved record",
+        "fetchSources": [],
+        "views": [
+          {
+            "width": 1440,
+            "visibleButtons": 13,
+            "actions": [
+              {
+                "label": "Back to register",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Print",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Edit",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Delete",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              }
+            ],
+            "error": false
+          },
+          {
+            "width": 390,
+            "visibleButtons": 13,
+            "actions": [
+              {
+                "label": "Back to register",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Print",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Edit",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Delete",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              }
+            ],
+            "error": false
+          }
+        ]
+      },
+      {
+        "page": "Job Work Return DC",
+        "section": "Production",
+        "mode": "editor",
+        "fetchSources": [],
+        "views": [
+          {
+            "width": 1440,
+            "visibleButtons": 10,
+            "actions": [
+              {
+                "label": "Back to register",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Save as Draft",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Submit & Release",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              }
+            ],
+            "error": false
+          },
+          {
+            "width": 390,
+            "visibleButtons": 10,
+            "actions": [
+              {
+                "label": "Back to register",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Save as Draft",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Submit & Release",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              }
+            ],
+            "error": false
+          }
+        ]
+      },
+      {
+        "page": "Job Work Return DC",
+        "section": "Production",
+        "mode": "saved record",
+        "fetchSources": [],
+        "views": [
+          {
+            "width": 1440,
+            "visibleButtons": 12,
+            "actions": [
+              {
+                "label": "Back to register",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Print",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Edit",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Delete",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Continue to Sales Invoice",
+                "disabled": true,
+                "horizontal": true,
+                "clipped": false
+              }
+            ],
+            "error": false
+          },
+          {
+            "width": 390,
+            "visibleButtons": 12,
+            "actions": [
+              {
+                "label": "Back to register",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Print",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Edit",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Delete",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Continue to Sales Invoice",
+                "disabled": true,
+                "horizontal": true,
+                "clipped": false
+              }
+            ],
+            "error": false
+          }
+        ]
+      },
+      {
+        "page": "Outsource Issue DC",
+        "section": "Production",
+        "mode": "editor",
+        "fetchSources": [
+          "Work Order",
+          "Route Cards"
+        ],
+        "views": [
+          {
+            "width": 1440,
+            "visibleButtons": 12,
+            "actions": [
+              {
+                "label": "Back to register",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Fetch",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Save as Draft",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Submit for Approval",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              }
+            ],
+            "error": false
+          },
+          {
+            "width": 390,
+            "visibleButtons": 12,
+            "actions": [
+              {
+                "label": "Back to register",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Fetch",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Save as Draft",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Submit for Approval",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              }
+            ],
+            "error": false
+          }
+        ]
+      },
+      {
+        "page": "Outsource Issue DC",
+        "section": "Production",
+        "mode": "saved record",
+        "fetchSources": [
+          "Work Order",
+          "Route Cards"
+        ],
+        "views": [
+          {
+            "width": 1440,
+            "visibleButtons": 14,
+            "actions": [
+              {
+                "label": "Back to register",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Print",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Edit",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Delete",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Fetch",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Continue to Outsource Receipt",
+                "disabled": true,
+                "horizontal": true,
+                "clipped": false
+              }
+            ],
+            "error": false
+          },
+          {
+            "width": 390,
+            "visibleButtons": 14,
+            "actions": [
+              {
+                "label": "Back to register",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Print",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Edit",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Delete",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Fetch",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Continue to Outsource Receipt",
+                "disabled": true,
+                "horizontal": true,
+                "clipped": false
+              }
+            ],
+            "error": false
+          }
+        ]
+      },
+      {
+        "page": "Outsource Receipt",
+        "section": "Production",
+        "mode": "editor",
+        "fetchSources": [
+          "Outsource Issue DC"
+        ],
+        "views": [
+          {
+            "width": 1440,
+            "visibleButtons": 12,
+            "actions": [
+              {
+                "label": "Back to register",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Fetch",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Save as Draft",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Submit & Release",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              }
+            ],
+            "error": false
+          },
+          {
+            "width": 390,
+            "visibleButtons": 12,
+            "actions": [
+              {
+                "label": "Back to register",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Fetch",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Save as Draft",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Submit & Release",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              }
+            ],
+            "error": false
+          }
+        ]
+      },
+      {
+        "page": "Outsource Receipt",
+        "section": "Production",
+        "mode": "saved record",
+        "fetchSources": [
+          "Outsource Issue DC"
+        ],
+        "views": [
+          {
+            "width": 1440,
+            "visibleButtons": 14,
+            "actions": [
+              {
+                "label": "Back to register",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Print",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Edit",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Delete",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Fetch",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Continue to Inward QC",
+                "disabled": true,
+                "horizontal": true,
+                "clipped": false
+              }
+            ],
+            "error": false
+          },
+          {
+            "width": 390,
+            "visibleButtons": 14,
+            "actions": [
+              {
+                "label": "Back to register",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Print",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Edit",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Delete",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Fetch",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Continue to Inward QC",
+                "disabled": true,
+                "horizontal": true,
+                "clipped": false
+              }
+            ],
+            "error": false
+          }
+        ]
+      },
+      {
+        "page": "Inward Quality",
+        "section": "Quality Control",
+        "mode": "editor",
+        "fetchSources": [
+          "Job Work Inward"
+        ],
+        "views": [
+          {
+            "width": 1440,
+            "visibleButtons": 13,
+            "actions": [
+              {
+                "label": "Back to register",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Fetch",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Save as Draft",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Submit & Release",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              }
+            ],
+            "error": false
+          },
+          {
+            "width": 390,
+            "visibleButtons": 13,
+            "actions": [
+              {
+                "label": "Back to register",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Fetch",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Save as Draft",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Submit & Release",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              }
+            ],
+            "error": false
+          }
+        ]
+      },
+      {
+        "page": "Inward Quality",
+        "section": "Quality Control",
+        "mode": "saved record",
+        "fetchSources": [
+          "Job Work Inward"
+        ],
+        "views": [
+          {
+            "width": 1440,
+            "visibleButtons": 14,
+            "actions": [
+              {
+                "label": "Back to register",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Print",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Edit",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Delete",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Fetch",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              }
+            ],
+            "error": false
+          },
+          {
+            "width": 390,
+            "visibleButtons": 14,
+            "actions": [
+              {
+                "label": "Back to register",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Print",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Edit",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Delete",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Fetch",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              }
+            ],
+            "error": false
+          }
+        ]
+      },
+      {
+        "page": "Inward Quality Rejection",
+        "section": "Quality Control",
+        "mode": "editor",
+        "fetchSources": [],
+        "views": [
+          {
+            "width": 1440,
+            "visibleButtons": 10,
+            "actions": [
+              {
+                "label": "Back to register",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Save as Draft",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Submit & Release",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              }
+            ],
+            "error": false
+          },
+          {
+            "width": 390,
+            "visibleButtons": 10,
+            "actions": [
+              {
+                "label": "Back to register",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Save as Draft",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Submit & Release",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              }
+            ],
+            "error": false
+          }
+        ]
+      },
+      {
+        "page": "Inward Quality Rejection",
+        "section": "Quality Control",
+        "mode": "saved record",
+        "fetchSources": [],
+        "views": [
+          {
+            "width": 1440,
+            "visibleButtons": 11,
+            "actions": [
+              {
+                "label": "Back to register",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Print",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Edit",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Delete",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              }
+            ],
+            "error": false
+          },
+          {
+            "width": 390,
+            "visibleButtons": 11,
+            "actions": [
+              {
+                "label": "Back to register",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Print",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Edit",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Delete",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              }
+            ],
+            "error": false
+          }
+        ]
+      },
+      {
+        "page": "Rejection Note",
+        "section": "Production",
+        "mode": "editor",
+        "fetchSources": [],
+        "views": [
+          {
+            "width": 1440,
+            "visibleButtons": 10,
+            "actions": [
+              {
+                "label": "Back to register",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Save as Draft",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Submit for Approval",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              }
+            ],
+            "error": false
+          },
+          {
+            "width": 390,
+            "visibleButtons": 10,
+            "actions": [
+              {
+                "label": "Back to register",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Save as Draft",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Submit for Approval",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              }
+            ],
+            "error": false
+          }
+        ]
+      },
+      {
+        "page": "Rejection Note",
+        "section": "Production",
+        "mode": "saved record",
+        "fetchSources": [],
+        "views": [
+          {
+            "width": 1440,
+            "visibleButtons": 11,
+            "actions": [
+              {
+                "label": "Back to register",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Print",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Edit",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Delete",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              }
+            ],
+            "error": false
+          },
+          {
+            "width": 390,
+            "visibleButtons": 11,
+            "actions": [
+              {
+                "label": "Back to register",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Print",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Edit",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Delete",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              }
+            ],
+            "error": false
+          }
+        ]
+      },
+      {
+        "page": "Sales Return",
+        "section": "Sales",
+        "mode": "editor",
+        "fetchSources": [
+          "Sales Invoice"
+        ],
+        "views": [
+          {
+            "width": 1440,
+            "visibleButtons": 11,
+            "actions": [
+              {
+                "label": "Back to register",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Fetch",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Save as Draft",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Submit & Release",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              }
+            ],
+            "error": false
+          },
+          {
+            "width": 390,
+            "visibleButtons": 11,
+            "actions": [
+              {
+                "label": "Back to register",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Fetch",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Save as Draft",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Submit & Release",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              }
+            ],
+            "error": false
+          }
+        ]
+      },
+      {
+        "page": "Sales Return",
+        "section": "Sales",
+        "mode": "saved record",
+        "fetchSources": [
+          "Sales Invoice"
+        ],
+        "views": [
+          {
+            "width": 1440,
+            "visibleButtons": 13,
+            "actions": [
+              {
+                "label": "Back to register",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Print",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Edit",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Delete",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Fetch",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Continue to Credit Note",
+                "disabled": true,
+                "horizontal": true,
+                "clipped": false
+              }
+            ],
+            "error": false
+          },
+          {
+            "width": 390,
+            "visibleButtons": 13,
+            "actions": [
+              {
+                "label": "Back to register",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Print",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Edit",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Delete",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Fetch",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Continue to Credit Note",
+                "disabled": true,
+                "horizontal": true,
+                "clipped": false
+              }
+            ],
+            "error": false
+          }
+        ]
+      },
+      {
+        "page": "Proforma Invoice",
+        "section": "Sales",
+        "mode": "editor",
+        "fetchSources": [
+          "Sales Orders"
+        ],
+        "views": [
+          {
+            "width": 1440,
+            "visibleButtons": 12,
+            "actions": [
+              {
+                "label": "Back to register",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Fetch",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Save as Draft",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Submit & Release",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              }
+            ],
+            "error": false
+          },
+          {
+            "width": 390,
+            "visibleButtons": 12,
+            "actions": [
+              {
+                "label": "Back to register",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Fetch",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Save as Draft",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Submit & Release",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              }
+            ],
+            "error": false
+          }
+        ]
+      },
+      {
+        "page": "Proforma Invoice",
+        "section": "Sales",
+        "mode": "saved record",
+        "fetchSources": [
+          "Sales Orders"
+        ],
+        "views": [
+          {
+            "width": 1440,
+            "visibleButtons": 13,
+            "actions": [
+              {
+                "label": "Back to register",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Print",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Edit",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Delete",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Fetch",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              }
+            ],
+            "error": false
+          },
+          {
+            "width": 390,
+            "visibleButtons": 13,
+            "actions": [
+              {
+                "label": "Back to register",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Print",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Edit",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Delete",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Fetch",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              }
+            ],
+            "error": false
+          }
+        ]
+      },
+      {
+        "page": "Credit Note",
+        "section": "Sales",
+        "mode": "editor",
+        "fetchSources": [
+          "Sales Invoice",
+          "Sales Return"
+        ],
+        "views": [
+          {
+            "width": 1440,
+            "visibleButtons": 13,
+            "actions": [
+              {
+                "label": "Back to register",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Fetch",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Save as Draft",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Submit for Approval",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              }
+            ],
+            "error": false
+          },
+          {
+            "width": 390,
+            "visibleButtons": 13,
+            "actions": [
+              {
+                "label": "Back to register",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Fetch",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Save as Draft",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Submit for Approval",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              }
+            ],
+            "error": false
+          }
+        ]
+      },
+      {
+        "page": "Credit Note",
+        "section": "Sales",
+        "mode": "saved record",
+        "fetchSources": [
+          "Sales Invoice",
+          "Sales Return"
+        ],
+        "views": [
+          {
+            "width": 1440,
+            "visibleButtons": 14,
+            "actions": [
+              {
+                "label": "Back to register",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Print",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Edit",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Delete",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Fetch",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              }
+            ],
+            "error": false
+          },
+          {
+            "width": 390,
+            "visibleButtons": 14,
+            "actions": [
+              {
+                "label": "Back to register",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Print",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Edit",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Delete",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Fetch",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              }
+            ],
+            "error": false
+          }
+        ]
+      },
+      {
+        "page": "Scrap Entry",
+        "section": "Stores",
+        "mode": "editor",
+        "fetchSources": [],
+        "views": [
+          {
+            "width": 1440,
+            "visibleButtons": 10,
+            "actions": [
+              {
+                "label": "Back to register",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Save as Draft",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Submit & Release",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              }
+            ],
+            "error": false
+          },
+          {
+            "width": 390,
+            "visibleButtons": 10,
+            "actions": [
+              {
+                "label": "Back to register",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Save as Draft",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Submit & Release",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              }
+            ],
+            "error": false
+          }
+        ]
+      },
+      {
+        "page": "Scrap Entry",
+        "section": "Stores",
+        "mode": "saved record",
+        "fetchSources": [],
+        "views": [
+          {
+            "width": 1440,
+            "visibleButtons": 11,
+            "actions": [
+              {
+                "label": "Back to register",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Print",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Edit",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Delete",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              }
+            ],
+            "error": false
+          },
+          {
+            "width": 390,
+            "visibleButtons": 11,
+            "actions": [
+              {
+                "label": "Back to register",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Print",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Edit",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Delete",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              }
+            ],
+            "error": false
+          }
+        ]
+      },
+      {
+        "page": "Opening Stock",
+        "section": "Stores",
+        "mode": "editor",
+        "fetchSources": [],
+        "views": [
+          {
+            "width": 1440,
+            "visibleButtons": 10,
+            "actions": [
+              {
+                "label": "Back to register",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Save as Draft",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Submit & Release",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              }
+            ],
+            "error": false
+          },
+          {
+            "width": 390,
+            "visibleButtons": 10,
+            "actions": [
+              {
+                "label": "Back to register",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Save as Draft",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Submit & Release",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              }
+            ],
+            "error": false
+          }
+        ]
+      },
+      {
+        "page": "Opening Stock",
+        "section": "Stores",
+        "mode": "saved record",
+        "fetchSources": [],
+        "views": [
+          {
+            "width": 1440,
+            "visibleButtons": 11,
+            "actions": [
+              {
+                "label": "Back to register",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Print",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Edit",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Delete",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              }
+            ],
+            "error": false
+          },
+          {
+            "width": 390,
+            "visibleButtons": 11,
+            "actions": [
+              {
+                "label": "Back to register",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Print",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Edit",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Delete",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              }
+            ],
+            "error": false
+          }
+        ]
+      },
+      {
+        "page": "Excess Stock",
+        "section": "Stores",
+        "mode": "editor",
+        "fetchSources": [],
+        "views": [
+          {
+            "width": 1440,
+            "visibleButtons": 10,
+            "actions": [
+              {
+                "label": "Back to register",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Save as Draft",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Submit & Release",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              }
+            ],
+            "error": false
+          },
+          {
+            "width": 390,
+            "visibleButtons": 10,
+            "actions": [
+              {
+                "label": "Back to register",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Save as Draft",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Submit & Release",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              }
+            ],
+            "error": false
+          }
+        ]
+      },
+      {
+        "page": "Excess Stock",
+        "section": "Stores",
+        "mode": "saved record",
+        "fetchSources": [],
+        "views": [
+          {
+            "width": 1440,
+            "visibleButtons": 11,
+            "actions": [
+              {
+                "label": "Back to register",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Print",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Edit",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Delete",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              }
+            ],
+            "error": false
+          },
+          {
+            "width": 390,
+            "visibleButtons": 11,
+            "actions": [
+              {
+                "label": "Back to register",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Print",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Edit",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Delete",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              }
+            ],
+            "error": false
+          }
+        ]
+      },
+      {
+        "page": "Shortage Stock",
+        "section": "Stores",
+        "mode": "editor",
+        "fetchSources": [],
+        "views": [
+          {
+            "width": 1440,
+            "visibleButtons": 10,
+            "actions": [
+              {
+                "label": "Back to register",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Save as Draft",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Submit & Release",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              }
+            ],
+            "error": false
+          },
+          {
+            "width": 390,
+            "visibleButtons": 10,
+            "actions": [
+              {
+                "label": "Back to register",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Save as Draft",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Submit & Release",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              }
+            ],
+            "error": false
+          }
+        ]
+      },
+      {
+        "page": "Shortage Stock",
+        "section": "Stores",
+        "mode": "saved record",
+        "fetchSources": [],
+        "views": [
+          {
+            "width": 1440,
+            "visibleButtons": 11,
+            "actions": [
+              {
+                "label": "Back to register",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Print",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Edit",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Delete",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              }
+            ],
+            "error": false
+          },
+          {
+            "width": 390,
+            "visibleButtons": 11,
+            "actions": [
+              {
+                "label": "Back to register",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Print",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Edit",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Delete",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              }
+            ],
+            "error": false
+          }
+        ]
+      },
+      {
+        "page": "Inward QC",
+        "section": "Quality Control",
+        "mode": "editor",
+        "fetchSources": [
+          "GRN",
+          "Job Work Inward",
+          "Outsource Receipt"
+        ],
+        "views": [
+          {
+            "width": 1440,
+            "visibleButtons": 13,
+            "actions": [
+              {
+                "label": "Back to register",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Fetch",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Save as Draft",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Submit & Release",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              }
+            ],
+            "error": false
+          },
+          {
+            "width": 390,
+            "visibleButtons": 13,
+            "actions": [
+              {
+                "label": "Back to register",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Fetch",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Save as Draft",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Submit & Release",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              }
+            ],
+            "error": false
+          }
+        ]
+      },
+      {
+        "page": "Inward QC",
+        "section": "Quality Control",
+        "mode": "saved record",
+        "fetchSources": [
+          "GRN",
+          "Job Work Inward",
+          "Outsource Receipt"
+        ],
+        "views": [
+          {
+            "width": 1440,
+            "visibleButtons": 16,
+            "actions": [
+              {
+                "label": "Back to register",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Print",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Edit",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Delete",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Fetch",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Continue to Work Order",
+                "disabled": true,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Continue to Purchase",
+                "disabled": true,
+                "horizontal": true,
+                "clipped": false
+              }
+            ],
+            "error": false
+          },
+          {
+            "width": 390,
+            "visibleButtons": 16,
+            "actions": [
+              {
+                "label": "Back to register",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Print",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Edit",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Delete",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Fetch",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Continue to Work Order",
+                "disabled": true,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Continue to Purchase",
+                "disabled": true,
+                "horizontal": true,
+                "clipped": false
+              }
+            ],
+            "error": false
+          }
+        ]
+      },
+      {
+        "page": "Route Cards",
+        "section": "Production",
+        "mode": "editor",
+        "fetchSources": [
+          "Work Order",
+          "Material Issue"
+        ],
+        "views": [
+          {
+            "width": 1440,
+            "visibleButtons": 11,
+            "actions": [
+              {
+                "label": "Back to register",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Fetch",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Save as Draft",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Submit & Release",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              }
+            ],
+            "error": false
+          },
+          {
+            "width": 390,
+            "visibleButtons": 11,
+            "actions": [
+              {
+                "label": "Back to register",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Fetch",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Save as Draft",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Submit & Release",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              }
+            ],
+            "error": false
+          }
+        ]
+      },
+      {
+        "page": "Route Cards",
+        "section": "Production",
+        "mode": "saved record",
+        "fetchSources": [
+          "Work Order",
+          "Material Issue"
+        ],
+        "views": [
+          {
+            "width": 1440,
+            "visibleButtons": 14,
+            "actions": [
+              {
+                "label": "Back to register",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Print",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Edit",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Delete",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Fetch",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Continue to Production Output",
+                "disabled": true,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Continue to Outsource Issue DC",
+                "disabled": true,
+                "horizontal": true,
+                "clipped": false
+              }
+            ],
+            "error": false
+          },
+          {
+            "width": 390,
+            "visibleButtons": 14,
+            "actions": [
+              {
+                "label": "Back to register",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Print",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Edit",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Delete",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Fetch",
+                "disabled": false,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Continue to Production Output",
+                "disabled": true,
+                "horizontal": true,
+                "clipped": false
+              },
+              {
+                "label": "Continue to Outsource Issue DC",
+                "disabled": true,
+                "horizontal": true,
+                "clipped": false
+              }
+            ],
+            "error": false
+          }
+        ]
+      }
+    ],
+    "database": "No additional migration. No live database changes."
+  }
+}

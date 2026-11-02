@@ -1,0 +1,41 @@
+/* Presentation only. Existing routes, controls, fields and persistence stay intact. */
+.content:not(.erp-home) :is(.page-title-row,.toolbar-row,.report-header-line,.line-section-head){gap:12px;min-width:0;flex-wrap:wrap}
+.content:not(.erp-home) :is(.page-title-row,.toolbar-row)>div{min-width:0}
+.content:not(.erp-home) .page-title-row h1{overflow-wrap:anywhere;line-height:1.3!important}
+.content:not(.erp-home) .page-subtitle{color:#627487;font-size:12px;line-height:1.5;margin:5px 0 0}
+.content:not(.erp-home) .card{border-color:#dce4eb!important;box-shadow:0 1px 3px #18314905!important;background-color:#fff}
+.content:not(.erp-home) :is(.action-pills,.report-header-actions,.report-filter-actions){display:flex;flex-wrap:wrap;align-items:center;gap:7px;max-width:100%;min-width:0}
+.content:not(.erp-home) :is(.action-pill,.primary-pill,.refresh-btn){min-height:32px;line-height:1.4;max-width:100%}
+.content:not(.erp-home) .action-pills>button{flex-shrink:0}
+.content:not(.erp-home) :is(.table-wrap,.live-report-table-wrap){overscroll-behavior:contain}
+.content:not(.erp-home) table{border-spacing:0;font-variant-numeric:tabular-nums}
+.content:not(.erp-home) table :is(th,td){line-height:1.45;vertical-align:middle}
+.content:not(.erp-home) table th{font-weight:600;color:#40586d}
+.content:not(.erp-home) table tbody tr:hover{background-color:#f4f8fc}
+.content:not(.erp-home) :is(input,select,textarea):focus-visible{outline:2px solid #2377bf;outline-offset:2px}
+.content:not(.erp-home) :is(.erp-form-grid,.invoice-form-grid,.process-form-grid){gap:14px 18px}
+.content:not(.erp-home) :is(.erp-form-grid,.invoice-form-grid,.process-form-grid) label{line-height:1.4}
+.content:not(.erp-home) :is(.sheet-tabs,.module-tabs,.process-tabs){scrollbar-width:thin}
+.transaction-location{display:flex;align-items:center;flex-wrap:wrap;gap:7px;margin:0 0 4px!important;line-height:1.4}
+.transaction-location .transaction-state{letter-spacing:0;margin-left:3px;padding:3px 7px;border-radius:4px;background:#eaf2f9;color:#36556f;font-size:10px}
+.process-workspace:is(.process-editing,.process-view)>.process-local-flow{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr) minmax(0,1fr);gap:0;overflow:visible;max-height:none;margin:0;padding:0;flex-shrink:0;border:1px solid #dce4eb;border-radius:6px;background:#fff}
+.process-workspace>.process-local-flow li{display:flex;align-items:flex-start;flex-direction:column;gap:3px;min-width:0;white-space:normal;border-radius:0;background:transparent!important;color:#36556f!important;padding:9px 13px!important;border-right:1px solid #dce4eb;font-size:11px;line-height:1.4}
+.process-workspace>.process-local-flow li:last-child{border-right:0}.process-workspace>.process-local-flow li:first-child{border-radius:5px 0 0 5px}
+.process-workspace>.process-local-flow li[aria-current=step]{background:#edf5fd!important;color:#174b7d!important}
+.process-local-flow small{text-transform:uppercase;letter-spacing:.5px;color:#6a7e90;font-size:9px;font-weight:600}.process-local-flow strong{font-size:11px;overflow-wrap:anywhere;font-weight:600}.process-local-flow li>span{font-size:10px;font-weight:400!important;color:#647c90}
+.process-local-flow .link-button{text-align:left;font-size:11px;line-height:1.4;overflow-wrap:anywhere;padding:0;white-space:normal}
+.process-document-panel .process-section{box-shadow:none!important;border-color:#dce4eb!important}.process-document-panel .process-section-head h2{margin:0}
+.process-document-panel .process-lines table{min-width:2250px;table-layout:auto}
+.process-document-panel .process-lines :is(th,td):nth-child(1){min-width:44px;width:44px;max-width:44px;text-align:center}
+.process-document-panel .process-lines :is(th,td):nth-child(2){min-width:68px;width:68px;max-width:68px;text-align:center}
+.process-document-panel .process-lines :is(th,td):nth-child(3){min-width:170px;width:170px}
+.process-document-panel .process-lines :is(th,td):nth-child(4){min-width:240px}
+.process-document-panel .process-lines td:nth-child(-n+3){position:sticky;z-index:2;background:#fff}
+.process-document-panel .process-lines th:nth-child(-n+3){position:sticky;z-index:3;background:#f0f5f9}
+.process-document-panel .process-lines :is(th,td):nth-child(1){left:0}.process-document-panel .process-lines :is(th,td):nth-child(2){left:44px}.process-document-panel .process-lines :is(th,td):nth-child(3){left:112px;box-shadow:2px 0 0 #dce4eb}
+.process-document-panel .process-lines td:nth-child(2) button{display:inline-grid;place-items:center;min-width:28px;min-height:28px;padding:3px;border:1px solid #dce4eb;background:#fff;border-radius:4px;color:#ad3542}
+@media(max-width:700px){.content:not(.erp-home) :is(.toolbar-row,.report-header-line){align-items:stretch}.content:not(.erp-home) :is(.page-title-row,.toolbar-row)>.action-pills{width:100%;justify-content:flex-start}.content:not(.erp-home) .page-title-row{align-items:flex-start}.process-workspace>.process-local-flow li{padding:7px 8px!important;font-size:10px}.process-local-flow strong,.process-local-flow .link-button{font-size:10px}.process-local-flow li>span{display:none}.process-local-flow small{font-size:8px;letter-spacing:0}.process-document-panel .process-lines :is(th,td):nth-child(3){min-width:130px;width:130px}}
+@media print{.process-local-flow{display:none!important}.process-document-panel .process-lines :is(th,td):nth-child(-n+3){position:static!important;box-shadow:none!important;min-width:0!important;width:auto!important}.transaction-state{border:1px solid #c6d3df}}
+
+.content:not(.erp-home) .sap-lifecycle-strip{grid-template-columns:repeat(3,minmax(0,1fr))}.content:not(.erp-home) .sap-lifecycle-strip b{white-space:normal;overflow-wrap:anywhere}
+@media(max-width:700px){.content:not(.erp-home) .sap-lifecycle-strip>div{padding:9px 10px}.content:not(.erp-home) .sap-lifecycle-strip small{font-size:8px}.content:not(.erp-home) .sap-lifecycle-strip b{font-size:11px}}

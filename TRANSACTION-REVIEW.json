@@ -1,0 +1,1203 @@
+{
+  "transactionPages": 40,
+  "sections": 8,
+  "expandedForms": 30,
+  "otherTransactionPages": 9,
+  "overview": "SOP Workflow",
+  "matrix": [
+    {
+      "section": "Purchase",
+      "page": "Purchase Orders",
+      "path": [
+        "Transactions",
+        "Purchase",
+        "Purchase Orders"
+      ],
+      "sourceChoices": [
+        "Purchase Indents",
+        "Outsource Issue DC",
+        "Sales Orders"
+      ],
+      "manufacturingNext": [
+        "GRN"
+      ],
+      "labourNext": [],
+      "headerFields": [
+        "Process",
+        "Date",
+        "Series",
+        "Vendor",
+        "Document No.",
+        "Category",
+        "Department",
+        "Order Remarks",
+        "Invoice No.",
+        "Invoice Date",
+        "Delivery Need Date",
+        "Work Order Number",
+        "Project Name",
+        "Approved By",
+        "Purchased By",
+        "Signature Required",
+        "Requested By"
+      ],
+      "attachments": [
+        "Quotation Document"
+      ],
+      "approval": true,
+      "where": "Register → Create/Fetch/Open → Details/Items/Quality (if applicable)/Assignment/Attachments (if applicable)/Workflow. Actual source/current/next appears directly below the document title; actions remain above the sections."
+    },
+    {
+      "section": "Purchase",
+      "page": "Vendor Price List",
+      "path": [
+        "Transactions",
+        "Purchase",
+        "Vendor Price List"
+      ],
+      "existingFlow": "Select product/vendor → view prices → Add Price → Save Price",
+      "where": "Existing product/vendor browser and price dialog"
+    },
+    {
+      "section": "Purchase",
+      "page": "Purchase Indents",
+      "path": [
+        "Transactions",
+        "Purchase",
+        "Purchase Indents"
+      ],
+      "sourceChoices": [],
+      "manufacturingNext": [
+        "Purchase Orders"
+      ],
+      "labourNext": [
+        "Purchase Orders"
+      ],
+      "headerFields": [
+        "Process",
+        "Date",
+        "Series",
+        "Vendor",
+        "Document No.",
+        "Indent Remarks",
+        "Ref Tran No"
+      ],
+      "attachments": [],
+      "approval": true,
+      "where": "Register → Create/Fetch/Open → Details/Items/Quality (if applicable)/Assignment/Attachments (if applicable)/Workflow. Actual source/current/next appears directly below the document title; actions remain above the sections."
+    },
+    {
+      "section": "Purchase",
+      "page": "Customer Price List",
+      "path": [
+        "Transactions",
+        "Purchase",
+        "Customer Price List"
+      ],
+      "existingFlow": "Select product/customer → view prices → Add Price → Save Price",
+      "where": "Existing product/customer browser and price dialog"
+    },
+    {
+      "section": "Purchase",
+      "page": "Indent To Order",
+      "path": [
+        "Transactions",
+        "Purchase",
+        "Indent To Order"
+      ],
+      "existingFlow": "Create/review conversion entry → existing row action → Purchase Orders",
+      "where": "Existing conversion register, modal and row actions"
+    },
+    {
+      "section": "Purchase",
+      "page": "GRN",
+      "path": [
+        "Transactions",
+        "Purchase",
+        "GRN"
+      ],
+      "sourceChoices": [
+        "Purchase Orders"
+      ],
+      "manufacturingNext": [
+        "Inward QC"
+      ],
+      "labourNext": [],
+      "headerFields": [
+        "Process",
+        "Date",
+        "Series",
+        "Vendor",
+        "Document No.",
+        "Category",
+        "Department",
+        "MRN Remarks",
+        "Supplier Invoice No.",
+        "Supplier Invoice Dt.",
+        "PO Ref No",
+        "PO Ref. Dt.",
+        "Work Order No"
+      ],
+      "attachments": [
+        "Weighment Slip",
+        "Inspection Report"
+      ],
+      "approval": false,
+      "where": "Register → Create/Fetch/Open → Details/Items/Quality (if applicable)/Assignment/Attachments (if applicable)/Workflow. Actual source/current/next appears directly below the document title; actions remain above the sections."
+    },
+    {
+      "section": "Purchase",
+      "page": "Purchase",
+      "path": [
+        "Transactions",
+        "Purchase",
+        "Purchase"
+      ],
+      "sourceChoices": [
+        "GRN",
+        "Inward QC"
+      ],
+      "manufacturingNext": [
+        "Vendor Payments"
+      ],
+      "labourNext": [
+        "Vendor Payments"
+      ],
+      "headerFields": [
+        "Process",
+        "Date",
+        "Series",
+        "Vendor",
+        "Document No.",
+        "Order Remarks",
+        "Invoice No.",
+        "Invoice Date",
+        "Sale Order Number",
+        "Project Name",
+        "Approved By",
+        "Purchased By",
+        "Work Order Number"
+      ],
+      "attachments": [],
+      "approval": true,
+      "where": "Register → Create/Fetch/Open → Details/Items/Quality (if applicable)/Assignment/Attachments (if applicable)/Workflow. Actual source/current/next appears directly below the document title; actions remain above the sections."
+    },
+    {
+      "section": "Purchase",
+      "page": "Tally Link - Purchase",
+      "path": [
+        "Transactions",
+        "Purchase",
+        "Tally Link - Purchase"
+      ],
+      "existingFlow": "Maintain voucher and recorded sync status; external synchronization is not configured by this cleanup",
+      "where": "Existing voucher register and modal"
+    },
+    {
+      "section": "Marketing",
+      "page": "CRM Pipeline",
+      "path": [
+        "Transactions",
+        "Marketing",
+        "CRM Pipeline"
+      ],
+      "existingFlow": "Create/review lead → existing stage controls → linked Sales Enquiry summary; complete its original item details before release",
+      "where": "Existing lead register, modal and row actions"
+    },
+    {
+      "section": "Marketing",
+      "page": "Sales Enquiries",
+      "path": [
+        "Transactions",
+        "Marketing",
+        "Sales Enquiries"
+      ],
+      "sourceChoices": [],
+      "manufacturingNext": [
+        "Sales Quotations"
+      ],
+      "labourNext": [],
+      "headerFields": [
+        "Process",
+        "Date",
+        "Series",
+        "Prospect",
+        "Document No.",
+        "Enquiry Category",
+        "Enquiry Remarks",
+        "Next Task Assigned to",
+        "Enquiry Reference No",
+        "Enquiry Reference Date",
+        "Target Date",
+        "Managed By",
+        "Kind Attention",
+        "Scope Of Work",
+        "Priority"
+      ],
+      "attachments": [],
+      "approval": false,
+      "where": "Register → Create/Fetch/Open → Details/Items/Quality (if applicable)/Assignment/Attachments (if applicable)/Workflow. Actual source/current/next appears directly below the document title; actions remain above the sections."
+    },
+    {
+      "section": "Marketing",
+      "page": "Sales Quotations",
+      "path": [
+        "Transactions",
+        "Marketing",
+        "Sales Quotations"
+      ],
+      "sourceChoices": [
+        "Sales Orders",
+        "Sales Enquiries"
+      ],
+      "manufacturingNext": [
+        "Sales Orders"
+      ],
+      "labourNext": [],
+      "headerFields": [
+        "Process",
+        "Date",
+        "Series",
+        "Prospect",
+        "Document No.",
+        "Quotation Category",
+        "Quotation Remarks",
+        "Enq Ref date.",
+        "Enq Ref. No.",
+        "Next Task Assigned to",
+        "Payment Terms",
+        "Mode of Enq.",
+        "PO Number",
+        "Work Order Number",
+        "Project Name",
+        "Ref Contact Person",
+        "Taxes",
+        "Inspection",
+        "Delivery Term",
+        "Quotation Validity",
+        "Lead Time",
+        "Managed By",
+        "Target Date",
+        "Scope Of Work",
+        "Priority",
+        "Currency Type"
+      ],
+      "attachments": [
+        "Excel Copy"
+      ],
+      "approval": true,
+      "where": "Register → Create/Fetch/Open → Details/Items/Quality (if applicable)/Assignment/Attachments (if applicable)/Workflow. Actual source/current/next appears directly below the document title; actions remain above the sections."
+    },
+    {
+      "section": "Marketing",
+      "page": "Sales Orders",
+      "path": [
+        "Transactions",
+        "Marketing",
+        "Sales Orders"
+      ],
+      "sourceChoices": [
+        "Sales Quotations",
+        "Job Work Inward",
+        "Inward QC"
+      ],
+      "manufacturingNext": [
+        "Purchase Orders"
+      ],
+      "labourNext": [
+        "Work Order"
+      ],
+      "headerFields": [
+        "Process",
+        "Date",
+        "Series",
+        "Customer",
+        "Document No.",
+        "Order Remarks",
+        "Customer PO Dt.",
+        "Project Name/Code",
+        "PO Number",
+        "Expected Delivery Date.",
+        "Kind Attention",
+        "Managed By",
+        "Quotation No",
+        "Quotation Date",
+        "Next Task Assigned to",
+        "Target Date",
+        "Scope Of Work",
+        "C Number",
+        "A Number"
+      ],
+      "attachments": [
+        "Order Copy"
+      ],
+      "approval": true,
+      "where": "Register → Create/Fetch/Open → Details/Items/Quality (if applicable)/Assignment/Attachments (if applicable)/Workflow. Actual source/current/next appears directly below the document title; actions remain above the sections."
+    },
+    {
+      "section": "Sales",
+      "page": "Sales Invoice",
+      "path": [
+        "Transactions",
+        "Sales",
+        "Sales Invoice"
+      ],
+      "sourceChoices": [
+        "Sales Orders",
+        "Delivery Challan",
+        "Job Work Return DC"
+      ],
+      "manufacturingNext": [
+        "Customer Payments"
+      ],
+      "labourNext": [
+        "Customer Payments"
+      ],
+      "headerFields": [
+        "Process",
+        "Date",
+        "Series",
+        "Customer",
+        "Document No.",
+        "Invoice Category",
+        "DC Number",
+        "Buyer PO No.",
+        "Vehicle No.",
+        "Terms of payment",
+        "DC date",
+        "Buyer Ref Date",
+        "Mode of Dispatch",
+        "Date Of Supply",
+        "Country of Shipment/Destination",
+        "E-Way Bill No",
+        "E-Way Bill Date",
+        "Vendor Code",
+        "MGP/Customer DC No",
+        "MGP/Customer DC Date",
+        "IRN No",
+        "Lut No",
+        "Ack No",
+        "Ack Date",
+        "Transporter Name",
+        "Project Name",
+        "Valid Upto",
+        "Kind Attention",
+        "Quotation No",
+        "Quotation Date",
+        "PO Date",
+        "Managed By",
+        "Scope Of Work",
+        "C Number",
+        "A Number",
+        "Signature Required",
+        "Incoterms",
+        "Destination",
+        "Currency Type"
+      ],
+      "attachments": [
+        "Documents Upload"
+      ],
+      "approval": false,
+      "where": "Register → Create/Fetch/Open → Details/Items/Quality (if applicable)/Assignment/Attachments (if applicable)/Workflow. Actual source/current/next appears directly below the document title; actions remain above the sections."
+    },
+    {
+      "section": "Sales",
+      "page": "Delivery Challan",
+      "path": [
+        "Transactions",
+        "Sales",
+        "Delivery Challan"
+      ],
+      "sourceChoices": [
+        "Sales Orders",
+        "Outward QC"
+      ],
+      "manufacturingNext": [
+        "Sales Invoice"
+      ],
+      "labourNext": [
+        "Sales Invoice"
+      ],
+      "headerFields": [
+        "Process",
+        "Date",
+        "Series",
+        "Vendor",
+        "Document No.",
+        "Consignee",
+        "Category",
+        "Approximate Goods Value",
+        "Tran Ref No",
+        "PO Number",
+        "MGP/Customer DC Number",
+        "Project Name",
+        "Eway Bill No",
+        "Vehicle No.",
+        "Transporter Name",
+        "Eway Bill Date",
+        "Valid Upto",
+        "Kind Attention",
+        "Remarks",
+        "Bill Of Loading/LR-RR No.",
+        "MGP/Customer Dc Date",
+        "PO Date",
+        "Managed By",
+        "Scope Of Work",
+        "C Number",
+        "A Number"
+      ],
+      "attachments": [],
+      "approval": true,
+      "where": "Register → Create/Fetch/Open → Details/Items/Quality (if applicable)/Assignment/Attachments (if applicable)/Workflow. Actual source/current/next appears directly below the document title; actions remain above the sections."
+    },
+    {
+      "section": "Sales",
+      "page": "Tally Link - Sales",
+      "path": [
+        "Transactions",
+        "Sales",
+        "Tally Link - Sales"
+      ],
+      "existingFlow": "Maintain voucher and recorded sync status; external synchronization is not configured by this cleanup",
+      "where": "Existing voucher register and modal"
+    },
+    {
+      "section": "Sales",
+      "page": "Sales Return",
+      "path": [
+        "Transactions",
+        "Sales",
+        "Sales Return"
+      ],
+      "sourceChoices": [
+        "Sales Invoice"
+      ],
+      "manufacturingNext": [
+        "Credit Note"
+      ],
+      "labourNext": [
+        "Credit Note"
+      ],
+      "headerFields": [
+        "Process",
+        "Date",
+        "Series",
+        "Customer",
+        "Document No.",
+        "Consignee"
+      ],
+      "attachments": [],
+      "approval": false,
+      "where": "Register → Create/Fetch/Open → Details/Items/Quality (if applicable)/Assignment/Attachments (if applicable)/Workflow. Actual source/current/next appears directly below the document title; actions remain above the sections."
+    },
+    {
+      "section": "Sales",
+      "page": "Proforma Invoice",
+      "path": [
+        "Transactions",
+        "Sales",
+        "Proforma Invoice"
+      ],
+      "sourceChoices": [
+        "Sales Orders"
+      ],
+      "manufacturingNext": [],
+      "labourNext": [],
+      "headerFields": [
+        "Process",
+        "Date",
+        "Series",
+        "Customer",
+        "Document No.",
+        "Consignee",
+        "Invoice Remarks",
+        "Date Of Supply",
+        "Project Name",
+        "Kind Attention",
+        "Quotation No",
+        "Quotation Date",
+        "Advance Payment Amount",
+        "PO Number",
+        "Payment Terms"
+      ],
+      "attachments": [],
+      "approval": false,
+      "where": "Register → Create/Fetch/Open → Details/Items/Quality (if applicable)/Assignment/Attachments (if applicable)/Workflow. Actual source/current/next appears directly below the document title; actions remain above the sections."
+    },
+    {
+      "section": "Sales",
+      "page": "Credit Note",
+      "path": [
+        "Transactions",
+        "Sales",
+        "Credit Note"
+      ],
+      "sourceChoices": [
+        "Sales Invoice",
+        "Sales Return"
+      ],
+      "manufacturingNext": [],
+      "labourNext": [],
+      "headerFields": [
+        "Process",
+        "Date",
+        "Series",
+        "Customer",
+        "Document No.",
+        "Consignee",
+        "Category",
+        "DC Number",
+        "Buyer PO No.",
+        "Vehicle No.",
+        "Terms of payment",
+        "DC date",
+        "Buyer Ref Date",
+        "Transportation Mode",
+        "Date Of Supply",
+        "Place Of Supply",
+        "E-Way Bill No",
+        "E-Way Bill Date",
+        "Vendor Code",
+        "Reference DC No",
+        "Reference DC Date",
+        "IRN No",
+        "Tax Payable on Reverse Charge",
+        "TAN",
+        "Lut No",
+        "Ack No",
+        "Ack Date",
+        "Transporter ID",
+        "Transporter Name",
+        "Reference Tran No"
+      ],
+      "attachments": [],
+      "approval": true,
+      "where": "Register → Create/Fetch/Open → Details/Items/Quality (if applicable)/Assignment/Attachments (if applicable)/Workflow. Actual source/current/next appears directly below the document title; actions remain above the sections."
+    },
+    {
+      "section": "Stores",
+      "page": "Material Issue",
+      "path": [
+        "Transactions",
+        "Stores",
+        "Material Issue"
+      ],
+      "sourceChoices": [
+        "Material Request"
+      ],
+      "manufacturingNext": [
+        "Route Cards"
+      ],
+      "labourNext": [
+        "Route Cards"
+      ],
+      "headerFields": [
+        "Process",
+        "Date",
+        "Series",
+        "Vendor",
+        "Document No.",
+        "Departments",
+        "Remarks",
+        "Work Order No.",
+        "Project Name/Code",
+        "Sale Order No",
+        "PO Number"
+      ],
+      "attachments": [],
+      "approval": false,
+      "where": "Register → Create/Fetch/Open → Details/Items/Quality (if applicable)/Assignment/Attachments (if applicable)/Workflow. Actual source/current/next appears directly below the document title; actions remain above the sections."
+    },
+    {
+      "section": "Stores",
+      "page": "Scrap Entry",
+      "path": [
+        "Transactions",
+        "Stores",
+        "Scrap Entry"
+      ],
+      "sourceChoices": [],
+      "manufacturingNext": [],
+      "labourNext": [],
+      "headerFields": [
+        "Process",
+        "Date",
+        "Series",
+        "Customer",
+        "Document No.",
+        "Scrap Category",
+        "Scrap Remarks"
+      ],
+      "attachments": [],
+      "approval": false,
+      "where": "Register → Create/Fetch/Open → Details/Items/Quality (if applicable)/Assignment/Attachments (if applicable)/Workflow. Actual source/current/next appears directly below the document title; actions remain above the sections."
+    },
+    {
+      "section": "Stores",
+      "page": "Opening Stock",
+      "path": [
+        "Transactions",
+        "Stores",
+        "Opening Stock"
+      ],
+      "sourceChoices": [],
+      "manufacturingNext": [],
+      "labourNext": [],
+      "headerFields": [
+        "Process",
+        "Date",
+        "Series",
+        "Vendor",
+        "Document No.",
+        "Remarks"
+      ],
+      "attachments": [],
+      "approval": false,
+      "where": "Register → Create/Fetch/Open → Details/Items/Quality (if applicable)/Assignment/Attachments (if applicable)/Workflow. Actual source/current/next appears directly below the document title; actions remain above the sections."
+    },
+    {
+      "section": "Stores",
+      "page": "Excess Stock",
+      "path": [
+        "Transactions",
+        "Stores",
+        "Excess Stock"
+      ],
+      "sourceChoices": [],
+      "manufacturingNext": [],
+      "labourNext": [],
+      "headerFields": [
+        "Process",
+        "Date",
+        "Series",
+        "Vendor",
+        "Document No.",
+        "Remarks"
+      ],
+      "attachments": [],
+      "approval": false,
+      "where": "Register → Create/Fetch/Open → Details/Items/Quality (if applicable)/Assignment/Attachments (if applicable)/Workflow. Actual source/current/next appears directly below the document title; actions remain above the sections."
+    },
+    {
+      "section": "Stores",
+      "page": "Shortage Stock",
+      "path": [
+        "Transactions",
+        "Stores",
+        "Shortage Stock"
+      ],
+      "sourceChoices": [],
+      "manufacturingNext": [],
+      "labourNext": [],
+      "headerFields": [
+        "Process",
+        "Date",
+        "Series",
+        "Vendor",
+        "Document No.",
+        "Remarks"
+      ],
+      "attachments": [],
+      "approval": false,
+      "where": "Register → Create/Fetch/Open → Details/Items/Quality (if applicable)/Assignment/Attachments (if applicable)/Workflow. Actual source/current/next appears directly below the document title; actions remain above the sections."
+    },
+    {
+      "section": "Stores",
+      "page": "Production Output",
+      "path": [
+        "Transactions",
+        "Stores",
+        "Production Output"
+      ],
+      "sourceChoices": [
+        "Work Order",
+        "Route Cards"
+      ],
+      "manufacturingNext": [
+        "Outward QC"
+      ],
+      "labourNext": [
+        "Outward QC"
+      ],
+      "headerFields": [
+        "Process",
+        "Date",
+        "Series",
+        "Customer",
+        "Document No.",
+        "Remarks",
+        "PO Number",
+        "Ref Work Order Number",
+        "Target Date",
+        "Next Task Assigned to"
+      ],
+      "attachments": [],
+      "approval": false,
+      "where": "Register → Create/Fetch/Open → Details/Items/Quality (if applicable)/Assignment/Attachments (if applicable)/Workflow. Actual source/current/next appears directly below the document title; actions remain above the sections."
+    },
+    {
+      "section": "Quality Control",
+      "page": "Inward QC",
+      "path": [
+        "Transactions",
+        "Quality Control",
+        "Inward QC"
+      ],
+      "sourceChoices": [
+        "GRN",
+        "Job Work Inward",
+        "Outsource Receipt"
+      ],
+      "manufacturingNext": [
+        "Work Order",
+        "Purchase"
+      ],
+      "labourNext": [
+        "Sales Orders"
+      ],
+      "headerFields": [
+        "Process",
+        "Date",
+        "Series",
+        "Supplier",
+        "Document No.",
+        "Supplier Invoice No.",
+        "Supplier Invoice Dt.",
+        "PO Ref No",
+        "PO Ref. Dt.",
+        "GRN No",
+        "Job Inward No",
+        "Inspector",
+        "Inspection Remarks"
+      ],
+      "attachments": [],
+      "approval": false,
+      "where": "Register → Create/Fetch/Open → Details/Items/Quality (if applicable)/Assignment/Attachments (if applicable)/Workflow. Actual source/current/next appears directly below the document title; actions remain above the sections."
+    },
+    {
+      "section": "Quality Control",
+      "page": "Outward QC",
+      "path": [
+        "Transactions",
+        "Quality Control",
+        "Outward QC"
+      ],
+      "sourceChoices": [
+        "Production Output",
+        "Route Cards"
+      ],
+      "manufacturingNext": [
+        "Delivery Challan"
+      ],
+      "labourNext": [
+        "Delivery Challan"
+      ],
+      "headerFields": [
+        "Process",
+        "Date",
+        "Series",
+        "Vendor",
+        "Document No.",
+        "Pipe Drawing No & Rev",
+        "TTL Ref No.",
+        "Material",
+        "WPS Used",
+        "Weder Code",
+        "Electrode/Filler rod used",
+        "Project Name",
+        "PO Number",
+        "C Number",
+        "A Number",
+        "Next Task Assigned to",
+        "Target Date",
+        "Stage",
+        "Weld Repair Drawing Number",
+        "Pipe Welding Drawing Number",
+        "Dispatch Date",
+        "MPT Test Date",
+        "Remarks"
+      ],
+      "attachments": [],
+      "approval": false,
+      "where": "Register → Create/Fetch/Open → Details/Items/Quality (if applicable)/Assignment/Attachments (if applicable)/Workflow. Actual source/current/next appears directly below the document title; actions remain above the sections."
+    },
+    {
+      "section": "Quality Control",
+      "page": "Inward Quality Rejection",
+      "path": [
+        "Transactions",
+        "Quality Control",
+        "Inward Quality Rejection"
+      ],
+      "sourceChoices": [],
+      "manufacturingNext": [],
+      "labourNext": [],
+      "headerFields": [
+        "Process",
+        "Date",
+        "Series",
+        "Supplier",
+        "Document No.",
+        "Remarks",
+        "Supplier Invoice No.",
+        "Supplier Invoice Dt."
+      ],
+      "attachments": [],
+      "approval": false,
+      "where": "Register → Create/Fetch/Open → Details/Items/Quality (if applicable)/Assignment/Attachments (if applicable)/Workflow. Actual source/current/next appears directly below the document title; actions remain above the sections."
+    },
+    {
+      "section": "Quality Control",
+      "page": "Inward Quality",
+      "path": [
+        "Transactions",
+        "Quality Control",
+        "Inward Quality"
+      ],
+      "sourceChoices": [
+        "Job Work Inward"
+      ],
+      "manufacturingNext": [],
+      "labourNext": [],
+      "headerFields": [
+        "Process",
+        "Date",
+        "Series",
+        "Supplier",
+        "Document No.",
+        "Pipe Drawing No & Rev",
+        "TTL Ref No.",
+        "Material",
+        "WPS Used",
+        "Weder Code",
+        "Electrode/Filler rod used",
+        "Project Name",
+        "PO Number",
+        "C Number",
+        "A Number",
+        "Next Task Assigned to",
+        "Target Date",
+        "Remarks"
+      ],
+      "attachments": [],
+      "approval": false,
+      "where": "Register → Create/Fetch/Open → Details/Items/Quality (if applicable)/Assignment/Attachments (if applicable)/Workflow. Actual source/current/next appears directly below the document title; actions remain above the sections."
+    },
+    {
+      "section": "Production",
+      "page": "Work Order",
+      "path": [
+        "Transactions",
+        "Production",
+        "Work Order"
+      ],
+      "sourceChoices": [
+        "Sales Orders",
+        "Rejection Note"
+      ],
+      "manufacturingNext": [
+        "Route Cards",
+        "Material Request",
+        "Outsource Issue DC"
+      ],
+      "labourNext": [
+        "Route Cards",
+        "Material Request",
+        "Outsource Issue DC"
+      ],
+      "headerFields": [
+        "Process",
+        "Date",
+        "Series",
+        "Customer",
+        "Document No.",
+        "Category",
+        "Remarks",
+        "SO Ref No",
+        "Project Name/Code",
+        "PO Number",
+        "Managed By",
+        "Next Task Assigned to",
+        "Target Date",
+        "Scope Of Work"
+      ],
+      "attachments": [],
+      "approval": true,
+      "where": "Register → Create/Fetch/Open → Details/Items/Quality (if applicable)/Assignment/Attachments (if applicable)/Workflow. Actual source/current/next appears directly below the document title; actions remain above the sections."
+    },
+    {
+      "section": "Production",
+      "page": "Outsource Issue DC",
+      "path": [
+        "Transactions",
+        "Production",
+        "Outsource Issue DC"
+      ],
+      "sourceChoices": [
+        "Work Order",
+        "Route Cards"
+      ],
+      "manufacturingNext": [
+        "Outsource Receipt"
+      ],
+      "labourNext": [
+        "Outsource Receipt"
+      ],
+      "headerFields": [
+        "Process",
+        "Date",
+        "Series",
+        "Vendor",
+        "Document No.",
+        "Remarks",
+        "Our Po No",
+        "Due Date",
+        "Estimated Value",
+        "Transport By",
+        "Vehicle No",
+        "e-Way Bill No",
+        "Project Name",
+        "E-Way Bill Date",
+        "Valid Upto",
+        "Delivery BY"
+      ],
+      "attachments": [],
+      "approval": true,
+      "where": "Register → Create/Fetch/Open → Details/Items/Quality (if applicable)/Assignment/Attachments (if applicable)/Workflow. Actual source/current/next appears directly below the document title; actions remain above the sections."
+    },
+    {
+      "section": "Production",
+      "page": "Job Work Inward",
+      "path": [
+        "Transactions",
+        "Production",
+        "Job Work Inward"
+      ],
+      "sourceChoices": [],
+      "manufacturingNext": [],
+      "labourNext": [
+        "Inward QC"
+      ],
+      "headerFields": [
+        "Process",
+        "Date",
+        "Series",
+        "Vendor",
+        "Document No.",
+        "Remarks",
+        "PO Number",
+        "DC NO.",
+        "DC Date.",
+        "Approximate Goods Value.",
+        "Kind Attention",
+        "SUB Vendor",
+        "Project Name",
+        "C Number",
+        "A Number",
+        "Next Task Assigned to",
+        "Target Date"
+      ],
+      "attachments": [
+        "Attachment"
+      ],
+      "approval": true,
+      "where": "Register → Create/Fetch/Open → Details/Items/Quality (if applicable)/Assignment/Attachments (if applicable)/Workflow. Actual source/current/next appears directly below the document title; actions remain above the sections."
+    },
+    {
+      "section": "Production",
+      "page": "Job Work Return DC",
+      "path": [
+        "Transactions",
+        "Production",
+        "Job Work Return DC"
+      ],
+      "sourceChoices": [],
+      "manufacturingNext": [
+        "Sales Invoice"
+      ],
+      "labourNext": [
+        "Sales Invoice"
+      ],
+      "headerFields": [
+        "Process",
+        "Date",
+        "Series",
+        "Vendor",
+        "Document No.",
+        "Remarks",
+        "E-Way Bill No",
+        "E-Way Bill Date",
+        "Valid Upto",
+        "Transporter Name",
+        "Vehicle No.",
+        "Estimated Goods Value"
+      ],
+      "attachments": [],
+      "approval": false,
+      "where": "Register → Create/Fetch/Open → Details/Items/Quality (if applicable)/Assignment/Attachments (if applicable)/Workflow. Actual source/current/next appears directly below the document title; actions remain above the sections."
+    },
+    {
+      "section": "Production",
+      "page": "Outsource Receipt",
+      "path": [
+        "Transactions",
+        "Production",
+        "Outsource Receipt"
+      ],
+      "sourceChoices": [
+        "Outsource Issue DC"
+      ],
+      "manufacturingNext": [
+        "Inward QC"
+      ],
+      "labourNext": [
+        "Inward QC"
+      ],
+      "headerFields": [
+        "Process",
+        "Date",
+        "Series",
+        "Vendor",
+        "Document No.",
+        "Remarks",
+        "Vendor Invoice Number",
+        "Vendor Invoice Basic Value",
+        "Vendor Invoice Taxable Value",
+        "Vendor DC Number",
+        "Vendor DC Date",
+        "Invoice Date"
+      ],
+      "attachments": [
+        "Attachment"
+      ],
+      "approval": false,
+      "where": "Register → Create/Fetch/Open → Details/Items/Quality (if applicable)/Assignment/Attachments (if applicable)/Workflow. Actual source/current/next appears directly below the document title; actions remain above the sections."
+    },
+    {
+      "section": "Production",
+      "page": "Material Request",
+      "path": [
+        "Transactions",
+        "Production",
+        "Material Request"
+      ],
+      "sourceChoices": [
+        "Work Order"
+      ],
+      "manufacturingNext": [
+        "Material Issue"
+      ],
+      "labourNext": [
+        "Material Issue"
+      ],
+      "headerFields": [
+        "Process",
+        "Date",
+        "Series",
+        "Customer",
+        "Document No.",
+        "Remarks",
+        "Work Order No.",
+        "PO Number"
+      ],
+      "attachments": [],
+      "approval": false,
+      "where": "Register → Create/Fetch/Open → Details/Items/Quality (if applicable)/Assignment/Attachments (if applicable)/Workflow. Actual source/current/next appears directly below the document title; actions remain above the sections."
+    },
+    {
+      "section": "Production",
+      "page": "Route Cards",
+      "path": [
+        "Transactions",
+        "Production",
+        "Route Cards"
+      ],
+      "sourceChoices": [
+        "Work Order",
+        "Material Issue"
+      ],
+      "manufacturingNext": [
+        "Production Output",
+        "Outsource Issue DC"
+      ],
+      "labourNext": [
+        "Production Output",
+        "Outsource Issue DC"
+      ],
+      "headerFields": [
+        "Process",
+        "Date",
+        "Series",
+        "Customer",
+        "Document No.",
+        "WO No",
+        "Master Route Card No",
+        "Revision",
+        "Project Name",
+        "Managed By"
+      ],
+      "attachments": [],
+      "approval": false,
+      "where": "Register → Create/Fetch/Open → Details/Items/Quality (if applicable)/Assignment/Attachments (if applicable)/Workflow. Actual source/current/next appears directly below the document title; actions remain above the sections."
+    },
+    {
+      "section": "Production",
+      "page": "Rejection Note",
+      "path": [
+        "Transactions",
+        "Production",
+        "Rejection Note"
+      ],
+      "sourceChoices": [],
+      "manufacturingNext": [],
+      "labourNext": [],
+      "headerFields": [
+        "Process",
+        "Date",
+        "Series",
+        "Document No.",
+        "Remarks",
+        "Ref Process Name",
+        "Ref WorkOrder No.",
+        "Rejection Type",
+        "Rejection Remarks"
+      ],
+      "attachments": [],
+      "approval": true,
+      "where": "Register → Create/Fetch/Open → Details/Items/Quality (if applicable)/Assignment/Attachments (if applicable)/Workflow. Actual source/current/next appears directly below the document title; actions remain above the sections."
+    },
+    {
+      "section": "Approvals",
+      "page": "Pending Approvals",
+      "path": [
+        "Transactions",
+        "Approvals",
+        "Pending Approvals"
+      ],
+      "existingFlow": "Pending document → Review document → Approve/Reject",
+      "where": "Approval list, then the opened document action bar"
+    },
+    {
+      "section": "Payments",
+      "page": "Vendor Payments",
+      "path": [
+        "Transactions",
+        "Payments",
+        "Vendor Payments"
+      ],
+      "existingFlow": "Released purchase invoice → Add payment → validate allocation → Save → History",
+      "where": "Invoice balance table and payment details"
+    },
+    {
+      "section": "Payments",
+      "page": "Customer Payments",
+      "path": [
+        "Transactions",
+        "Payments",
+        "Customer Payments"
+      ],
+      "existingFlow": "Released sales invoice → Add receipt → validate allocation → Save → History; close source only after delivery/payment checks",
+      "where": "Invoice balance table and payment details"
+    }
+  ]
+}

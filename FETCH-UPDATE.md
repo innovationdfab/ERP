@@ -4,13 +4,13 @@ This update changes Fetch and transaction-form usability only. The existing SOP 
 
 ## Use Fetch
 
-1. Open a supported transaction and choose Create new or Edit, then **Fetch** in the fixed action bar.
+1. Open a supported transaction and choose **Fetch** directly on its register, an opened record, or its editor. No Create/Edit step is required to see the button.
 2. Choose a source type. Search by document number, party or product; dates narrow the source list.
-3. Choose a released/approved source. Select individual lines or all pending lines, then enter the quantity to fetch for each selected line.
-4. Choose **Fetch selected items**. Existing product lines and the source link require an explicit replacement checkbox. Cancel and Escape leave the form unchanged.
-5. Review Items, Details and Assignment, then Save. Fetch itself makes no database write. Saving reserves the selected quantities, persists the source link and uses the existing atomic save mechanism.
+3. Choose a released/approved source. All pending lines select automatically with their pending quantities. Untick unwanted items or adjust quantities if needed.
+4. Choose **Fetch selected items**. Existing product lines and the source link require an explicit replacement checkbox. Cancel and Escape leave the current register or form unchanged. An opened record enters editing only after selected items are applied.
+5. Review Items, Details and Assignment, then Save. The fetched form is a draft and its displayed total is recalculated immediately. Fetch itself makes no database write. Saving reserves the selected quantities, persists the source link and uses the existing atomic save mechanism.
 
-Fetch copies quantities, descriptions, UOM, rates, discounts, GST splits, HSN, group/type, drawing/revision and line remarks from selected items. Compatible header fields and aliases populate empty destination fields; document reference numbers/dates follow the source lineage. Entered header values, destination assignment, charges, operations, inspection results and attachments are retained. A supplier must still be chosen when a customer document is fetched into purchasing. Conflicting parties or currencies require reconciliation.
+Fetch copies quantities, descriptions, UOM, rates, discounts, GST splits, HSN, group/type, drawing/revision and line remarks from selected items. Compatible header fields and aliases populate empty destination fields; document reference numbers/dates follow the source lineage. Re-fetching refreshes values previously filled automatically, while manually edited header values are retained. Existing destination assignment, charges, operations, inspection results and attachments are retained. For a new unassigned draft, the next department follows the fetched flow. A supplier must still be chosen when a customer document is fetched into purchasing. Manually entered conflicting parties or conflicting currencies require reconciliation. A party originally filled by Fetch refreshes with the replacement source.
 
 Older summary records are excluded until their original line details have been reviewed, saved and released in the expanded workspace. Fetch does not invent missing original prices, line identities or quantities. Existing unlinked historical transactions need reconciliation before their quantities can be represented as already fetched. This feature fetches documents saved in this project's configured ERP; it does not install ongoing synchronization with the reference website.
 
