@@ -79,11 +79,27 @@ export async function flushCloudWrites() {
   if (writeErrors.length) {
     const first = writeErrors[0];
     const error = new Error(`${writeErrors.length} database write(s) failed. First failure: ${first.key} — ${first.error?.message || first.error}`);
-    error.failures = [...writeErrors];
+    Object.assign(error, {failures: [...writeErrors]});
     throw error;
   }
 }
 
 export function exportCloudSnapshot() {
   return Object.fromEntries(cache.entries());
+}
+
+/** Commit related UI sections together. Cache is updated only after DB success.
+ * Expected payloads provide optimistic concurrency for the new process screens. */
+export async function commitProcessChanges(changes, expected, action = 'save') {
+  if (!initialized || !accessToken) throw new Error('Your session is not ready. Sign in again before saving.');
+  await flushCloudWrites();
+  await rpc('erp_commit_process', {p_changes: changes, p_expected: expected, p_action: action}, {accessToken});
+  for (const [key, value] of Object.entries(changes)) cache.set(key, value);
+  emit('erp-cloud-change', {type: 'process-commit'});
+  emit('erp-storage-saved', {key: Object.keys(changes).join(', ')});
+}
+
+export async function nextProcessNumber(type, prefix, year) {
+  if (!initialized || !accessToken) throw new Error('Sign in before creating a document.');
+  return rpc('erp_next_process_no', {p_document_type: type, p_prefix: prefix, p_financial_year: year}, {accessToken});
 }

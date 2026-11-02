@@ -17,6 +17,10 @@ import './styles.css';
 import './ui-refinements.css';
 import './sap-enterprise.css';
 import './premium-forms.css';
+import './process-workspace.css';
+import { schemas as processSchemas } from './process-schema.js';
+import { processDocuments, paymentsFor, outstanding } from './process-store.js';
+import { ProcessWorkspace, ProcessPayments, ProcessHub, ProcessApprovals, ProcessLookup } from './process-workspace.jsx';
 import { PremiumUploadField, PremiumImportPage, FormSectionHeading, FormDialogBackdrop } from './premium-forms.jsx';
 import { todayISO, isoDate, displayDate, readStored, writeStored, fieldType, validateFields, parseCsv, csvCell, validateBackup, readAttachment } from './erp-utils.js';
 import { signInWithPassword, refreshSession, signOut } from './backend/supabase-rest.js';
@@ -148,10 +152,11 @@ const menuTree = [
     { label:'Custom', icon:ClipboardList, children:[
       ['Instrument Master',Wrench],['Department Master',Building],['Quality Master',CheckCircle2],['Daily Task Master',SlidersHorizontal],
       ['Asset Allocation',Briefcase],['Kind Attention',Clock3],['Remark Master',Wrench],['General Task',Briefcase],
-      ['Process Price List',Cog],['Vendor Price List',CreditCard],['Customer Price List',WalletCards]
+      ['Process Price List',Cog],['Vendor Price List',CreditCard],['Customer Price List',WalletCards],['PO Number Details',FileText],['RM Inward and Outward',FileText],['SO Number Details',FileText],['Routecard Price',CreditCard]
     ]}
   ]},
   { label:'Transactions', icon:FileText, children:[
+    ['SOP Workflow',Route],
     { label:'Purchase', icon:FileText, children:[
       ['Purchase Orders',CreditCard],['Vendor Price List',CreditCard],['Purchase Indents',CreditCard],['Customer Price List',CreditCard],
       ['Indent To Order',CreditCard],['GRN',CreditCard],['Purchase',CreditCard],['Tally Link - Purchase',FileSpreadsheet]
@@ -166,9 +171,9 @@ const menuTree = [
   ]},
   { label:'Reports', icon:FileText, children:[
     { label:'Stores', icon:FileText, children:[['Regular Stock List',FileText],['Jobwork Inward Register',FileText],['Work Order Register',FileText],['Stock Ledger',FileText],['Stock Report',FileText],['Groupwise Stock Report',FileText]] },
-    { label:'Master', icon:FileText, children:[['Vendor Master List',FileText],['Vendor Payment History',FileText],['Customer Master List',FileText],['Product Rack List',FileText],{label:'Vendor Price List',page:'Vendor Price List Report',icon:FileText},['User Daily Task List',FileText],['Time Tracker',FileText]] },
+    { label:'Master', icon:FileText, children:[['Vendor Master List',FileText],['Vendor Payment History',FileText],['Customer Master List',FileText],['Product Rack List',FileText],{label:'Vendor Price List',page:'Vendor Price List Report',icon:FileText},['User Daily Task List',FileText],['Time Tracker',FileText],['Customer Payment Overdue Report',FileText]] },
     { label:'Purchase', icon:FileText, children:[['Purchase Order Register',FileText],['Pending Purchase Indent for order',FileText],['Pending Purchase Indent For GR',FileText],['GRN Register',FileText],['Inward QC Register',FileText],['User Wise Transactions List',FileText],['Pending Purchase Order to GRN',FileText],['Pending Payables',FileText],['Purchase Invoice Register',FileText],['Purchase Invoice Itemwise Register',FileText]] },
-    { label:'Sales', icon:FileText, children:[['Sales Register',FileText],['Enquiry Register',FileText],['Sales Order Register',FileText],['Sales Register Headerwise',FileText],['Sales Quotation Register',FileText],['Sales Order Created & Closed',FileText],['Sales Quotation Register Headerwise',FileText],['Sales Order Created & Closed Headerwise',FileText],['Credit Note Register',FileText],['Proforma Invoice Register',FileText],['Pending Sales Order for Work Order',FileText],['Pending Sales Order for Invoice',FileText],['Pending Enquiry For QUotation',FileText],['Pending Receivables',FileText],['DC Register Headerwise',FileText],['DC Register',FileText]] },
+    { label:'Sales', icon:FileText, children:[['Sales Details',FileText],['Sales Register',FileText],['Enquiry Register',FileText],['Sales Order Register',FileText],['Sales Register Headerwise',FileText],['Sales Quotation Register',FileText],['Sales Order Created & Closed',FileText],['Sales Quotation Register Headerwise',FileText],['Sales Order Created & Closed Headerwise',FileText],['Credit Note Register',FileText],['Proforma Invoice Register',FileText],['Pending Sales Order for Work Order',FileText],['Pending Sales Order for Invoice',FileText],['Pending Enquiry For QUotation',FileText],['Pending Receivables',FileText],['DC Register Headerwise',FileText],['DC Register',FileText]] },
     { label:'Production', icon:FileText, children:[['Pending Work Order for Production Output',FileText],['Pending Outsource DC to Receipt',FileText],['Outsource DC Register Headerwise',FileText],['Outsource DC Register',FileText],['Outsource DC Register Created to Closed',FileText],['Outsource Receipt Register',FileText],['Rejection Note Register',FileText]] },
     { label:'Quality', icon:FileText, children:[['Pending Jobwork Inward for Quality',FileText]] }
   ]},
@@ -388,6 +393,11 @@ function NavNode({node:raw,path,depth,openMenus,toggleMenu,activePage,goToPage})
 }
 
 function renderPage(activePage,ctx){
+  if(['PO Number Details','RM Inward and Outward','SO Number Details','Sales Details','Routecard Price'].includes(activePage)) return <ProcessLookup key={activePage} title={activePage} configs={coreConfigs} goToPage={ctx.goToPage} Suggest={DatabaseSuggestInput}/>;
+  if(activePage==='Pending Approvals') return <ProcessApprovals configs={coreConfigs} goToPage={ctx.goToPage}/>;
+  if(activePage==='SOP Workflow') return <ProcessHub configs={coreConfigs} goToPage={ctx.goToPage}/>;
+  if(['Vendor Payments','Customer Payments'].includes(activePage)) return <ProcessPayments key={activePage} title={activePage} configs={coreConfigs} goToPage={ctx.goToPage} Suggest={DatabaseSuggestInput}/>;
+  if(processSchemas[activePage]) return <ProcessWorkspace key={activePage} title={activePage} configs={coreConfigs} goToPage={ctx.goToPage} Suggest={DatabaseSuggestInput}/>;
   if(activePage==='Workflow Guide') return <WorkflowGuide goToPage={ctx.goToPage}/>;
   if(activePage==='Settings') return <WorkspaceSettings/>;
   if(activePage==='Change Password') return <LocalSecurityPage/>;
@@ -546,7 +556,7 @@ function HomePage({goToPage}){
 
     <section className="card home-process">
       <div className="section-intro"><div><p className="eyebrow">CONNECTED ERP FLOWS</p><h2>Run the company by document lineage</h2><p>Every downstream document keeps its source reference, quantity gate and approval trail.</p></div><span>{workflowLanes.reduce((sum,lane)=>sum+lane.steps.length,0)} connected stages</span></div>
-      <div className="workflow-lanes">{workflowLanes.map(lane=><section className={`workflow-lane ${lane.tone}`} key={lane.key}><div className="workflow-lane-title"><div><b>{lane.label}</b><small>Controlled process flow</small></div><span>{lane.steps.length} stages</span></div><div className="workflow-lane-steps">{lane.steps.map(([name,Icon],i)=><button key={`${lane.key}-${name}`} onClick={()=>goToPage(name)}><small>{String(i+1).padStart(2,'0')}</small><span className="workflow-step-icon"><Icon size={16}/></span><strong>{name}</strong><ArrowUpRight size={13}/></button>)}</div></section>)}</div>
+      <div className="action-pills"><button className="action-pill blue" onClick={()=>goToPage('SOP Workflow')}>Manufacturing & Labour SOP <ArrowRight size={15}/></button></div><div className="workflow-lanes">{workflowLanes.map(lane=><section className={`workflow-lane ${lane.tone}`} key={lane.key}><div className="workflow-lane-title"><div><b>{lane.label}</b><small>Controlled process flow</small></div><span>{lane.steps.length} stages</span></div><div className="workflow-lane-steps">{lane.steps.map(([name,Icon],i)=><button key={`${lane.key}-${name}`} onClick={()=>goToPage(name)}><small>{String(i+1).padStart(2,'0')}</small><span className="workflow-step-icon"><Icon size={16}/></span><strong>{name}</strong><ArrowUpRight size={13}/></button>)}</div></section>)}</div>
     </section>
 
     <section className="home-lower">
@@ -832,6 +842,7 @@ function PriceListPage({mode}){
 }
 
 const liveReportConfigs={
+  'Customer Payment Overdue Report':{columns:['Transaction Number','Date','Customer','Customer PO NO','Customer PO Date','Total Amount','Paid Amount','TDS Amount','LD Amount','Status','Days Overdue'],filters:[]},
   'Regular Stock List':{columns:['Product Code','Product Description','Product Type','Group','UOM','Available Stock','Rack'],filters:['group','product']},
   'Jobwork Inward Register':{columns:['Jobwork Inward No','Date','Customer','Customer DC No','Product','Qty','UOM','Status'],filters:['date','customer']},
   'Work Order Register':{columns:['Work Order No','Date','Sales Order No','Customer','Product','Order Qty','Produced Qty','Status'],filters:['date','customer','status']},
@@ -887,6 +898,7 @@ const reportParams={
 };
 const rp=(label,key,kind='lookup',value='')=>({label,key,kind,value});
 const liveReportLayouts={
+  'Customer Payment Overdue Report':{title:'Customer Payment Overdue Report',params:[]},
   'Regular Stock List':{title:'Regular Stock List',params:[rp('As On Date','asOnDate','date',todayISO()),rp('From Product','fromProduct'),rp('To Product','toProduct')]},
   'Jobwork Inward Register':{title:'Job Work Inward Register',params:reportParams.dates},
   'Work Order Register':{title:'Work Order Register',params:reportParams.dates},
@@ -939,6 +951,19 @@ const liveReportLayouts={
 const reportSamples = {customers:[],vendors:[],products:[],users:[]};
 const normalizeColumn=value=>String(value||'').toLowerCase().replace(/[^a-z0-9]/g,'');
 function reportRowsFromDatabase(reportKey,targetColumns){
+  if(['Pending Receivables','Pending Payables','Customer Payment Overdue Report'].includes(reportKey)){
+    const module=reportKey==='Pending Payables'?'Purchase':'Sales Invoice';
+    return processDocuments(module,coreConfigs).filter(d=>!['DRAFT','REJECTED','APPROVAL PENDING'].includes(d.status)&&outstanding(d)>0).map(doc=>{
+      const payments=paymentsFor(doc.number,module),paid=payments.reduce((s,p)=>s+Number(p.amount||0),0),tds=payments.reduce((s,p)=>s+Number(p.tds||0),0),ld=payments.reduce((s,p)=>s+Number(p.ld||0),0);
+      const terms=String(doc.header['Terms of payment']||doc.header['Payment Terms']||''),match=terms.match(/^\s*(\d+)\s*(?:days?)?\s*$/i),days=match?Number(match[1]):/^(cash|immediate|advance)$/i.test(terms)?0:null;
+      let due=isoDate(doc.header['Due Date']);
+      if(!due&&days!==null){const date=new Date(doc.date+'T12:00:00Z');date.setUTCDate(date.getUTCDate()+days);due=date.toISOString().slice(0,10);}
+      const aging=due?Math.max(0,Math.floor((Date.parse(todayISO())-Date.parse(due))/86400000)):null;
+      const values={'Customer':doc.party,'Vendor':doc.party,'Invoice No':doc.number,'Transaction Number':doc.number,'Invoice Date':doc.date,'Date':doc.date,'Due Date':due||'-','Invoice Amount':doc.total,'Total Amount':doc.total,'Received Amount':paid,'Paid Amount':paid,'TDS Amount':tds,'LD Amount':ld,'Balance Amount':outstanding(doc),'Aging Days':aging??'-','Days Overdue':aging??'-','Status':!due?'Payment terms needed':aging>0?'Overdue':'Open','Customer PO NO':doc.header['Buyer PO No.']||doc.header['PO Number']||'-','Customer PO Date':doc.header['PO Date']||doc.header['Customer PO Dt.']||'-'};
+      return targetColumns.map(column=>values[column]??'-');
+    });
+  }
+
   const pickSource=()=>{
     if(/Vendor Master List/i.test(reportKey))return {rows:arrayRows('dfab-erp-vendors-v2'),columns:['Account Code','Vendor Name','City','State','Country','Email Id','Contact No.','GST Status','Account Status']};
     if(/Customer Master List/i.test(reportKey))return {rows:arrayRows('dfab-erp-customers-v2'),columns:['Account Code','Customer Name','City','State','Country','Email Id','Contact No.','GST Status','Account Status']};

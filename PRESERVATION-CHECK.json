@@ -1,0 +1,209 @@
+{
+  "original_archive": "DFAB-OneERP-DFAB-Logo(1).zip",
+  "files": [
+    {
+      "file": "FULL-DATA-RESTORE.md",
+      "status": "unchanged",
+      "original_sha256": "63b8d4fccd7793aa019b3e7cb55e3ca7521fe4063bb4e97b49553ab9781da368",
+      "updated_sha256": "63b8d4fccd7793aa019b3e7cb55e3ca7521fe4063bb4e97b49553ab9781da368"
+    },
+    {
+      "file": "SAP-ENTERPRISE-UPGRADE.md",
+      "status": "unchanged",
+      "original_sha256": "1417d926bb263e53b0b149cce4af3ad4b9cbdd59adaf8b4fb5ea4929710d8b7c",
+      "updated_sha256": "1417d926bb263e53b0b149cce4af3ad4b9cbdd59adaf8b4fb5ea4929710d8b7c"
+    },
+    {
+      "file": "DATABASE-DRIVEN-UPDATE.md",
+      "status": "unchanged",
+      "original_sha256": "537823d8f2d35d85e631a4743ba6166f3dcab13b49d7ea7ef0528d859f0070f0",
+      "updated_sha256": "537823d8f2d35d85e631a4743ba6166f3dcab13b49d7ea7ef0528d859f0070f0"
+    },
+    {
+      "file": "FLOW-AUTOFETCH-VERIFICATION.md",
+      "status": "unchanged",
+      "original_sha256": "64152de17d7aa107ead7b3fcb4bfe3c9be5dd22ec8c7cc8adaadd0aa400e71a2",
+      "updated_sha256": "64152de17d7aa107ead7b3fcb4bfe3c9be5dd22ec8c7cc8adaadd0aa400e71a2"
+    },
+    {
+      "file": "RESTORED-DATA-UPDATE.md",
+      "status": "unchanged",
+      "original_sha256": "d8acf4ef12a0fe4c2bf0802881c8f302dacc43a811f718704c13d4cc488ca81b",
+      "updated_sha256": "d8acf4ef12a0fe4c2bf0802881c8f302dacc43a811f718704c13d4cc488ca81b"
+    },
+    {
+      "file": ".gitignore",
+      "status": "unchanged",
+      "original_sha256": "bf175c16b0fb2528458d9085850eef80306a65627183cfe3f540b27b56eb084f",
+      "updated_sha256": "bf175c16b0fb2528458d9085850eef80306a65627183cfe3f540b27b56eb084f"
+    },
+    {
+      "file": "supabase/DFAB_ERP_PRODUCTION.sql",
+      "status": "unchanged",
+      "original_sha256": "d88ffd960b25163ad0c3d1bb5a5fec60ca0a86431413feb7af61628ead40824d",
+      "updated_sha256": "d88ffd960b25163ad0c3d1bb5a5fec60ca0a86431413feb7af61628ead40824d"
+    },
+    {
+      "file": "VERIFICATION.md",
+      "status": "unchanged",
+      "original_sha256": "a482c4bb0c6501151be63cbb0b6c4b0379fc6467ce6be8a521fc712ce64d158a",
+      "updated_sha256": "a482c4bb0c6501151be63cbb0b6c4b0379fc6467ce6be8a521fc712ce64d158a"
+    },
+    {
+      "file": "index.html",
+      "status": "unchanged",
+      "original_sha256": "91cd4b4efd81b36e4b96b4e5577dfd2e639f38e731446a5b47ec127f4a59f577",
+      "updated_sha256": "91cd4b4efd81b36e4b96b4e5577dfd2e639f38e731446a5b47ec127f4a59f577"
+    },
+    {
+      "file": "package.json",
+      "status": "changed",
+      "original_sha256": "f2319e03206357e947692cfaa417a97bce462bcd14df5bd709bfba314dbe1625",
+      "updated_sha256": "c8943295afde83514154b03d2c2708bf4fca1c3099202db7eef1e77b82eca3dd"
+    },
+    {
+      "file": "package-lock.json",
+      "status": "unchanged",
+      "original_sha256": "bcf086910454e8906f7a54fdec62b1559df0695d6421287a4fdb237b4b82021f",
+      "updated_sha256": "bcf086910454e8906f7a54fdec62b1559df0695d6421287a4fdb237b4b82021f"
+    },
+    {
+      "file": "dfab-erp-home.code-workspace",
+      "status": "unchanged",
+      "original_sha256": "69e7b37e2ebdaf8fc313bf6cb74882fed65895e5f853736e65759bafb333bc6b",
+      "updated_sha256": "69e7b37e2ebdaf8fc313bf6cb74882fed65895e5f853736e65759bafb333bc6b"
+    },
+    {
+      "file": "tests/browser-advanced.mjs",
+      "status": "unchanged",
+      "original_sha256": "d99404f5fd38d615b60a650a3e852918d2b38c2742ce962c09e1b0474d059242",
+      "updated_sha256": "d99404f5fd38d615b60a650a3e852918d2b38c2742ce962c09e1b0474d059242"
+    },
+    {
+      "file": "tests/browser-smoke.mjs",
+      "status": "unchanged",
+      "original_sha256": "19d084594228163a750c9c45ce830c67902fdbadf5e2ecdbb90157820da148f8",
+      "updated_sha256": "19d084594228163a750c9c45ce830c67902fdbadf5e2ecdbb90157820da148f8"
+    },
+    {
+      "file": "tests/browser-premium.mjs",
+      "status": "unchanged",
+      "original_sha256": "af8f5f928c22bf10545de4a79928bbcbe2119b9eeeefa1d8a40b56da905a67f0",
+      "updated_sha256": "af8f5f928c22bf10545de4a79928bbcbe2119b9eeeefa1d8a40b56da905a67f0"
+    },
+    {
+      "file": "tests/erp-utils.test.js",
+      "status": "unchanged",
+      "original_sha256": "97d5fee0e832941543a2a8f923cad3b968acf45beeedbd49ba4e2ee6bb163ad5",
+      "updated_sha256": "97d5fee0e832941543a2a8f923cad3b968acf45beeedbd49ba4e2ee6bb163ad5"
+    },
+    {
+      "file": "tests/browser-routes.json",
+      "status": "unchanged",
+      "original_sha256": "0c38e93e92d4784ea8343805859dc3fd9faa92146565a294f568854fb2f5e6cb",
+      "updated_sha256": "0c38e93e92d4784ea8343805859dc3fd9faa92146565a294f568854fb2f5e6cb"
+    },
+    {
+      "file": "ERP-REVIEW.md",
+      "status": "unchanged",
+      "original_sha256": "9aa814aa80c291a43898939b3ca57cd511a4951f89b8c14d71afc364c99069b1",
+      "updated_sha256": "9aa814aa80c291a43898939b3ca57cd511a4951f89b8c14d71afc364c99069b1"
+    },
+    {
+      "file": "src/premium-forms.jsx",
+      "status": "unchanged",
+      "original_sha256": "99e9dcb25474ce131f6bce13572798bf92f6c71ed37d55bcbe88291f593507cc",
+      "updated_sha256": "99e9dcb25474ce131f6bce13572798bf92f6c71ed37d55bcbe88291f593507cc"
+    },
+    {
+      "file": "src/backend/supabase-rest.js",
+      "status": "changed",
+      "original_sha256": "d59b5cc2f0182abf2a589e5b7792720dbca6cb68ed504543c4a387fab8ffe398",
+      "updated_sha256": "9b1d7510c40f4c9ed625b43ad126c1a6dab8ee77bd8b44f5f081e994d0ab508d"
+    },
+    {
+      "file": "src/backend/cloud-store.js",
+      "status": "changed",
+      "original_sha256": "c9334ea3df1edf94f0e40041df08705abcbeab619cdd0d2457319b5dbde2cfb5",
+      "updated_sha256": "a7392ad2a424702cc155fd9a3bb67ebd36c3ea15b9a25442a60287da9da4636f"
+    },
+    {
+      "file": "src/restored-seed-data.js",
+      "status": "unchanged",
+      "original_sha256": "e7f92dc39a33cda9fa3848d29c1eda34add38f840005947c0b4fd1436981d215",
+      "updated_sha256": "e7f92dc39a33cda9fa3848d29c1eda34add38f840005947c0b4fd1436981d215"
+    },
+    {
+      "file": "src/ui-refinements.css",
+      "status": "unchanged",
+      "original_sha256": "e69560b338eb4362df9e9a4884208d698bf1ffb1836b695cd611ddc5520e0d07",
+      "updated_sha256": "e69560b338eb4362df9e9a4884208d698bf1ffb1836b695cd611ddc5520e0d07"
+    },
+    {
+      "file": "src/sap-enterprise.css",
+      "status": "unchanged",
+      "original_sha256": "f89aed8d9b3619cab4715ce77e5c845b03f2ef06e6baa926a94a359ccfef9688",
+      "updated_sha256": "f89aed8d9b3619cab4715ce77e5c845b03f2ef06e6baa926a94a359ccfef9688"
+    },
+    {
+      "file": "src/premium-forms.css",
+      "status": "unchanged",
+      "original_sha256": "0793f52d261b4c26a034d5df3a88d53258fab3516ec05be5870c4df482dd4962",
+      "updated_sha256": "0793f52d261b4c26a034d5df3a88d53258fab3516ec05be5870c4df482dd4962"
+    },
+    {
+      "file": "src/assets/dfab-logo.png",
+      "status": "unchanged",
+      "original_sha256": "15e00ccbf4427c1612a72c09c4295dd144703fa8755fd853e28b1031a7ab966d",
+      "updated_sha256": "15e00ccbf4427c1612a72c09c4295dd144703fa8755fd853e28b1031a7ab966d"
+    },
+    {
+      "file": "src/styles.css",
+      "status": "unchanged",
+      "original_sha256": "7a34f72c809853ac18269d1a067da74c239c423cf0817a913cc28a474a6a6ee1",
+      "updated_sha256": "7a34f72c809853ac18269d1a067da74c239c423cf0817a913cc28a474a6a6ee1"
+    },
+    {
+      "file": "src/main.jsx",
+      "status": "changed",
+      "original_sha256": "7d1dc9ca4786b9f2788cf565db38025a41ffcaa1c224a98aeb323da0ff18850b",
+      "updated_sha256": "ea359191afb5705435d6ed5f92f3c7e4ab86e50ca768d0166404af7fc4267ee6"
+    },
+    {
+      "file": "src/erp-utils.js",
+      "status": "unchanged",
+      "original_sha256": "49ba8ef92302ad4c9130e37eefa3134c06a81a03564509a2f3778d753cbea663",
+      "updated_sha256": "49ba8ef92302ad4c9130e37eefa3134c06a81a03564509a2f3778d753cbea663"
+    },
+    {
+      "file": "eslint.config.js",
+      "status": "unchanged",
+      "original_sha256": "f01b836785982623c1e645e94054add90cf3cc88d153d532e22efde96ed5b247",
+      "updated_sha256": "f01b836785982623c1e645e94054add90cf3cc88d153d532e22efde96ed5b247"
+    },
+    {
+      "file": "README.md",
+      "status": "unchanged",
+      "original_sha256": "d700d76f12d08bb1950a747882d150c182e3c7abadaef4782a0e29e215948e44",
+      "updated_sha256": "d700d76f12d08bb1950a747882d150c182e3c7abadaef4782a0e29e215948e44"
+    },
+    {
+      "file": ".env.example",
+      "status": "unchanged",
+      "original_sha256": "4c3e94023949c09e56ceaa1c041636b13cca7985a620cfed55b52191a70a1b1f",
+      "updated_sha256": "4c3e94023949c09e56ceaa1c041636b13cca7985a620cfed55b52191a70a1b1f"
+    },
+    {
+      "file": "erp.code-workspace",
+      "status": "unchanged",
+      "original_sha256": "69e7b37e2ebdaf8fc313bf6cb74882fed65895e5f853736e65759bafb333bc6b",
+      "updated_sha256": "69e7b37e2ebdaf8fc313bf6cb74882fed65895e5f853736e65759bafb333bc6b"
+    },
+    {
+      "file": "DATABASE-SETUP.md",
+      "status": "unchanged",
+      "original_sha256": "b6961598e6e80ef16e055a093b5b1ec442b0a8cc0f4a457fea0234432cb724b8",
+      "updated_sha256": "b6961598e6e80ef16e055a093b5b1ec442b0a8cc0f4a457fea0234432cb724b8"
+    }
+  ]
+}
