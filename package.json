@@ -8,13 +8,11 @@
     "build": "vite build",
     "preview": "vite preview",
     "lint": "eslint src tests",
-    "typecheck": "tsc --types vite/client --noEmit --allowJs --checkJs --target es2022 --module esnext --lib es2022,dom src/erp-utils.js",
+    "typecheck": "tsc --noEmit --allowJs --checkJs --target es2022 --module esnext --lib es2022,dom src/erp-utils.js",
     "test": "node --test tests/*.test.js",
     "verify": "npm run lint && npm run typecheck && npm test && npm run build",
-    "test:browser": "node tests/browser-process.mjs",
-    "test:premium": "node tests/browser-premium.mjs",
-    "test:process": "node tests/browser-process.mjs",
-    "test:browser:legacy": "node tests/browser-smoke.mjs && node tests/browser-advanced.mjs && node tests/browser-premium.mjs"
+    "test:browser": "node tests/browser-smoke.mjs && node tests/browser-advanced.mjs && node tests/browser-premium.mjs",
+    "test:premium": "node tests/browser-premium.mjs"
   },
   "dependencies": {
     "@vitejs/plugin-react": "6.1.1",

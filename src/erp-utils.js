@@ -3,11 +3,18 @@ import { readCloudValue, writeCloudValue } from './backend/cloud-store.js';
 export const todayISO = () => new Date().toLocaleDateString('en-CA', {timeZone:'Asia/Kolkata'});
 export function isoDate(value) {
   if (!value || value === '-') return '';
-  if (/^\d{4}-\d{2}-\d{2}$/.test(value)) return value;
-  const match = String(value).match(/^(\d{1,2})-([A-Za-z]{3})-(\d{4})$/);
-  if (!match) return '';
-  const month = ['jan','feb','mar','apr','may','jun','jul','aug','sep','oct','nov','dec'].indexOf(match[2].toLowerCase());
-  return month < 0 ? '' : `${match[3]}-${String(month+1).padStart(2,'0')}-${match[1].padStart(2,'0')}`;
+  const raw = String(value);
+  let iso = raw;
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(iso)) {
+    const match = raw.match(/^(\d{1,2})-([A-Za-z]{3})-(\d{4})$/);
+    if (!match) return '';
+    const month = ['jan','feb','mar','apr','may','jun','jul','aug','sep','oct','nov','dec'].indexOf(match[2].toLowerCase());
+    if (month < 0) return '';
+    iso = `${match[3]}-${String(month+1).padStart(2,'0')}-${match[1].padStart(2,'0')}`;
+  }
+  const [year, month, day] = iso.split('-').map(Number);
+  const date = new Date(Date.UTC(year, month-1, day));
+  return date.getUTCFullYear()===year && date.getUTCMonth()+1===month && date.getUTCDate()===day ? iso : '';
 }
 export const displayDate = value => {const date=isoDate(value);return date?new Date(`${date}T12:00:00`).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'}).replaceAll(' ','-'):value;};
 export function readStored(key, fallback) {
@@ -40,7 +47,7 @@ export function validateBackup(data) {
   if (!data || typeof data.records!=='object' || Array.isArray(data.records)||data.records===null) throw new Error('This is not a DFAB ERP backup.');
   const entries=Object.entries(data.records);
   if(!entries.length)throw new Error('This backup has no records.');
-  if(entries.some(([key])=>!key.startsWith('dfab-')||/session|password|credential/i.test(key)))throw new Error('Backup contains unsupported or session-related keys.');
+  if(entries.some(([key,value])=>!key.startsWith('dfab-')||/session|password|credential|token|secret|private.key/i.test(key)||value===undefined))throw new Error('Backup contains unsupported or session-related keys.');
   return entries;
 }
 export async function readAttachment(file) {

@@ -93,3 +93,24 @@ button.premium-template-download{border:1px solid #dbe6f3;border-radius:7px;colo
 .modal-backdrop:has(>.erp-modal>.modal-grid){position:fixed!important;inset:0!important;width:100%!important;height:100dvh!important;z-index:10000!important;display:grid!important;place-items:center!important;overflow:auto!important;overscroll-behavior:contain!important;padding:20px!important;background:rgba(17,34,56,.43)!important;backdrop-filter:blur(4px)!important}
 .modal-backdrop:has(>.erp-modal>.modal-grid)>.erp-modal{margin:auto!important;max-height:calc(100dvh - 40px)!important;overflow:auto!important;overscroll-behavior:contain!important;flex:none!important}
 @media(max-width:560px){.modal-backdrop:has(>.erp-modal>.modal-grid){padding:10px!important}.modal-backdrop:has(>.erp-modal>.modal-grid)>.erp-modal{max-height:calc(100dvh - 20px)!important}}
+
+/* ERP workflow forms: scoped alignment and navigation only; no global dashboard changes. */
+.erp-form-back{display:inline-flex;align-items:center;justify-content:center;gap:7px;min-height:36px;padding:8px 12px;flex:0 0 auto;border:1px solid #d5e1ee;border-radius:9px;background:#f6f9fd;color:#264568;font-size:12px;font-weight:650;cursor:pointer;transition:background .18s ease,border-color .18s ease,transform .18s ease}
+.erp-form-back:hover{background:#eaf2fe;border-color:#a8c5e9;transform:translateX(-2px)}
+.erp-form-back:focus-visible{outline:3px solid #80b4ed;outline-offset:2px}
+.premium-form-page>.page-title-row{display:flex!important;align-items:center!important;flex-wrap:wrap!important;column-gap:14px!important;row-gap:12px!important}
+.premium-form-page>.page-title-row>div:first-of-type{flex:1 1 250px;min-width:0}
+.premium-form-page>.page-title-row>.action-pills{margin-left:auto;display:flex;flex-wrap:wrap;gap:8px}
+.premium-form-page .erp-form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px 20px;align-items:start}
+.premium-form-page .erp-form-grid>label{min-width:0;display:flex;flex-direction:column;gap:7px}
+.premium-form-page .erp-form-grid :is(input,select,textarea){width:100%;max-width:100%;min-width:0;box-sizing:border-box}
+.premium-form-page .erp-form-grid textarea{min-height:92px;resize:vertical}
+.erp-workflow-dialog{width:min(790px,calc(100vw - 40px))!important;max-width:790px!important}
+.erp-workflow-dialog>.modal-head{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.erp-workflow-dialog>.modal-head>div{flex:1 1 200px;min-width:0}
+.erp-workflow-dialog>.modal-grid{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:18px 20px!important;align-items:start}
+.erp-workflow-dialog>.modal-grid>label{min-width:0;display:flex;flex-direction:column;gap:7px}
+.erp-workflow-dialog>.modal-grid>label :is(input,select,textarea){width:100%!important;max-width:100%;min-width:0;box-sizing:border-box;min-height:41px}
+.erp-workflow-dialog>.modal-actions{display:flex;justify-content:flex-end;gap:10px;flex-wrap:wrap}
+@media(max-width:680px){.erp-workflow-dialog>.modal-grid{grid-template-columns:1fr!important}.erp-workflow-dialog>.modal-head{gap:10px}.premium-form-page>.page-title-row>.action-pills{margin-left:0;width:100%}.premium-form-page .erp-form-grid{grid-template-columns:1fr!important}}
+@media(prefers-reduced-motion:reduce){.erp-form-back{transition:none}.erp-form-back:hover{transform:none}}

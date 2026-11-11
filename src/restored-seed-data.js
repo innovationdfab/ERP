@@ -19,7 +19,9 @@ export async function restorePreviousErpDataOnce(){
   const criticalKeys=['dfab-erp-products-v3','dfab-erp-customers-v2','dfab-erp-vendors-v2','dfab-erp-sales-invoices-v2'];
   const expected=Object.fromEntries(criticalKeys.map(key=>[key,Array.isArray(restoredSeedData[key])?restoredSeedData[key].length:0]));
   const complete=criticalKeys.every(key=>Array.isArray(readCloudValue(key,undefined)) && readCloudValue(key,[]).length>=expected[key]);
-  if(readCloudValue(marker,false)===true && complete) return {restored:false,sections:0,verified:true,counts:expected};
+  // This is a one-time migration. A completed marker must take precedence over
+  // baseline counts: users may legitimately edit or delete the imported records.
+  if(readCloudValue(marker,false)===true) return {restored:false,sections:0,verified:true,counts:expected};
 
   resetCloudWriteErrors();
   let sections=0;
@@ -48,6 +50,7 @@ export function getRestoredDataStatus(){
     customers:counts['dfab-erp-customers-v2'],
     vendors:counts['dfab-erp-vendors-v2'],
     invoices:counts['dfab-erp-sales-invoices-v2'],
-    complete:counts['dfab-erp-products-v3']>=2118 && counts['dfab-erp-customers-v2']>=220 && counts['dfab-erp-vendors-v2']>=422 && counts['dfab-erp-sales-invoices-v2']>=84
+    // Once a successful migration has been recorded, a later user deletion is valid.
+    complete:readCloudValue('dfab-restored-preclean-data-v3-verified',false)===true || (counts['dfab-erp-products-v3']>=2118 && counts['dfab-erp-customers-v2']>=220 && counts['dfab-erp-vendors-v2']>=422 && counts['dfab-erp-sales-invoices-v2']>=84)
   };
 }

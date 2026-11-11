@@ -3,7 +3,6 @@
  * Used by the ERP cloud persistence and authentication layers. Browser-local ERP record persistence is disabled.
  */
 
-/** @type {Record<string,string>} */
 const env = import.meta.env || {};
 const url = String(env.VITE_SUPABASE_URL || '').trim().replace(/\/$/, '');
 const publishableKey = String(
@@ -30,7 +29,6 @@ function requireConfig() {
 }
 
 function headers(accessToken, extra = {}) {
-  /** @type {Record<string,string>} */
   const result = {
     apikey: publishableKey,
     'Content-Type': 'application/json',
@@ -88,10 +86,6 @@ export async function signOut(accessToken) {
   await request('/auth/v1/logout', { method: 'POST', headers: headers(accessToken) });
 }
 
-/**
- * @param {any} table
- * @param {{accessToken?: string, select?: string, query?: string, returnRows?: boolean, onConflict?: string}} [options]
- */
 export async function selectRows(table, { accessToken, select = '*', query = '' } = {}) {
   if (!/^[a-z0-9_]+$/i.test(table)) throw new Error('Invalid table name.');
   const suffix = query ? `&${query.replace(/^&/, '')}` : '';
@@ -100,11 +94,6 @@ export async function selectRows(table, { accessToken, select = '*', query = '' 
   });
 }
 
-/**
- * @param {any} table
- * @param {any} rows
- * @param {{accessToken?: string, select?: string, query?: string, returnRows?: boolean, onConflict?: string}} [options]
- */
 export async function insertRows(table, rows, { accessToken, returnRows = true } = {}) {
   if (!/^[a-z0-9_]+$/i.test(table)) throw new Error('Invalid table name.');
   if (!Array.isArray(rows) || rows.length === 0) throw new Error('At least one row is required.');
@@ -115,12 +104,6 @@ export async function insertRows(table, rows, { accessToken, returnRows = true }
   });
 }
 
-/**
- * @param {any} table
- * @param {any} values
- * @param {any} filterQuery
- * @param {{accessToken?: string, select?: string, query?: string, returnRows?: boolean, onConflict?: string}} [options]
- */
 export async function updateRows(table, values, filterQuery, { accessToken } = {}) {
   if (!/^[a-z0-9_]+$/i.test(table)) throw new Error('Invalid table name.');
   if (!filterQuery) throw new Error('A filter is required for updates.');
@@ -131,11 +114,6 @@ export async function updateRows(table, values, filterQuery, { accessToken } = {
   });
 }
 
-/**
- * @param {any} table
- * @param {any} rows
- * @param {{accessToken?: string, select?: string, query?: string, returnRows?: boolean, onConflict?: string}} [options]
- */
 export async function upsertRows(table, rows, { accessToken, onConflict = '', returnRows = true } = {}) {
   if (!/^[a-z0-9_]+$/i.test(table)) throw new Error('Invalid table name.');
   if (!Array.isArray(rows) || rows.length === 0) throw new Error('At least one row is required.');
@@ -147,11 +125,6 @@ export async function upsertRows(table, rows, { accessToken, onConflict = '', re
   });
 }
 
-/**
- * @param {any} table
- * @param {any} filterQuery
- * @param {{accessToken?: string, select?: string, query?: string, returnRows?: boolean, onConflict?: string}} [options]
- */
 export async function deleteRows(table, filterQuery, { accessToken } = {}) {
   if (!/^[a-z0-9_]+$/i.test(table)) throw new Error('Invalid table name.');
   if (!filterQuery) throw new Error('A filter is required for deletes.');
@@ -161,11 +134,6 @@ export async function deleteRows(table, filterQuery, { accessToken } = {}) {
   });
 }
 
-/**
- * @param {any} functionName
- * @param {any} args
- * @param {{accessToken?: string, select?: string, query?: string, returnRows?: boolean, onConflict?: string}} [options]
- */
 export async function rpc(functionName, args = {}, { accessToken } = {}) {
   if (!/^[a-z0-9_]+$/i.test(functionName)) throw new Error('Invalid function name.');
   return request(`/rest/v1/rpc/${functionName}`, {
