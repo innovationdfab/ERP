@@ -1,0 +1,25 @@
+DFAB OneERP — Login Only / Existing Working Features Locked
+Source: the user-uploaded DFAB-OneERP-Connected-Data(1).zip
+
+Existing source files modified:
+- src/admin-api.js
+- src/admin-control.jsx
+- src/backend/supabase-rest.js
+- src/main.jsx
+- supabase/functions/erp-admin-invite/index.ts
+- tests/admin-control.test.js
+
+New login-specific files:
+- LOGIN-SETUP-AND-LOCKED-SCOPE.md
+- src/login-initial.css
+- src/login-policy.js
+- supabase/ERP_INITIAL_LOGIN_PASSWORD_POLICY.sql
+- tests/login-provisioning.test.js
+
+Original unchanged files: 91
+Original files deleted: 0
+All original ERP business modules, transaction flows, reports and UI styling files (outside login) retain their original byte contents.
+Automated Node tests: 91/91 passed. JS/JSX/TS syntax parser: passed.
+Vite build and ESLint: NOT VERIFIED (npm dependency installation timed out; local vite/eslint unavailable).
+Live Supabase migration, authentication and browser tests: NOT PERFORMED.
+Run LOGIN-SETUP-AND-LOCKED-SCOPE.md before deploying.

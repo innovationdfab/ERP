@@ -88,6 +88,11 @@ export async function signInWithPassword(email, password) {
 }
 
 
+export async function getAuthUser(accessToken) {
+  if (!accessToken) throw new Error('No active login session.');
+  return request('/auth/v1/user', { headers: headers(accessToken) });
+}
+
 export async function refreshSession(refreshToken) {
   if (!refreshToken) throw new Error('No refresh token is available.');
   return request('/auth/v1/token?grant_type=refresh_token', {

@@ -20,7 +20,9 @@ import './sap-enterprise.css';
 import './premium-forms.css';
 import { PremiumUploadField, PremiumImportPage, FormSectionHeading, FormDialogBackdrop } from './premium-forms.jsx';
 import { todayISO, isoDate, displayDate, readStored, writeStored, fieldType, validateFields, parseCsv, csvCell, validateBackup, readAttachment } from './erp-utils.js';
-import { signInWithPassword, refreshSession, signOut } from './backend/supabase-rest.js';
+import { signInWithPassword, refreshSession, signOut, getAuthUser, invokeFunction } from './backend/supabase-rest.js';
+import { requiresInitialPasswordChange, initialPasswordIssue } from './login-policy.js';
+import './login-initial.css';
 import AdminControl from './admin-control.jsx';
 import AdminPreview from './admin-preview.jsx';
 import {canUseLocalAdminPreview} from './admin-preview-policy.js';
@@ -348,6 +350,11 @@ function App(){
   const [loginValues,setLoginValues]=useState({userId:localStorage.getItem('dfab-erp-user-email')||'',password:''});
   const [authLoading,setAuthLoading]=useState(false);
   const [loginError,setLoginError]=useState('');
+  const [loginMessage,setLoginMessage]=useState('');
+  const [passwordSetup,setPasswordSetup]=useState(null);
+  const [passwordDraft,setPasswordDraft]=useState({password:'',confirm:''});
+  const [passwordSetupError,setPasswordSetupError]=useState('');
+  const [passwordSetupLoading,setPasswordSetupLoading]=useState(false);
   const [lampOn,setLampOn]=useState(false);
   const [sessionChecking,setSessionChecking]=useState(()=>Boolean(localStorage.getItem('dfab-erp-supabase-session')));
   const [filter,setFilter]=useState('');
@@ -364,7 +371,47 @@ function App(){
   const [booting,setBooting]=useState(true);
   useEffect(()=>{const h=e=>setToast(e.detail);window.addEventListener('erp-storage-error',h);return()=>window.removeEventListener('erp-storage-error',h)},[]);
   useEffect(()=>{const h=()=>setCloudRevision(v=>v+1);window.addEventListener('erp-cloud-change',h);return()=>window.removeEventListener('erp-cloud-change',h)},[]);
-  useEffect(()=>{let cancelled=false;const restore=async()=>{const savedRaw=localStorage.getItem('dfab-erp-supabase-session');if(!savedRaw){if(!cancelled)setSessionChecking(false);return}setAuthLoading(true);try{const saved=JSON.parse(savedRaw);let auth=saved;if(saved.refresh_token){auth=await refreshSession(saved.refresh_token)}if(!auth?.access_token)throw new Error('No valid session');setCloudAccessToken(auth.access_token);const permissions=await establishAdminAccess(auth.access_token);await initializeCloudStore(auth.access_token);const restored=permissions.is_admin?await restorePreviousErpDataOnce():{restored:false};if(restored.restored)await initializeCloudStore(auth.access_token);const verifiedData=permissions.is_admin?getRestoredDataStatus():{complete:true};if(!verifiedData.complete)throw new Error('Administrator data migration verification failed. Review the Supabase restore state.');if(cancelled)return;localStorage.setItem('dfab-erp-supabase-session',JSON.stringify({access_token:auth.access_token,refresh_token:auth.refresh_token||saved.refresh_token,expires_at:auth.expires_at||null,user:localStorage.getItem('dfab-erp-user-email')||saved.user||''}));setLoginValues({userId:localStorage.getItem('dfab-erp-user-email')||saved.user||'',password:''});setAuthenticated(true);setBooting(true);if(restored.restored)setToast(`Supabase synced: ${verifiedData.products} products · ${verifiedData.customers} customers · ${verifiedData.vendors} vendors · ${verifiedData.invoices} invoices`)}catch(error){setLoginError(error?.message||'Session verification failed');localStorage.removeItem('dfab-erp-supabase-session');setCloudAccessToken('');setAdminToken('');setAdminAccess(null)}finally{if(!cancelled){setAuthLoading(false);setSessionChecking(false)}}};restore();return()=>{cancelled=true}},[]);
+  useEffect(()=>{
+    let cancelled=false;
+    const restore=async()=>{
+      const savedRaw=localStorage.getItem('dfab-erp-supabase-session');
+      if(!savedRaw){setSessionChecking(false);return;}
+      setAuthLoading(true);
+      try{
+        const saved=JSON.parse(savedRaw);
+        let auth=saved;
+        if(saved.refresh_token)auth=await refreshSession(saved.refresh_token);
+        if(!auth?.access_token)throw new Error('No valid session');
+        const identity=await getAuthUser(auth.access_token);
+        if(cancelled)return;
+        const email=identity?.email||saved.user||localStorage.getItem('dfab-erp-user-email')||'';
+        const storedSession={access_token:auth.access_token,refresh_token:auth.refresh_token||saved.refresh_token||'',expires_at:auth.expires_at||null,user:email};
+        localStorage.setItem('dfab-erp-supabase-session',JSON.stringify(storedSession));
+        setLoginValues({userId:email,password:''});
+        if(requiresInitialPasswordChange(identity)){
+          setCloudAccessToken('');setAdminToken('');setAdminAccess(null);
+          setPasswordSetup({email,accessToken:auth.access_token});
+          return;
+        }
+        setCloudAccessToken(auth.access_token);
+        const permissions=await establishAdminAccess(auth.access_token);
+        await initializeCloudStore(auth.access_token);
+        const restored=permissions.is_admin?await restorePreviousErpDataOnce():{restored:false};
+        if(restored.restored)await initializeCloudStore(auth.access_token);
+        const verifiedData=permissions.is_admin?getRestoredDataStatus():{complete:true};
+        if(!verifiedData.complete)throw new Error('Administrator data migration verification failed. Review the Supabase restore state.');
+        if(cancelled)return;
+        setAuthenticated(true);setBooting(true);
+        if(restored.restored)setToast(`Supabase synced: ${verifiedData.products} products · ${verifiedData.customers} customers · ${verifiedData.vendors} vendors · ${verifiedData.invoices} invoices`);
+      }catch(error){
+        if(cancelled)return;
+        setLoginError(error?.message||'Session verification failed');
+        localStorage.removeItem('dfab-erp-supabase-session');
+        setCloudAccessToken('');setAdminToken('');setAdminAccess(null);
+      }finally{if(!cancelled){setAuthLoading(false);setSessionChecking(false)}}
+    };
+    restore();return()=>{cancelled=true};
+  },[]);
   // Refresh the current published document routes when an employee returns to the ERP.
   // This is read-only and does not touch existing records or change page state.
   useEffect(()=>{
@@ -404,8 +451,69 @@ function App(){
   const canVisitPage=page=>resolvePage(page)==='Admin Control'?true:['Users','User Roles','Role Permissions'].includes(resolvePage(page))?Boolean(adminAccess?.is_admin):canAdminAccess(adminAccess,resolvePage(page),'view');
   const canShowNode=raw=>{const n=normalizeNode(raw);return Array.isArray(n.children)?n.children.some(canShowNode):canVisitPage(n.page||n.label);};
   const goToPage=(page,menuPath=null)=>{if(page){const p=resolvePage(page);if(!canVisitPage(p)){setToast('Your role does not have access to this ERP module.');return;}const selectedPath=menuPath!==null?menuPath:(findMenuParentPath(p)||'');setOpenMenus(menuStateForPath(selectedPath));setActivePage(p);if(window.innerWidth<=820)setSidebarOpen(false);setProfileOpen(false);setCommandOpen(false);setNotifyOpen(false);setToast(`${p} opened`)}};
-  const login=async e=>{e.preventDefault();if(!loginValues.userId.trim()||!loginValues.password.trim()){setLoginError('Enter your Supabase user email and password to continue.');return}setAuthLoading(true);setLoginError('');try{const auth=await signInWithPassword(loginValues.userId.trim(),loginValues.password);const token=auth?.access_token;if(!token)throw new Error('Supabase did not return an access token.');setCloudAccessToken(token);const permissions=await establishAdminAccess(token);await initializeCloudStore(token);const restored=permissions.is_admin?await restorePreviousErpDataOnce():{restored:false};if(restored.restored)await initializeCloudStore(token);const verifiedData=permissions.is_admin?getRestoredDataStatus():{complete:true};if(!verifiedData.complete)throw new Error('Administrator data restore verification failed.');localStorage.setItem('dfab-erp-user-email',loginValues.userId.trim());localStorage.setItem('dfab-erp-supabase-session',JSON.stringify({access_token:token,refresh_token:auth.refresh_token||'',expires_at:auth.expires_at||null,user:loginValues.userId.trim()}));setActivePage('Home');setOpenMenus({});setSidebarOpen(window.innerWidth>820);setAuthenticated(true);setBooting(true);if(restored.restored)setToast(`Supabase synced: ${verifiedData.products} products · ${verifiedData.customers} customers · ${verifiedData.vendors} vendors · ${verifiedData.invoices} invoices`)}catch(error){setCloudAccessToken('');setAdminToken('');setAdminAccess(null);setLoginError(error.message||'Login failed.')}finally{setAuthLoading(false)}};
-  const logout=async()=>{try{await flushCloudWrites()}catch(error){setToast(`Could not finish saving ERP changes: ${error.message}`);return;}let token='';try{token=JSON.parse(localStorage.getItem('dfab-erp-supabase-session')||'{}').access_token||''}catch{}try{await signOut(token)}catch{}localStorage.removeItem('dfab-erp-supabase-session');setCloudAccessToken('');setAdminToken('');setAdminAccess(null);setWorkflowOverrides({});setAuthenticated(false);setProfileOpen(false);setNotifyOpen(false);setCommandOpen(false);setActivePage('Home');setOpenMenus({});setSidebarOpen(true);setLoginValues({userId:localStorage.getItem('dfab-erp-user-email')||'',password:''})};
+  const login=async e=>{
+    e.preventDefault();
+    if(!loginValues.userId.trim()||!loginValues.password){setLoginError('Enter your employee email and password to continue.');return;}
+    setAuthLoading(true);setLoginError('');setLoginMessage('');
+    try{
+      const email=loginValues.userId.trim().toLowerCase();
+      const auth=await signInWithPassword(email,loginValues.password);
+      const token=auth?.access_token;
+      if(!token)throw new Error('Supabase did not return an access token.');
+      const identity=await getAuthUser(token);
+      const storedSession={access_token:token,refresh_token:auth.refresh_token||'',expires_at:auth.expires_at||null,user:email};
+      localStorage.setItem('dfab-erp-user-email',email);
+      localStorage.setItem('dfab-erp-supabase-session',JSON.stringify(storedSession));
+      setLoginValues({userId:email,password:''});
+      if(requiresInitialPasswordChange(identity)){
+        setCloudAccessToken('');setAdminToken('');setAdminAccess(null);
+        setPasswordSetup({email,accessToken:token});
+        setPasswordDraft({password:'',confirm:''});
+        setPasswordSetupError('');
+        return;
+      }
+      setCloudAccessToken(token);
+      const permissions=await establishAdminAccess(token);
+      await initializeCloudStore(token);
+      const restored=permissions.is_admin?await restorePreviousErpDataOnce():{restored:false};
+      if(restored.restored)await initializeCloudStore(token);
+      const verifiedData=permissions.is_admin?getRestoredDataStatus():{complete:true};
+      if(!verifiedData.complete)throw new Error('Administrator data restore verification failed.');
+      setActivePage('Home');setOpenMenus({});setSidebarOpen(window.innerWidth>820);
+      setAuthenticated(true);setBooting(true);
+      if(restored.restored)setToast(`Supabase synced: ${verifiedData.products} products · ${verifiedData.customers} customers · ${verifiedData.vendors} vendors · ${verifiedData.invoices} invoices`);
+    }catch(error){
+      setCloudAccessToken('');setAdminToken('');setAdminAccess(null);
+      localStorage.removeItem('dfab-erp-supabase-session');
+      setLoginError(error?.message||'Login failed.');
+    }finally{setAuthLoading(false)}
+  };
+  const finishInitialPasswordSetup=async e=>{
+    e.preventDefault();
+    if(!passwordSetup)return;
+    const issue=initialPasswordIssue(passwordDraft.password,passwordDraft.confirm);
+    if(issue){setPasswordSetupError(issue);return;}
+    setPasswordSetupLoading(true);setPasswordSetupError('');
+    try{
+      await invokeFunction('erp-admin-invite',{action:'change-initial-password',password:passwordDraft.password},{accessToken:passwordSetup.accessToken});
+      // The previous JWT still carries the temporary-password claim. Require a
+      // fresh sign-in so permissions are resolved from a newly minted JWT.
+      const email=passwordSetup.email;
+      localStorage.removeItem('dfab-erp-supabase-session');
+      setCloudAccessToken('');setAdminToken('');setAdminAccess(null);
+      setPasswordSetup(null);setPasswordDraft({password:'',confirm:''});
+      setLoginValues({userId:email,password:''});setLampOn(true);
+      setLoginMessage('Password updated. Sign in with your new password.');
+    }catch(error){setPasswordSetupError(error.message||'Could not set your new password.');}
+    finally{setPasswordSetupLoading(false)}
+  };
+  const cancelInitialPasswordSetup=()=>{
+    localStorage.removeItem('dfab-erp-supabase-session');
+    setCloudAccessToken('');setAdminToken('');setAdminAccess(null);
+    setPasswordSetup(null);setPasswordDraft({password:'',confirm:''});
+    setLoginValues({userId:passwordSetup?.email||'',password:''});setLampOn(true);
+  };
+  const logout=async()=>{try{await flushCloudWrites()}catch(error){setToast(`Could not finish saving ERP changes: ${error.message}`);return;}let token='';try{token=JSON.parse(localStorage.getItem('dfab-erp-supabase-session')||'{}').access_token||''}catch{}try{await signOut(token)}catch{}localStorage.removeItem('dfab-erp-supabase-session');setCloudAccessToken('');setAdminToken('');setAdminAccess(null);setWorkflowOverrides({});setAuthenticated(false);setPasswordSetup(null);setProfileOpen(false);setNotifyOpen(false);setCommandOpen(false);setActivePage('Home');setOpenMenus({});setSidebarOpen(true);setLoginValues({userId:localStorage.getItem('dfab-erp-user-email')||'',password:''})};
   const pageTitle=activePage==='Groups'?'Product Groups':(displayPageNames[activePage]||activePage);
   const commands=[
     ['Home','Executive dashboard',Gauge],['Sales Enquiries','Create and qualify enquiries',Activity],['Sales Quotations','Commercial quotations',FileText],['Sales Orders','Confirmed customer orders',ShoppingCart],['Purchase Orders','Procurement control',CreditCard],['GRN','Goods receipt',Truck],['Work Order','Production execution',Factory],['Pending Approvals','Approval inbox',BadgeCheck],['Sales Invoice','Billing and tax',IndianRupee],['Customer Payments','Collections',WalletCards],['Products','Product master',Package],['Customers','Customer master',Users],['Vendors','Vendor master',Building2],['Activity Log','Audit trail',Activity]
@@ -416,8 +524,9 @@ function App(){
   const notifications=useMemo(()=>collectDatabaseNotifications(),[cloudRevision,activePage,notifyOpen]);
 
   if(sessionChecking)return <div className="erp-boot"><div className="boot-orb"><img src={logo} alt="DFAB"/></div><div className="boot-copy"><b>DFAB OneERP</b><span>Restoring secure session</span></div><div className="boot-bar"><i/></div></div>;
+  if(!authenticated && passwordSetup)return <main className="erp-first-login-shell"><section className="erp-first-login-card" aria-labelledby="erp-first-login-title"><div className="erp-first-login-logo"><img src={logo} alt="DFAB"/></div><span className="erp-first-login-kicker">DFAB OneERP · Employee account setup</span><h1 id="erp-first-login-title">Create your personal password</h1><p>Your account was provisioned by your ERP administrator. Replace the temporary password before accessing company information.</p><p className="erp-first-login-email">{passwordSetup.email}</p><form onSubmit={finishInitialPasswordSetup}><label>New password<input type="password" autoComplete="new-password" minLength={12} maxLength={128} required value={passwordDraft.password} onChange={e=>setPasswordDraft(v=>({...v,password:e.target.value}))} placeholder="At least 12 characters"/></label><label>Confirm new password<input type="password" autoComplete="new-password" minLength={12} maxLength={128} required value={passwordDraft.confirm} onChange={e=>setPasswordDraft(v=>({...v,confirm:e.target.value}))} placeholder="Repeat your new password"/></label><small>Use 12 or more characters with letters and numbers. Do not reuse the temporary password.</small>{passwordSetupError&&<p className="erp-first-login-error" role="alert">{passwordSetupError}</p>}<button type="submit" disabled={passwordSetupLoading}>{passwordSetupLoading?'Saving securely…':'Save password'}</button><button type="button" className="erp-first-login-secondary" disabled={passwordSetupLoading} onClick={cancelInitialPasswordSetup}>Return to login</button></form></section></main>;
   if(!authenticated && adminPreviewOpen)return <AdminPreview publicMode={!allowAdminPreview} onClose={()=>setAdminPreviewOpen(false)}/>;
-  if(!authenticated)return <main className={`dfab-login-stage ${lampOn?'lamp-on':'lamp-off'}`}><section className="dfab-torch-scene" aria-label="Interactive welding torch"><div className="torch-glow"/><div className="torch-stage"><div className="steel-workpiece" aria-hidden="true"><span className="steel-top"/><span className="steel-seam"/><span className={`weld-bead ${lampOn?'active':''}`}/></div><button type="button" className="real-welding-torch" aria-pressed={lampOn} onClick={()=>setLampOn(v=>!v)} title={lampOn?'Stop welding':'Start welding'}><svg viewBox="0 0 420 300" role="img" aria-label="MIG welding torch"><defs><linearGradient id="torchHandle" x1="0" x2="1"><stop offset="0" stopColor="#17222d"/><stop offset=".5" stopColor="#3a4a58"/><stop offset="1" stopColor="#111923"/></linearGradient><linearGradient id="torchMetal" x1="0" x2="1"><stop offset="0" stopColor="#8798a8"/><stop offset=".5" stopColor="#d2dbe2"/><stop offset="1" stopColor="#566675"/></linearGradient><linearGradient id="torchCopper" x1="0" x2="1"><stop offset="0" stopColor="#8d4a21"/><stop offset=".5" stopColor="#e4974d"/><stop offset="1" stopColor="#6f3518"/></linearGradient></defs><path className="mig-cable" d="M15 245 C70 250, 90 225, 123 215"/><g className="mig-body"><path className="mig-grip" d="M104 184 L181 139 Q195 131 207 144 L235 185 Q241 196 230 204 L153 251 Q140 258 130 246 L99 202 Q91 190 104 184 Z" fill="url(#torchHandle)"/><path className="mig-rib" d="M125 188 L174 159 M135 204 L185 174 M146 219 L196 188 M157 234 L207 202"/><rect className="mig-trigger" x="171" y="182" width="42" height="18" rx="8" transform="rotate(-33 171 182)"/><path className="mig-neck" d="M202 151 C245 121, 272 94, 294 59" fill="none" stroke="url(#torchMetal)" strokeWidth="22" strokeLinecap="round"/><path className="mig-neck-shadow" d="M204 153 C246 122, 273 96, 295 60" fill="none" stroke="#1b2731" strokeWidth="4" strokeLinecap="round" opacity=".55"/><path className="mig-nozzle" d="M284 55 L314 38 L343 68 L318 92 L288 76 Z" fill="url(#torchCopper)"/><path className="mig-tip" d="M331 68 L362 80 L356 97 L324 86 Z" fill="url(#torchMetal)"/><circle className="mig-contact" cx="359" cy="89" r="7" fill="#d99143"/></g></svg><span className={`torch-arc ${lampOn?'active':''}`} aria-hidden="true"/><span className="torch-action-label">{lampOn?'Stop welding':'Weld to reveal'}</span></button><div className={`torch-sparks ${lampOn?'active':''}`} aria-hidden="true">{Array.from({length:14},(_,i)=><i key={i}/>)}</div></div></section><section className="dfab-login-side"><div className={`dfab-login-spotlight ${lampOn?'visible':''}`}><div className="spotlight-rim"/><div className={`weld-spark-burst ${lampOn?'active':''}`} aria-hidden="true"><span className="spark-core"/><span className="spark-ring"/><i/><i/><i/><i/><i/><i/></div><div className={`dfab-login-card-shell ${lampOn?'revealed':'prelit'}`}><form className={`dfab-login-card ${lampOn?'card-live':'card-muted'}`} onSubmit={login}><div className="dfab-login-head"><span>DFAB OneERP</span><h1>Welcome back</h1><p>Sign in to continue into the production workspace.</p></div><div className="login-status-row"><span><BadgeCheck size={14}/> Persistent secure session</span><span><MonitorCog size={14}/> Premium production workspace</span></div><label>Email<input type="email" autoFocus={lampOn} autoComplete="username" value={loginValues.userId} onChange={e=>setLoginValues(v=>({...v,userId:e.target.value}))} placeholder="name@company.com" readOnly={!lampOn} disabled={!lampOn}/></label><label>Password<input autoComplete="current-password" type="password" value={loginValues.password} onChange={e=>setLoginValues(v=>({...v,password:e.target.value}))} placeholder="Password" readOnly={!lampOn} disabled={!lampOn}/></label>{loginError&&lampOn&&<div className="imantra-login-error" role="alert">{loginError}</div>}<button className="dfab-login-submit" type="submit" disabled={authLoading||!lampOn}>{authLoading?'Signing in…':lampOn?'Login to ERP':'Weld to unlock'}</button></form><div className={`login-locked-note ${lampOn?'hidden':''}`}><Zap size={16}/><span>Activate the welding torch to illuminate and unlock the login panel.</span></div></div></div>{<button type="button" className="dfab-admin-preview-button" onClick={()=>setAdminPreviewOpen(true)}><ShieldCheck size={16}/> Admin Control Center · view without login</button>}</section></main>;
+  if(!authenticated)return <main className={`dfab-login-stage ${lampOn?'lamp-on':'lamp-off'}`}><section className="dfab-torch-scene" aria-label="Interactive welding torch"><div className="torch-glow"/><div className="torch-stage"><div className="steel-workpiece" aria-hidden="true"><span className="steel-top"/><span className="steel-seam"/><span className={`weld-bead ${lampOn?'active':''}`}/></div><button type="button" className="real-welding-torch" aria-pressed={lampOn} onClick={()=>setLampOn(v=>!v)} title={lampOn?'Stop welding':'Start welding'}><svg viewBox="0 0 420 300" role="img" aria-label="MIG welding torch"><defs><linearGradient id="torchHandle" x1="0" x2="1"><stop offset="0" stopColor="#17222d"/><stop offset=".5" stopColor="#3a4a58"/><stop offset="1" stopColor="#111923"/></linearGradient><linearGradient id="torchMetal" x1="0" x2="1"><stop offset="0" stopColor="#8798a8"/><stop offset=".5" stopColor="#d2dbe2"/><stop offset="1" stopColor="#566675"/></linearGradient><linearGradient id="torchCopper" x1="0" x2="1"><stop offset="0" stopColor="#8d4a21"/><stop offset=".5" stopColor="#e4974d"/><stop offset="1" stopColor="#6f3518"/></linearGradient></defs><path className="mig-cable" d="M15 245 C70 250, 90 225, 123 215"/><g className="mig-body"><path className="mig-grip" d="M104 184 L181 139 Q195 131 207 144 L235 185 Q241 196 230 204 L153 251 Q140 258 130 246 L99 202 Q91 190 104 184 Z" fill="url(#torchHandle)"/><path className="mig-rib" d="M125 188 L174 159 M135 204 L185 174 M146 219 L196 188 M157 234 L207 202"/><rect className="mig-trigger" x="171" y="182" width="42" height="18" rx="8" transform="rotate(-33 171 182)"/><path className="mig-neck" d="M202 151 C245 121, 272 94, 294 59" fill="none" stroke="url(#torchMetal)" strokeWidth="22" strokeLinecap="round"/><path className="mig-neck-shadow" d="M204 153 C246 122, 273 96, 295 60" fill="none" stroke="#1b2731" strokeWidth="4" strokeLinecap="round" opacity=".55"/><path className="mig-nozzle" d="M284 55 L314 38 L343 68 L318 92 L288 76 Z" fill="url(#torchCopper)"/><path className="mig-tip" d="M331 68 L362 80 L356 97 L324 86 Z" fill="url(#torchMetal)"/><circle className="mig-contact" cx="359" cy="89" r="7" fill="#d99143"/></g></svg><span className={`torch-arc ${lampOn?'active':''}`} aria-hidden="true"/><span className="torch-action-label">{lampOn?'Stop welding':'Weld to reveal'}</span></button><div className={`torch-sparks ${lampOn?'active':''}`} aria-hidden="true">{Array.from({length:14},(_,i)=><i key={i}/>)}</div></div></section><section className="dfab-login-side"><div className={`dfab-login-spotlight ${lampOn?'visible':''}`}><div className="spotlight-rim"/><div className={`weld-spark-burst ${lampOn?'active':''}`} aria-hidden="true"><span className="spark-core"/><span className="spark-ring"/><i/><i/><i/><i/><i/><i/></div><div className={`dfab-login-card-shell ${lampOn?'revealed':'prelit'}`}><form className={`dfab-login-card ${lampOn?'card-live':'card-muted'}`} onSubmit={login}><div className="dfab-login-head"><span>DFAB OneERP</span><h1>Welcome back</h1><p>Sign in to continue into the production workspace.</p></div><div className="login-status-row"><span><BadgeCheck size={14}/> Persistent secure session</span><span><MonitorCog size={14}/> Premium production workspace</span></div><label>Email<input type="email" autoFocus={lampOn} autoComplete="username" value={loginValues.userId} onChange={e=>setLoginValues(v=>({...v,userId:e.target.value}))} placeholder="name@company.com" readOnly={!lampOn} disabled={!lampOn}/></label><label>Password<input autoComplete="current-password" type="password" value={loginValues.password} onChange={e=>setLoginValues(v=>({...v,password:e.target.value}))} placeholder="Password" readOnly={!lampOn} disabled={!lampOn}/></label>{loginError&&lampOn&&<div className="imantra-login-error" role="alert">{loginError}</div>}{loginMessage&&lampOn&&<div className="erp-login-success" role="status">{loginMessage}</div>}<button className="dfab-login-submit" type="submit" disabled={authLoading||!lampOn}>{authLoading?'Signing in…':lampOn?'Login to ERP':'Weld to unlock'}</button></form><div className={`login-locked-note ${lampOn?'hidden':''}`}><Zap size={16}/><span>Activate the welding torch to illuminate and unlock the login panel.</span></div></div></div>{<button type="button" className="dfab-admin-preview-button" onClick={()=>setAdminPreviewOpen(true)}><ShieldCheck size={16}/> Admin Control Center · view without login</button>}</section></main>;
   if(booting)return <div className="erp-boot"><div className="boot-orb"><img src={logo} alt="DFAB"/></div><div className="boot-copy"><b>DFAB OneERP</b><span>Preparing enterprise workspace</span></div><div className="boot-bar"><i/></div></div>;
   return <div className="app-shell premium-motion-root">
     <header className="topbar premium-topbar">

@@ -65,6 +65,7 @@ test('admin invite service verifies signed-in administrator before service accou
  const ts=fs.readFileSync(path.join(process.cwd(),'supabase/functions/erp-admin-invite/index.ts'),'utf8');
  assert.match(ts,/caller\.auth\.getUser\(jwt\)/);
  assert.match(ts,/caller\.rpc\('erp_admin_is_admin'\)/);
- assert.ok(ts.indexOf("caller.rpc('erp_admin_is_admin'") < ts.indexOf('createClient(url,serviceKey'));
+ assert.ok(ts.indexOf("caller.rpc('erp_admin_is_admin'") < ts.indexOf('await elevated.auth.admin.createUser('));
+ assert.match(ts,/actor\.app_metadata\?\.\[initialFlag\] !== true/);
  assert.match(ts,/ERP_ALLOWED_ORIGINS/);
 });
