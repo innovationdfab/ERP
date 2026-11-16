@@ -237,3 +237,10 @@
 .admin-draft-notice{display:flex;align-items:flex-start;gap:10px;font-size:12px;line-height:1.6;border-radius:10px;background:#f2f7ff;border:1px solid #d5e6fd;color:#2a506f;padding:12px;margin:8px 0 16px}
 .admin-draft-notice svg{flex-shrink:0;margin-top:2px}
 @media(max-width:900px){.admin-auto-flow-overview,.admin-auto-flow-card{flex-direction:column;align-items:stretch;padding:16px}.admin-auto-flow-card .admin-button,.admin-auto-flow-overview .admin-button{align-self:flex-start;max-width:100%}}
+
+/* Scoped employee password entry; all non-Admin ERP screens remain untouched. */
+.admin-simple .admin-password-section{display:flex;flex-direction:column;gap:12px;padding:15px;border:1px solid #d5e4f0;border-radius:11px;background:linear-gradient(135deg,#f5f9ff,#fff)}
+.admin-simple .admin-password-section .admin-help{margin:0;line-height:1.55}
+.admin-simple .admin-password-safety{font-size:11px;color:#66788c;line-height:1.5}
+.admin-simple .admin-password-actions{display:flex;align-items:center;justify-content:flex-end;gap:8px;flex-wrap:wrap}
+.admin-simple .admin-password-section input[type=password],.admin-simple .admin-password-section input[type=text]{font-size:13px}

@@ -70,7 +70,12 @@ async function request(path, options = {}) {
   })() : null;
   if (!response.ok) {
     const detail = body?.message || body?.error_description || body?.error || `Request failed (${response.status})`;
-    const message = response.status === 401 ? 'Supabase session expired or is invalid. Sign in again.'
+    const identityLogin = path.startsWith('/auth/v1/token?grant_type=password');
+    const edgeFunction = path.startsWith('/functions/v1/');
+    const message = identityLogin && /invalid login credentials|invalid email or password/i.test(String(detail))
+      ? 'Incorrect email or password. Check the employee credentials configured in Admin.'
+      : edgeFunction ? detail
+      : response.status === 401 ? 'Supabase session expired or is invalid. Sign in again.'
       : response.status === 403 ? 'Permission denied by Supabase. Contact your ERP administrator.'
       : detail;
     throw new Error(String(message));

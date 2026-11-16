@@ -15,6 +15,8 @@ const allowedOrigins = (Deno.env.get('ERP_ALLOWED_ORIGINS') || 'http://localhost
 const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const emailPattern = /^\S+@\S+\.\S+$/;
 const initialFlag = 'erp_initial_password_pending';
+// New passwords are transmitted only in this authenticated request and handled by Supabase Auth.
+const validPersonalPassword = (password: string) => password.length >= 12 && password.length <= 128 && /[A-Za-z]/.test(password) && /[0-9]/.test(password);
 
 Deno.serve(async request => {
   const origin = request.headers.get('Origin') || '';
@@ -94,12 +96,19 @@ Deno.serve(async request => {
       }
       // An admin account cannot have a company-wide known initial password.
       const requestedAdmin = roleIds.some((id: string) => roles.some((role: {id: string; code: string; system_role?: boolean}) => role.id === id && (role.code === 'ADMIN' || role.system_role === true)));
-      if (!requestedAdmin && (temporaryPassword.length < 8 || temporaryPassword.length > 128)) {
-        return respond(503, { error: 'ERP_INITIAL_PASSWORD secret is not configured. Contact the deployment administrator.' });
+      if (body.password != null && typeof body.password !== 'string') return respond(400, { error: 'Password must be plain text.' });
+      const suppliedPassword = typeof body.password === 'string' ? body.password : '';
+      if (requestedAdmin && suppliedPassword) return respond(400, { error: 'Administrator access requires an individual invitation; do not set a shared password.' });
+      if (suppliedPassword && (!validPersonalPassword(suppliedPassword) || suppliedPassword === temporaryPassword)) {
+        return respond(400, { error: 'Use a different 12–128 character temporary password with letters and numbers.' });
       }
+      if (!requestedAdmin && !suppliedPassword && (temporaryPassword.length < 8 || temporaryPassword.length > 128)) {
+        return respond(503, { error: 'ERP_INITIAL_PASSWORD secret is not configured. Enter an individual strong password or configure the server default.' });
+      }
+      const accountPassword = suppliedPassword || temporaryPassword;
       const { data: created, error: createError } = requestedAdmin
         ? await elevated.auth.admin.inviteUserByEmail(email, { data: { full_name: name } })
-        : await elevated.auth.admin.createUser({ email, password: temporaryPassword, email_confirm: true, user_metadata: { full_name: name }, app_metadata: { [initialFlag]: true } });
+        : await elevated.auth.admin.createUser({ email, password: accountPassword, email_confirm: true, user_metadata: { full_name: name }, app_metadata: { [initialFlag]: true } });
       if (createError || !created?.user?.id) return respond(400, { error: createError?.message || 'Employee Auth account could not be created.' });
       // New Auth account trigger creates ERP profile with no access. Assign the
       // selected roles only after successful creation; failure stays locked.
@@ -107,7 +116,14 @@ Deno.serve(async request => {
         p_user_id: created.user.id, p_department_id: departmentId,
         p_display_name: name, p_active: true, p_role_ids: roleIds,
       });
-      if (assignError) return respond(500, { error: 'Auth account created but ERP permissions were not saved. Open the employee card and repair the role assignment. ' + assignError.message });
+      if (assignError) {
+        // Only remove the just-created Auth user; never touch a pre-existing identity.
+        // This avoids leaving new employees with working credentials but no role.
+        const { error: rollbackError } = await elevated.auth.admin.deleteUser(created.user.id);
+        return respond(500, { error: rollbackError
+          ? 'Auth account created without ERP access, and automatic rollback failed. An administrator must reconcile this employee before retrying.'
+          : 'Employee creation was rolled back because ERP role assignment failed. Check Supabase permissions and try again.' });
+      }
       return respond(200, { created: true, email, user_id: created.user.id, temporary_password: !requestedAdmin, invited: requestedAdmin });
     }
 
@@ -117,11 +133,16 @@ Deno.serve(async request => {
       const profile = dashboard.users.find((item: {user_id: string}) => item.user_id === id);
       if (!profile || profile.active !== true) return respond(404, { error: 'Active employee not found in your organization.' });
       if (isProtected(id)) return respond(403, { error: 'Administrator accounts and your own account cannot use the shared initial password. Use an individual password reset.' });
-      if (temporaryPassword.length < 8 || temporaryPassword.length > 128) return respond(503, { error: 'ERP_INITIAL_PASSWORD secret is not configured.' });
+      if (body.password != null && typeof body.password !== 'string') return respond(400, { error: 'Password must be plain text.' });
+      const suppliedPassword = typeof body.password === 'string' ? body.password : '';
+      if (suppliedPassword && (!validPersonalPassword(suppliedPassword) || suppliedPassword === temporaryPassword)) {
+        return respond(400, { error: 'Use a different 12–128 character temporary password with letters and numbers.' });
+      }
+      if (!suppliedPassword && (temporaryPassword.length < 8 || temporaryPassword.length > 128)) return respond(503, { error: 'ERP_INITIAL_PASSWORD secret is not configured. Enter an individual strong password or configure the server default.' });
       const { data: existing, error: fetchError } = await elevated.auth.admin.getUserById(id);
       if (fetchError || !existing.user) return respond(404, { error: 'Employee Auth account not found. ' + (fetchError?.message || '') });
       const { error: resetError } = await elevated.auth.admin.updateUserById(id, {
-        password: temporaryPassword,
+        password: suppliedPassword || temporaryPassword,
         app_metadata: { ...(existing.user.app_metadata || {}), [initialFlag]: true },
       });
       if (resetError) return respond(400, { error: resetError.message });

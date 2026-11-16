@@ -1,6 +1,7 @@
 import React, {useCallback,useEffect,useMemo,useState} from 'react';
 import {ArrowLeft,ArrowRight,Check,ClipboardList,Database,FileCheck2,GitBranch,Layers3,LoaderCircle,Plus,RefreshCw,Save,Search,ShieldCheck,Trash2,UserPlus,Users,X} from 'lucide-react';
 import {askConfirmation} from './in-app-dialog.jsx';
+import {temporaryPasswordIssue} from './employee-password-policy.js';
 import {loadAdminDashboard,saveDepartment,saveRole,saveUser,inviteUser,resetEmployeeLogin,resetEmployeeLogins,saveTemplate,publishTemplate,unpublishTemplate,registerStorage,deleteDraftTemplate,deleteDepartment,deleteRole,unmapStorage} from './admin-api.js';
 import {ACTIONS,normalizedEdges,validateTemplateEdges} from './admin-permissions.js';
 import {traceDocument} from './admin-lineage.js';
@@ -11,6 +12,7 @@ import './admin-control.css';
 const blankDepartment={code:'',name:'',cost_center:'',active:true};
 const blankRole={code:'',name:'',description:'',active:true,rights:[]};
 const blankInvitation={email:'',name:'',department_id:'',role_ids:[]};
+const blankPasswordFields={password:'',confirm:''};
 const trim=s=>String(s??'').trim();
 const dateTime=s=>s?new Date(s).toLocaleString('en-IN',{dateStyle:'medium',timeStyle:'short'}):'—';
 const makeRights=(rights=[])=>rights.map(r=>({page:r.page,...Object.fromEntries(ACTIONS.map(a=>[a,Boolean(r[`can_${a}`]??r[a])]))}));
@@ -24,7 +26,7 @@ const ADMIN_NAV_GROUPS=[
  {label:'OVERSIGHT',items:[['audit','Activity',ClipboardList],['storage','Advanced',Database]]},
 ];
 const ADMIN_SECTION_HELP={
- users:{title:'Employees and their ERP logins',detail:'Employee logins are created in Supabase Auth; departments and roles are stored in the ERP database. Non-admin employees use the configured initial password and must change it on first login.',result:'New access and password changes are reflected at the employee’s next sign-in.'},
+ users:{title:'Employees and their ERP logins',detail:'Employee logins and temporary passwords are created in Supabase Auth; departments and roles are saved in the ERP database. Use an individual password or the configured server default; a password change is required on first login.',result:'New access and password changes are reflected at the employee’s next sign-in.'},
  departments:{title:'Department details used across the company',detail:'Create or edit departments here, then assign employees to them in Employees.',result:'Saved department changes are available to other modules that read this shared company setup.'},
  roles:{title:'What each employee is allowed to do',detail:'Assign View, Create, Edit, Delete, Approve and Export rights by ERP module and role.',result:'Permissions are checked by the existing ERP access layer; employees may need to refresh to get new access.'},
  workflows:{title:'How one document creates the next',detail:'Review the current connections, edit a draft template and publish only after approval.',result:'Publishing updates future document handoffs; it does not rewrite existing records.'},
@@ -47,6 +49,8 @@ export default function AdminControl({initialTab='overview',onWorkflowPublished=
  const [template,setTemplate]=useState(null),[selectedTemplate,setSelectedTemplate]=useState('');
  const [department,setDepartment]=useState(null),[role,setRole]=useState(null),[user,setUser]=useState(null);
  const [inviting,setInviting]=useState(false),[invitation,setInvitation]=useState(blankInvitation);
+ const [employeePassword,setEmployeePassword]=useState(blankPasswordFields);
+ const [showEmployeePassword,setShowEmployeePassword]=useState(false);
  const [mapping,setMapping]=useState({storage_key:'',page_name:'',record_key_index:0,status_index:-1});
  const [roleGroup,setRoleGroup]=useState('All');
  const [newMap,setNewMap]=useState({from:'',to:''});
@@ -54,6 +58,7 @@ export default function AdminControl({initialTab='overview',onWorkflowPublished=
  const [showAllConnections,setShowAllConnections]=useState(false);
  const [inspectedPage,setInspectedPage]=useState('');
  const editorOpen=Boolean(department||role||user||inviting);
+ useEffect(()=>{setEmployeePassword({...blankPasswordFields});setShowEmployeePassword(false);},[tab]);
  useEffect(()=>{if(!editorOpen)return;const frame=window.requestAnimationFrame(()=>document.querySelector('.admin-simple .admin-edit-card')?.scrollIntoView({block:'start',behavior:'smooth'}));return ()=>window.cancelAnimationFrame(frame);},[editorOpen,tab,department?.id,role?.id,user?.user_id,inviting]);
  const load=useCallback(async()=>{setLoading(true);setError('');try{const response=await loadAdminDashboard();if(!response||!Array.isArray(response.departments))throw new Error('Admin database returned an invalid response. Apply ERP_ADMIN_CONTROL.sql.');setData(response);return true;}catch(e){setError(e.message||'Could not read administrator data from Supabase.');return false;}finally{setLoading(false)}},[]);
  useEffect(()=>{load()},[load]);
@@ -113,13 +118,30 @@ export default function AdminControl({initialTab='overview',onWorkflowPublished=
  const saveRoleForm=async()=>{if(!role)return;
  if(!/^[A-Z0-9_-]{2,32}$/.test(trim(role.code).toUpperCase())||trim(role.name).length<3){setError('Enter a valid role code and name.');return}
  const ok=await run(()=>saveRole({...role,rights:role.rights.filter(item=>ACTIONS.some(a=>item[a]))}),'Role permissions saved to Supabase.');if(ok)setRole(null);};
- const selectUser=p=>{setUser({...p,department_id:p.department_id||'',role_ids:(data.user_roles||[]).filter(x=>x.user_id===p.user_id).map(x=>x.role_id)})};
+ const selectUser=p=>{setEmployeePassword({...blankPasswordFields});setShowEmployeePassword(false);setUser({...p,department_id:p.department_id||'',role_ids:(data.user_roles||[]).filter(x=>x.user_id===p.user_id).map(x=>x.role_id)})};
  const saveUserForm=async()=>{if(!user)return;
  if(trim(user.display_name).length<2 || (user.active&&!user.role_ids.length)){setError('Enter a name and select at least one role for an active user.');return}
  const ok=await run(()=>saveUser(user),'Employee access and department saved to Supabase.');if(ok)setUser(null);};
- const sendInvitation=async()=>{if(!/^\S+@\S+\.\S+$/.test(trim(invitation.email))||trim(invitation.name).length<2||!invitation.role_ids.length){setError('Enter a valid email, employee name and role.');return}
- const ok=await run(()=>inviteUser(invitation),'Employee Auth login and ERP access saved. Non-admin users must change their initial password on first sign-in; admin invitations use individual setup.');if(ok){setInviting(false);setInvitation(blankInvitation);}};
- const isAdminEmployee=p=>(data?.user_roles||[]).some(link=>link.user_id===p.user_id&&(data?.roles||[]).some(r=>r.id===link.role_id&&r.code==='ADMIN'));
+ const isAdminRoleSelected=ids=>(data?.roles||[]).some(r=>ids.includes(r.id)&&(r.code==='ADMIN'||r.system_role));
+ const passwordIssue=({password,confirm},allowEmpty=false)=>temporaryPasswordIssue(password,confirm,{allowEmpty});
+ const sendInvitation=async()=>{
+  if(!/^\S+@\S+\.\S+$/.test(trim(invitation.email))||trim(invitation.name).length<2||!invitation.department_id||!invitation.role_ids.length){setError('Enter the employee’s email, full name, department and role.');return;}
+  const adminInvite=isAdminRoleSelected(invitation.role_ids);
+  if(adminInvite&&(employeePassword.password||employeePassword.confirm)){setError('Administrator accounts use individual email invitations. Clear the password fields before creating this account.');return;}
+  if(!adminInvite){const issue=passwordIssue(employeePassword,true);if(issue){setError(issue);return;}}
+  const password=adminInvite?'':employeePassword.password;
+  const ok=await run(()=>inviteUser({...invitation,...(password?{password}:{})}),adminInvite?'Administrator invitation and access saved. The administrator must complete their personal invitation.':'Employee login and ERP access saved in Supabase. Share the temporary password securely; the employee must replace it on first sign-in.');
+  if(ok){setInviting(false);setInvitation({...blankInvitation});setEmployeePassword({...blankPasswordFields});setShowEmployeePassword(false);}
+ };
+ const resetCustomPassword=async()=>{
+  if(!user||!user.active||isAdminEmployee(user)){setError('Only active, non-admin employees can have their password reset here.');return;}
+  const issue=passwordIssue(employeePassword);
+  if(issue){setError(issue);return;}
+  if(!await askConfirmation(`Set a new temporary login password for ${user.display_name||user.email}? Their previous password will stop working and they must choose a personal password on their next login.`))return;
+  const ok=await run(()=>resetEmployeeLogin(user.user_id,employeePassword.password),'Temporary password saved to Supabase Auth. Employee must choose a personal password at next sign-in.');
+  if(ok){setEmployeePassword({...blankPasswordFields});setShowEmployeePassword(false);}
+ };
+ const isAdminEmployee=p=>(data?.user_roles||[]).some(link=>link.user_id===p.user_id&&(data?.roles||[]).some(r=>r.id===link.role_id&&(r.code==='ADMIN'||r.system_role)));
  const resetEmployee=async p=>{
   if(isAdminEmployee(p)){setError('Administrator passwords must be reset individually outside the shared initial-password process.');return;}
   if(!await askConfirmation(`Set the configured temporary password for ${p.display_name||p.email}? Their previous password will stop working. They must choose a new password at their next login.`))return;
@@ -144,6 +166,7 @@ export default function AdminControl({initialTab='overview',onWorkflowPublished=
  if(template.edges.some(e=>e.source_page===newMap.from)){setError('That source already has a next step. Edit or remove its existing connection first.');return}
  setTemplate(t=>({...t,edges:[...t.edges,{source_page:newMap.from,target_page:newMap.to,gate_statuses:[],field_map:{}}]}));setNewMap({from:'',to:''});setError('');};
  const toggleRoleId=(ids,id)=>ids.includes(id)?ids.filter(x=>x!==id):[...ids,id];
+ const toggleInviteRole=id=>{const role_ids=toggleRoleId(invitation.role_ids,id);setInvitation(v=>({...v,role_ids}));if(isAdminRoleSelected(role_ids)){setEmployeePassword({...blankPasswordFields});setShowEmployeePassword(false);}};
  const unmapped=storageKeys.filter(key=>key.startsWith('dfab-')&&key!=='dfab-workflow-links-v1'&&!data?.storage?.some(m=>m.storage_key===key));
  if(loading&&!data)return <main className="content page-shell admin-root"><h1>Admin Control Center</h1><div className="admin-loading"><LoaderCircle className="admin-spin"/> Loading controlled workspace from Supabase…</div>{error&&<Status type="error">{error} <button onClick={load}>Retry</button></Status>}</main>;
  if(!data)return <main className="content page-shell admin-root"><h1>Admin Control Center</h1><Status type="error">{error||'Admin setup is not available.'}</Status><Button onClick={load}><RefreshCw size={15}/> Retry connection</Button></main>;
@@ -228,11 +251,11 @@ export default function AdminControl({initialTab='overview',onWorkflowPublished=
 
   {tab==='users'&&<>
    <div className="admin-section-title"><div><span className="admin-section-kicker">PEOPLE</span><h2>Employees & logins</h2><p>Create employee logins and decide which parts of the ERP they can use.</p></div></div>
-   <p className="admin-help" role="note">Employee entries are not passwords: users must have a matching Supabase Auth account. Initial passwords are provisioned securely on the server, never stored in the ERP cards. Bulk initialization affects active non-admin employees only and requires confirmation.</p>
+   <p className="admin-help" role="note">Employee accounts use Supabase Auth for passwords and the ERP database for departments and permissions. You can set an individual temporary password when adding an employee; no password is stored in their ERP card.</p>
    <div className="admin-panel-layout">
     <Card title="Employee list" description="A disabled employee cannot use the ERP. Their saved work and activity history remain available.">
      <div className="admin-tools admin-list-toolbar">
-      <Button onClick={()=>{setInviting(true);setInvitation({...blankInvitation});setUser(null);setError('')}}><UserPlus size={16}/> Add employee</Button><Button secondary disabled={saving} onClick={resetDepartmentLogins}>Initialize team logins</Button>
+      <Button onClick={()=>{setInviting(true);setInvitation({...blankInvitation});setEmployeePassword({...blankPasswordFields});setShowEmployeePassword(false);setUser(null);setError('')}}><UserPlus size={16}/> Add employee</Button><Button secondary disabled={saving} onClick={resetDepartmentLogins}>Initialize team logins</Button>
       <label className="admin-search"><Search size={16}/><input aria-label="Search employees" placeholder="Search by name or email" value={filter} onChange={e=>setFilter(e.target.value)}/></label>
       <label className="admin-check admin-filter-toggle"><input type="checkbox" checked={showInactive} onChange={e=>setShowInactive(e.target.checked)}/> Include disabled</label>
      </div>
@@ -256,8 +279,22 @@ export default function AdminControl({initialTab='overview',onWorkflowPublished=
      </div>
      <div className="admin-step-caption">STEP 2 · CHOOSE ACCESS</div>
      <p className="admin-help">Select one or more roles. Permissions are defined in the Permissions section. “Administrator” gives full access.</p>
-     <div className="admin-check-grid">{data.roles.filter(r=>r.active).map(r=><label key={r.id} className="admin-check"><input type="checkbox" checked={(inviting?invitation.role_ids:user.role_ids).includes(r.id)} onChange={()=>inviting?setInvitation(v=>({...v,role_ids:toggleRoleId(v.role_ids,r.id)})):setUser(v=>({...v,role_ids:toggleRoleId(v.role_ids,r.id)}))}/><span>{r.name}</span>{r.code==='ADMIN'&&<small>Full access</small>}</label>)}</div>
-     <div className="admin-form-footer"><Button secondary onClick={()=>{setUser(null);setInviting(false)}}>Cancel</Button><Button busy={saving} onClick={inviting?sendInvitation:saveUserForm}><Save size={16}/>{inviting?'Create employee login':'Save employee'}</Button></div>
+     <div className="admin-check-grid">{data.roles.filter(r=>r.active).map(r=><label key={r.id} className="admin-check"><input type="checkbox" checked={(inviting?invitation.role_ids:user.role_ids).includes(r.id)} onChange={()=>inviting?toggleInviteRole(r.id):setUser(v=>({...v,role_ids:toggleRoleId(v.role_ids,r.id)}))}/><span>{r.name}</span>{r.code==='ADMIN'&&<small>Full access</small>}</label>)}</div>
+     {(inviting&&!isAdminRoleSelected(invitation.role_ids)||!inviting&&user?.active&&!isAdminEmployee(user))&&<>
+      <div className="admin-step-caption">{inviting?'STEP 3 · INITIAL LOGIN PASSWORD':'EMPLOYEE PASSWORD RESET'}</div>
+      <section className="admin-password-section" aria-label={inviting?'Set employee login password':'Reset employee password'}>
+       <p className="admin-help">{inviting?'Enter an individual temporary password, or leave both fields empty to use the server-configured initial password. The employee must change it on first sign-in.':'Password reset is separate from saving employee details. It changes their Supabase Auth login and requires a new password at next sign-in.'}</p>
+       <div className="admin-form-grid">
+        <label>Temporary password<input type={showEmployeePassword?'text':'password'} autoComplete="new-password" minLength={12} maxLength={128} value={employeePassword.password} onChange={e=>setEmployeePassword(v=>({...v,password:e.target.value}))} placeholder={inviting?'Optional: server default if empty':'New temporary password'} /></label>
+        <label>Confirm password<input type={showEmployeePassword?'text':'password'} autoComplete="new-password" minLength={12} maxLength={128} value={employeePassword.confirm} onChange={e=>setEmployeePassword(v=>({...v,confirm:e.target.value}))} placeholder="Repeat password" /></label>
+       </div>
+       <label className="admin-check"><input type="checkbox" checked={showEmployeePassword} onChange={e=>setShowEmployeePassword(e.target.checked)}/> Show password while entering</label>
+       {!inviting&&<div className="admin-password-actions"><Button secondary disabled={saving||!employeePassword.password||!employeePassword.confirm} onClick={resetCustomPassword}><ShieldCheck size={15}/> Set new login password</Button></div>}
+       <small className="admin-password-safety">Passwords are sent only to Supabase Auth and are never saved in ERP cards. Share temporary passwords privately.</small>
+      </section>
+     </>}
+     {inviting&&isAdminRoleSelected(invitation.role_ids)&&<p className="admin-help">Administrator accounts receive individual email invitations. A shared password is never assigned.</p>}
+     <div className="admin-form-footer"><Button secondary onClick={()=>{setUser(null);setInviting(false);setEmployeePassword({...blankPasswordFields});setShowEmployeePassword(false)}}>Cancel</Button><Button busy={saving} onClick={inviting?sendInvitation:saveUserForm}><Save size={16}/>{inviting?'Create employee login':'Save employee'}</Button></div>
     </Card>}
    </div>
   </>}

@@ -28,11 +28,12 @@ export const saveUser=(user)=>call('erp_admin_save_user',{
   p_user_id:user.user_id,p_department_id:user.department_id||null,
   p_display_name:user.display_name,p_active:user.active!==false,p_role_ids:user.role_ids||[],
 });
-export const inviteUser=async ({email,name,department_id,role_ids}) => invokeFunction('erp-admin-invite',{
+export const inviteUser=async ({email,name,department_id,role_ids,password=''}) => invokeFunction('erp-admin-invite',{
   action:'create',email,name,department_id:department_id||null,role_ids:role_ids||[],
+  ...(password?{password}:{}),
 },{accessToken:mustToken()});
 // Only the secured admin Edge Function can alter Supabase Auth credentials.
-export const resetEmployeeLogin=(user_id)=>invokeFunction('erp-admin-invite', {action:'reset',user_id},{accessToken:mustToken()});
+export const resetEmployeeLogin=(user_id,password='')=>invokeFunction('erp-admin-invite', {action:'reset',user_id,...(password?{password}:{})},{accessToken:mustToken()});
 export const resetEmployeeLogins=(user_ids)=>invokeFunction('erp-admin-invite', {action:'bulk-reset',user_ids},{accessToken:mustToken()});
 
 export const saveTemplate=(template)=>call('erp_admin_save_template',{
