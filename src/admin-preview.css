@@ -1,0 +1,45 @@
+.admin-preview-screen{min-height:100dvh;background:#f3f7fc;color:#172b46}
+.admin-preview-topbar{position:sticky;top:0;z-index:10;display:flex;align-items:center;justify-content:space-between;gap:16px;min-height:67px;padding:13px clamp(16px,3vw,44px);background:#132b49;color:#fff;box-shadow:0 4px 16px #07162918}
+.admin-preview-topbar>div{display:flex;align-items:baseline;gap:14px;flex-wrap:wrap}
+.admin-preview-topbar span{font-size:13px;color:#b9cce6}
+.admin-preview-topbar .admin-button{background:#fff;color:#18345a}
+.admin-preview-content{box-sizing:border-box;max-width:1520px;width:100%;margin:0 auto;padding:clamp(16px,3vw,36px)}
+.admin-preview-pill{display:inline-flex;align-items:center;gap:7px;padding:8px 12px;border-radius:999px;background:#e5ecf7;color:#244367;font-size:12px;font-weight:800;white-space:nowrap}
+.admin-preview-warning{display:flex;align-items:flex-start;gap:12px;padding:15px 18px;margin:16px 0;background:#fef9e6;border:1px solid #f1df9e;border-radius:12px;color:#604a16}
+.admin-preview-warning p{margin:4px 0 0;font-size:13px;line-height:1.5}
+.admin-preview-filters{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin:0 0 18px}
+.admin-preview-filters label{display:flex;align-items:center;gap:7px;min-width:230px;flex:1;border:1px solid #c8d6ea;background:white;border-radius:10px;padding:6px 12px}
+.admin-preview-filters input{border:0;outline:0;width:100%;min-width:0;background:transparent;color:#173151}
+.admin-preview-filters select{min-width:150px;max-width:100%;border:1px solid #c8d6ea;border-radius:9px;padding:11px;background:white;color:#173151}
+.admin-preview-locked{display:flex;align-items:center;text-align:center;flex-direction:column;gap:10px;padding:46px 20px;color:#47617d}
+.admin-preview-locked p{max-width:600px;margin:0 auto 12px;line-height:1.6}
+.admin-preview-locked code{background:#e9eff8;border-radius:4px;padding:2px 5px;color:#18437a}
+.admin-preview-screen .admin-flow-map{max-height:550px;overflow-y:auto}
+.admin-preview-screen .admin-table-wrap{max-height:570px;overflow:auto}
+@media(max-width:700px){.admin-preview-topbar{align-items:flex-start;flex-direction:column}.admin-preview-content{padding:14px}.admin-preview-filters>label,.admin-preview-filters select{width:100%}.admin-preview-topbar .admin-button{width:100%;justify-content:center}}
+
+.dfab-admin-preview-button{display:block;width:100%;margin-top:12px;padding:11px 13px;border:1px solid #b7cce4;border-radius:9px;background:#f0f6ff;color:#164f8b;font-size:13px;font-weight:700;cursor:pointer;transition:background .2s ease,border-color .2s ease}
+.dfab-admin-preview-button:hover{background:#e2efff;border-color:#68a3e3}
+.dfab-admin-preview-button:focus-visible{outline:3px solid #6ba6eb;outline-offset:2px}
+
+/* Independent of dimmed welding login form; always reachable in local dev. */
+.dfab-login-side>.dfab-admin-preview-button{position:fixed;right:clamp(12px,3vw,34px);bottom:clamp(12px,2vw,22px);z-index:10001;width:auto;max-width:calc(100vw - 24px);padding:12px 18px;box-shadow:0 9px 32px rgba(0,38,91,.16)}
+
+/* Signed-out admin section, deliberately separate from sensitive ERP data. */
+.admin-public-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:13px}.admin-public-card{padding:20px;min-height:146px}.admin-public-card svg{color:#205d8f}.admin-public-card h2{margin:3px 0;font-size:16px}.admin-public-card p{margin:0;font-size:12px;color:#6a7f93;line-height:1.6}.admin-public-signin{align-self:flex-start}.dfab-admin-preview-button{display:flex;align-items:center;justify-content:center;gap:8px}.premium-sidebar .admin-launch small{margin-left:auto;font-size:10px;color:#d8e8f8}@media(max-width:900px){.admin-public-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}@media(max-width:570px){.admin-public-grid{grid-template-columns:minmax(0,1fr)}}
+
+/* Consistent simple admin tour for signed-out visitors (read-only). */
+.admin-preview-screen .admin-simple {max-width:1360px;padding:clamp(16px,2.3vw,34px)!important;}
+.admin-preview-screen .admin-preview-warning{margin:0;background:#fff8e9;color:#765929;border-color:#f2dfb2;}
+.admin-preview-screen .admin-preview-guide-text{font-size:13px;color:#667c91;line-height:1.6;}
+.admin-preview-screen .admin-preview-guide-card{max-width:960px;}
+.admin-preview-steps{list-style:none;padding:0;margin:0;display:grid;gap:12px;}
+.admin-preview-steps li{display:flex;align-items:center;gap:13px;padding:12px;border:1px solid #e4edf5;border-radius:10px;background:#f9fbff;font-size:13px;color:#33526c;}
+.admin-preview-steps li span{flex:none;width:26px;height:26px;border-radius:99px;display:grid;place-items:center;background:#dcecf8;color:#1f5c87;font-weight:800;}
+.admin-preview-screen .admin-preview-locked{background:#f6f9fd;border:1px dashed #d0deea;border-radius:12px;padding:16px;margin-top:6px;align-items:flex-start;text-align:left;}
+.admin-preview-screen .admin-preview-locked b{font-size:13px;}
+.admin-preview-screen .admin-preview-locked p{margin:0;font-size:12px;line-height:1.55;color:#71849a;}
+.admin-preview-cta{display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;padding:17px 4px 4px;}
+.admin-preview-cta span{display:inline-flex;gap:7px;align-items:center;font-size:12px;color:#67809b;}
+.admin-preview-cta span svg{color:#288e66;}
+@media(max-width:640px){.admin-preview-topbar{flex-wrap:wrap;padding:12px 15px;}.admin-preview-screen .admin-simple{padding:12px!important;}.admin-preview-cta{align-items:flex-start;}}

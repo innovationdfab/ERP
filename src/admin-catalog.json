@@ -1,0 +1,3376 @@
+[
+  {
+    "name": "Activity Log",
+    "group": "Administration",
+    "columns": [
+      "Time",
+      "User",
+      "Action",
+      "Reference",
+      "Module"
+    ],
+    "fields": [
+      "Time",
+      "User",
+      "Action",
+      "Reference",
+      "Module"
+    ],
+    "statuses": [],
+    "next": null
+  },
+  {
+    "name": "Asset Allocation",
+    "group": "Shared",
+    "columns": [
+      "Allocation No",
+      "Asset",
+      "Employee",
+      "Allocated Date",
+      "Status"
+    ],
+    "fields": [
+      "Allocation No",
+      "Asset",
+      "Employee",
+      "Allocated Date"
+    ],
+    "statuses": [
+      "Allocated",
+      "Returned",
+      "Maintenance"
+    ],
+    "next": null
+  },
+  {
+    "name": "BOM Register",
+    "group": "Reports",
+    "columns": [
+      "Reference",
+      "Status"
+    ],
+    "fields": [],
+    "statuses": [],
+    "next": null
+  },
+  {
+    "name": "BOM-Based Work Order",
+    "group": "Production",
+    "columns": [
+      "BOM WO No",
+      "BOM No",
+      "Product",
+      "Qty",
+      "Start Date",
+      "Target Date",
+      "Status"
+    ],
+    "fields": [
+      "BOM WO No",
+      "BOM No",
+      "Product",
+      "Qty",
+      "Start Date",
+      "Target Date"
+    ],
+    "statuses": [
+      "Draft",
+      "Approved",
+      "Released",
+      "Completed"
+    ],
+    "next": "Work Order"
+  },
+  {
+    "name": "CRM Pipeline",
+    "group": "Sales",
+    "columns": [
+      "Lead",
+      "Customer",
+      "Value",
+      "Owner",
+      "Stage"
+    ],
+    "fields": [
+      "Lead",
+      "Customer",
+      "Value",
+      "Owner"
+    ],
+    "statuses": [
+      "New",
+      "Qualified",
+      "Quotation",
+      "Won",
+      "Lost"
+    ],
+    "next": "Sales Enquiries"
+  },
+  {
+    "name": "Categories",
+    "group": "Shared",
+    "columns": [
+      "Category Code",
+      "Category Name",
+      "Description"
+    ],
+    "fields": [
+      "Category Code",
+      "Category Name",
+      "Description"
+    ],
+    "statuses": [],
+    "next": null
+  },
+  {
+    "name": "Consumption Against WO",
+    "group": "Reports",
+    "columns": [
+      "Reference",
+      "Status"
+    ],
+    "fields": [],
+    "statuses": [],
+    "next": null
+  },
+  {
+    "name": "Credit Note",
+    "group": "Sales",
+    "columns": [
+      "Credit Note No",
+      "Invoice",
+      "Customer",
+      "Date",
+      "Amount",
+      "Status"
+    ],
+    "fields": [
+      "Credit Note No",
+      "Invoice",
+      "Customer",
+      "Date",
+      "Amount"
+    ],
+    "statuses": [
+      "Draft",
+      "Approved",
+      "Posted"
+    ],
+    "next": "Customer Payments"
+  },
+  {
+    "name": "Credit Note Register",
+    "group": "Reports",
+    "columns": [
+      "Reference",
+      "Status"
+    ],
+    "fields": [],
+    "statuses": [],
+    "next": null
+  },
+  {
+    "name": "Customer Master List",
+    "group": "Reports",
+    "columns": [
+      "Reference",
+      "Status"
+    ],
+    "fields": [],
+    "statuses": [],
+    "next": null
+  },
+  {
+    "name": "Customer Payments",
+    "group": "Sales",
+    "columns": [
+      "Receipt No",
+      "Customer",
+      "Invoice",
+      "Date",
+      "Amount",
+      "Status"
+    ],
+    "fields": [
+      "Receipt No",
+      "Customer",
+      "Invoice",
+      "Date",
+      "Amount"
+    ],
+    "statuses": [
+      "Pending",
+      "Part Paid",
+      "Settled"
+    ],
+    "next": null
+  },
+  {
+    "name": "Customer Price List",
+    "group": "Sales",
+    "columns": [
+      "Price Ref",
+      "Customer",
+      "Product",
+      "UOM",
+      "Rate",
+      "Valid Until",
+      "Status"
+    ],
+    "fields": [
+      "Price Ref",
+      "Customer",
+      "Product",
+      "UOM",
+      "Rate",
+      "Valid Until"
+    ],
+    "statuses": [
+      "Draft",
+      "Active",
+      "Expired"
+    ],
+    "next": null
+  },
+  {
+    "name": "Customers",
+    "group": "Sales",
+    "columns": [
+      "Code",
+      "Name"
+    ],
+    "fields": [
+      "Code",
+      "Name"
+    ],
+    "statuses": [],
+    "next": null
+  },
+  {
+    "name": "DC Register",
+    "group": "Reports",
+    "columns": [
+      "Reference",
+      "Status"
+    ],
+    "fields": [],
+    "statuses": [],
+    "next": null
+  },
+  {
+    "name": "DC Register Headerwise",
+    "group": "Reports",
+    "columns": [
+      "Reference",
+      "Status"
+    ],
+    "fields": [],
+    "statuses": [],
+    "next": null
+  },
+  {
+    "name": "Daily Production Report",
+    "group": "Reports",
+    "columns": [
+      "Reference",
+      "Status"
+    ],
+    "fields": [],
+    "statuses": [],
+    "next": null
+  },
+  {
+    "name": "Daily Task Master",
+    "group": "Administration",
+    "columns": [
+      "Task Code",
+      "Task",
+      "Department",
+      "Frequency",
+      "Status"
+    ],
+    "fields": [
+      "Task Code",
+      "Task",
+      "Department",
+      "Frequency"
+    ],
+    "statuses": [
+      "Active",
+      "Inactive"
+    ],
+    "next": null
+  },
+  {
+    "name": "Database Backup",
+    "group": "Administration",
+    "columns": [
+      "Reference",
+      "Description"
+    ],
+    "fields": [
+      "Reference"
+    ],
+    "statuses": [],
+    "next": null
+  },
+  {
+    "name": "Delivery Challan",
+    "group": "Sales",
+    "columns": [
+      "DC No",
+      "Customer",
+      "SO No",
+      "Product",
+      "Qty",
+      "Vehicle",
+      "Status"
+    ],
+    "fields": [
+      "DC No",
+      "Customer",
+      "SO No",
+      "Product",
+      "Qty",
+      "Vehicle"
+    ],
+    "statuses": [
+      "Draft",
+      "Approved",
+      "Dispatched",
+      "Delivered"
+    ],
+    "next": "Sales Invoice"
+  },
+  {
+    "name": "Delivery Channel",
+    "group": "Sales",
+    "columns": [
+      "Channel Code",
+      "Channel",
+      "Transporter",
+      "Contact",
+      "Region",
+      "Status"
+    ],
+    "fields": [
+      "Channel Code",
+      "Channel",
+      "Transporter",
+      "Contact",
+      "Region"
+    ],
+    "statuses": [
+      "Draft",
+      "Active",
+      "Inactive"
+    ],
+    "next": null
+  },
+  {
+    "name": "Department Master",
+    "group": "Administration",
+    "columns": [
+      "Department Code",
+      "Department Name",
+      "Head",
+      "Cost Center",
+      "Status"
+    ],
+    "fields": [
+      "Department Code",
+      "Department Name",
+      "Head",
+      "Cost Center"
+    ],
+    "statuses": [
+      "Active",
+      "Inactive"
+    ],
+    "next": null
+  },
+  {
+    "name": "Dispatch Intimation",
+    "group": "Sales",
+    "columns": [
+      "Intimation No",
+      "SO No",
+      "Customer",
+      "Product",
+      "Qty",
+      "Planned Date",
+      "Status"
+    ],
+    "fields": [
+      "Intimation No",
+      "SO No",
+      "Customer",
+      "Product",
+      "Qty",
+      "Planned Date"
+    ],
+    "statuses": [
+      "Draft",
+      "Approved",
+      "Sent",
+      "Acknowledged"
+    ],
+    "next": "Dispatch Schedule"
+  },
+  {
+    "name": "Dispatch Schedule",
+    "group": "Sales",
+    "columns": [
+      "Schedule No",
+      "SO No",
+      "Customer",
+      "Product",
+      "Qty",
+      "Scheduled Date",
+      "Status"
+    ],
+    "fields": [
+      "Schedule No",
+      "SO No",
+      "Customer",
+      "Product",
+      "Qty",
+      "Scheduled Date"
+    ],
+    "statuses": [
+      "Draft",
+      "Confirmed",
+      "Ready",
+      "Dispatched"
+    ],
+    "next": "Delivery Challan"
+  },
+  {
+    "name": "Dispatch Vs Planned",
+    "group": "Reports",
+    "columns": [
+      "Reference",
+      "Status"
+    ],
+    "fields": [],
+    "statuses": [],
+    "next": null
+  },
+  {
+    "name": "Enquiry Register",
+    "group": "Reports",
+    "columns": [
+      "Reference",
+      "Status"
+    ],
+    "fields": [],
+    "statuses": [],
+    "next": null
+  },
+  {
+    "name": "Excess Consumption Register",
+    "group": "Reports",
+    "columns": [
+      "Reference",
+      "Status"
+    ],
+    "fields": [],
+    "statuses": [],
+    "next": null
+  },
+  {
+    "name": "Excess Issue",
+    "group": "Shared",
+    "columns": [
+      "Issue No",
+      "WO No",
+      "Item",
+      "Qty",
+      "Reason",
+      "Store",
+      "Status"
+    ],
+    "fields": [
+      "Issue No",
+      "WO No",
+      "Item",
+      "Qty",
+      "Reason",
+      "Store"
+    ],
+    "statuses": [
+      "Draft",
+      "Approval Pending",
+      "Approved",
+      "Issued"
+    ],
+    "next": "Input to Production"
+  },
+  {
+    "name": "Excess Stock",
+    "group": "Stores",
+    "columns": [
+      "Entry No",
+      "Item",
+      "Warehouse",
+      "Excess Qty",
+      "Reason",
+      "Status"
+    ],
+    "fields": [
+      "Entry No",
+      "Item",
+      "Warehouse",
+      "Excess Qty",
+      "Reason"
+    ],
+    "statuses": [
+      "Identified",
+      "Approved",
+      "Adjusted"
+    ],
+    "next": null
+  },
+  {
+    "name": "Executed Purchase Order Register",
+    "group": "Reports",
+    "columns": [
+      "Reference",
+      "Status"
+    ],
+    "fields": [],
+    "statuses": [],
+    "next": null
+  },
+  {
+    "name": "Executed Sales Order Register",
+    "group": "Reports",
+    "columns": [
+      "Reference",
+      "Status"
+    ],
+    "fields": [],
+    "statuses": [],
+    "next": null
+  },
+  {
+    "name": "GRN",
+    "group": "Purchase",
+    "columns": [
+      "GRN No",
+      "PO No",
+      "Vendor",
+      "Item",
+      "Received Qty",
+      "QC Status"
+    ],
+    "fields": [
+      "GRN No",
+      "PO No",
+      "Vendor",
+      "Item",
+      "Received Qty"
+    ],
+    "statuses": [
+      "Awaiting QC",
+      "Accepted",
+      "Rejected"
+    ],
+    "next": "Inward QC"
+  },
+  {
+    "name": "GRN Register",
+    "group": "Reports",
+    "columns": [
+      "Reference",
+      "Status"
+    ],
+    "fields": [],
+    "statuses": [],
+    "next": null
+  },
+  {
+    "name": "General Task",
+    "group": "Shared",
+    "columns": [
+      "Task No",
+      "Task",
+      "Owner",
+      "Due Date",
+      "Status"
+    ],
+    "fields": [
+      "Task No",
+      "Task",
+      "Owner",
+      "Due Date"
+    ],
+    "statuses": [
+      "Open",
+      "In Progress",
+      "Completed"
+    ],
+    "next": null
+  },
+  {
+    "name": "Groups",
+    "group": "Stores",
+    "columns": [
+      "Group",
+      "Description"
+    ],
+    "fields": [
+      "Group",
+      "Description"
+    ],
+    "statuses": [],
+    "next": null
+  },
+  {
+    "name": "Groupwise Stock Report",
+    "group": "Reports",
+    "columns": [
+      "Reference",
+      "Status"
+    ],
+    "fields": [],
+    "statuses": [],
+    "next": null
+  },
+  {
+    "name": "HSN Master",
+    "group": "Administration",
+    "columns": [
+      "HSN Code",
+      "Description",
+      "GST %"
+    ],
+    "fields": [
+      "HSN Code",
+      "Description",
+      "GST %"
+    ],
+    "statuses": [],
+    "next": null
+  },
+  {
+    "name": "Import Purchase",
+    "group": "Purchase",
+    "columns": [
+      "Import No",
+      "Vendor",
+      "PO No",
+      "Item",
+      "Qty",
+      "Currency",
+      "Customs Value",
+      "Status"
+    ],
+    "fields": [
+      "Import No",
+      "Vendor",
+      "PO No",
+      "Item",
+      "Qty",
+      "Currency",
+      "Customs Value"
+    ],
+    "statuses": [
+      "Draft",
+      "Approval Pending",
+      "Approved",
+      "Received"
+    ],
+    "next": "GRN"
+  },
+  {
+    "name": "In-process QC",
+    "group": "Quality",
+    "columns": [
+      "QC No",
+      "WO No",
+      "Operation",
+      "Qty",
+      "Inspector",
+      "Disposition",
+      "Status"
+    ],
+    "fields": [
+      "QC No",
+      "WO No",
+      "Operation",
+      "Qty",
+      "Inspector",
+      "Disposition"
+    ],
+    "statuses": [
+      "Pending",
+      "In Inspection",
+      "Passed",
+      "Rejected"
+    ],
+    "next": null
+  },
+  {
+    "name": "In-process QC Status Register",
+    "group": "Reports",
+    "columns": [
+      "Reference",
+      "Status"
+    ],
+    "fields": [],
+    "statuses": [],
+    "next": null
+  },
+  {
+    "name": "Indent To Order",
+    "group": "Purchase",
+    "columns": [
+      "Indent No",
+      "Vendor",
+      "Item",
+      "Qty",
+      "Action Status"
+    ],
+    "fields": [
+      "Indent No",
+      "Vendor",
+      "Item",
+      "Qty"
+    ],
+    "statuses": [
+      "Open",
+      "PO Created"
+    ],
+    "next": "Purchase Orders"
+  },
+  {
+    "name": "Input to Production",
+    "group": "Production",
+    "columns": [
+      "Input No",
+      "WO No",
+      "Item",
+      "Qty",
+      "Issue No",
+      "Date",
+      "Status"
+    ],
+    "fields": [
+      "Input No",
+      "WO No",
+      "Item",
+      "Qty",
+      "Issue No",
+      "Date"
+    ],
+    "statuses": [
+      "Draft",
+      "Approved",
+      "Issued",
+      "Consumed"
+    ],
+    "next": "Stage Consumption"
+  },
+  {
+    "name": "Instrument Master",
+    "group": "Administration",
+    "columns": [
+      "Instrument Code",
+      "Instrument Name",
+      "Range",
+      "Calibration Due",
+      "Status"
+    ],
+    "fields": [
+      "Instrument Code",
+      "Instrument Name",
+      "Range",
+      "Calibration Due"
+    ],
+    "statuses": [
+      "Active",
+      "Calibration Due",
+      "Inactive"
+    ],
+    "next": null
+  },
+  {
+    "name": "Inventory Ageing",
+    "group": "Reports",
+    "columns": [
+      "Reference",
+      "Status"
+    ],
+    "fields": [],
+    "statuses": [],
+    "next": null
+  },
+  {
+    "name": "Inward QC",
+    "group": "Quality",
+    "columns": [
+      "QC No",
+      "GRN No",
+      "Item",
+      "Qty",
+      "Inspector",
+      "Status"
+    ],
+    "fields": [
+      "QC No",
+      "GRN No",
+      "Item",
+      "Qty",
+      "Inspector"
+    ],
+    "statuses": [
+      "Pending",
+      "Passed",
+      "Rejected"
+    ],
+    "next": "Purchase"
+  },
+  {
+    "name": "Inward QC Register",
+    "group": "Reports",
+    "columns": [
+      "Reference",
+      "Status"
+    ],
+    "fields": [],
+    "statuses": [],
+    "next": null
+  },
+  {
+    "name": "Inward QC Status Register",
+    "group": "Reports",
+    "columns": [
+      "Reference",
+      "Status"
+    ],
+    "fields": [],
+    "statuses": [],
+    "next": null
+  },
+  {
+    "name": "Inward Quality",
+    "group": "Quality",
+    "columns": [
+      "Inspection No",
+      "GRN No",
+      "Item",
+      "Accepted Qty",
+      "Rejected Qty",
+      "Status"
+    ],
+    "fields": [
+      "Inspection No",
+      "GRN No",
+      "Item",
+      "Accepted Qty",
+      "Rejected Qty"
+    ],
+    "statuses": [
+      "Pending",
+      "Inspected",
+      "Posted"
+    ],
+    "next": null
+  },
+  {
+    "name": "Inward Quality Rejection",
+    "group": "Quality",
+    "columns": [
+      "Rejection No",
+      "QC No",
+      "Vendor",
+      "Item",
+      "Rejected Qty",
+      "Status"
+    ],
+    "fields": [
+      "Rejection No",
+      "QC No",
+      "Vendor",
+      "Item",
+      "Rejected Qty"
+    ],
+    "statuses": [
+      "Open",
+      "Return Pending",
+      "Returned",
+      "Closed"
+    ],
+    "next": null
+  },
+  {
+    "name": "Job Order",
+    "group": "Production",
+    "columns": [
+      "Job No",
+      "Work Order",
+      "Vendor",
+      "Process",
+      "Qty",
+      "Required Date",
+      "Status"
+    ],
+    "fields": [
+      "Job No",
+      "Work Order",
+      "Vendor",
+      "Process",
+      "Qty",
+      "Required Date"
+    ],
+    "statuses": [
+      "Draft",
+      "Approved",
+      "Issued",
+      "Completed"
+    ],
+    "next": "Outsource Issue DC"
+  },
+  {
+    "name": "Job Work Inward",
+    "group": "Production",
+    "columns": [
+      "Inward No",
+      "Customer",
+      "DC No",
+      "Material",
+      "Qty",
+      "Status"
+    ],
+    "fields": [
+      "Inward No",
+      "Customer",
+      "DC No",
+      "Material",
+      "Qty"
+    ],
+    "statuses": [
+      "Received",
+      "QC Pending",
+      "Accepted",
+      "Closed"
+    ],
+    "next": "Job Work Return DC"
+  },
+  {
+    "name": "Job Work QC",
+    "group": "Quality",
+    "columns": [
+      "QC No",
+      "Receipt No",
+      "Vendor",
+      "Item",
+      "Qty",
+      "Inspector",
+      "Status"
+    ],
+    "fields": [
+      "QC No",
+      "Receipt No",
+      "Vendor",
+      "Item",
+      "Qty",
+      "Inspector"
+    ],
+    "statuses": [
+      "Pending",
+      "In Inspection",
+      "Passed",
+      "Rejected"
+    ],
+    "next": null
+  },
+  {
+    "name": "Job Work QC Register",
+    "group": "Reports",
+    "columns": [
+      "Reference",
+      "Status"
+    ],
+    "fields": [],
+    "statuses": [],
+    "next": null
+  },
+  {
+    "name": "Job Work Return DC",
+    "group": "Production",
+    "columns": [
+      "Return DC No",
+      "Customer",
+      "Inward No",
+      "Product",
+      "Qty",
+      "Status"
+    ],
+    "fields": [
+      "Return DC No",
+      "Customer",
+      "Inward No",
+      "Product",
+      "Qty"
+    ],
+    "statuses": [
+      "Draft",
+      "Dispatched",
+      "Delivered"
+    ],
+    "next": null
+  },
+  {
+    "name": "Jobwork Inward Register",
+    "group": "Reports",
+    "columns": [
+      "Reference",
+      "Status"
+    ],
+    "fields": [],
+    "statuses": [],
+    "next": null
+  },
+  {
+    "name": "Jobwork Material Issue",
+    "group": "Stores",
+    "columns": [
+      "Issue No",
+      "Job No",
+      "Vendor",
+      "Item",
+      "Qty",
+      "Issue Date",
+      "Status"
+    ],
+    "fields": [
+      "Issue No",
+      "Job No",
+      "Vendor",
+      "Item",
+      "Qty",
+      "Issue Date"
+    ],
+    "statuses": [
+      "Draft",
+      "Approved",
+      "Issued",
+      "Closed"
+    ],
+    "next": "Jobwork Material Receipt"
+  },
+  {
+    "name": "Jobwork Material Receipt",
+    "group": "Stores",
+    "columns": [
+      "Receipt No",
+      "Issue No",
+      "Vendor",
+      "Item",
+      "Received Qty",
+      "Receipt Date",
+      "Status"
+    ],
+    "fields": [
+      "Receipt No",
+      "Issue No",
+      "Vendor",
+      "Item",
+      "Received Qty",
+      "Receipt Date"
+    ],
+    "statuses": [
+      "Draft",
+      "Received",
+      "QC Pending",
+      "Accepted"
+    ],
+    "next": "Job Work QC"
+  },
+  {
+    "name": "Jobwork Receipt Register",
+    "group": "Reports",
+    "columns": [
+      "Reference",
+      "Status"
+    ],
+    "fields": [],
+    "statuses": [],
+    "next": null
+  },
+  {
+    "name": "Kind Attention",
+    "group": "Shared",
+    "columns": [
+      "Code",
+      "Contact Person",
+      "Company",
+      "Designation",
+      "Status"
+    ],
+    "fields": [
+      "Code",
+      "Contact Person",
+      "Company",
+      "Designation"
+    ],
+    "statuses": [
+      "Active",
+      "Inactive"
+    ],
+    "next": null
+  },
+  {
+    "name": "Masters",
+    "group": "Administration",
+    "columns": [
+      "Master Code",
+      "Master Name",
+      "Module",
+      "Menu Sequence",
+      "Status"
+    ],
+    "fields": [
+      "Master Code",
+      "Master Name",
+      "Module",
+      "Menu Sequence"
+    ],
+    "statuses": [
+      "Active",
+      "Inactive"
+    ],
+    "next": null
+  },
+  {
+    "name": "Material Issue",
+    "group": "Stores",
+    "columns": [
+      "Issue No",
+      "Work Order",
+      "Item",
+      "Qty",
+      "Store",
+      "Status"
+    ],
+    "fields": [
+      "Issue No",
+      "Work Order",
+      "Item",
+      "Qty",
+      "Store"
+    ],
+    "statuses": [
+      "Draft",
+      "Issued",
+      "Returned"
+    ],
+    "next": "Route Cards"
+  },
+  {
+    "name": "Material Issue Register",
+    "group": "Reports",
+    "columns": [
+      "Reference",
+      "Status"
+    ],
+    "fields": [],
+    "statuses": [],
+    "next": null
+  },
+  {
+    "name": "Material Request",
+    "group": "Stores",
+    "columns": [
+      "Request No",
+      "Work Order",
+      "Item",
+      "Qty",
+      "Status"
+    ],
+    "fields": [
+      "Request No",
+      "Work Order",
+      "Item",
+      "Qty"
+    ],
+    "statuses": [
+      "Requested",
+      "Approved",
+      "Issued"
+    ],
+    "next": "Material Issue"
+  },
+  {
+    "name": "Material Reserve",
+    "group": "Stores",
+    "columns": [
+      "Reserve No",
+      "WO No",
+      "Item",
+      "Qty",
+      "Warehouse",
+      "Required Date",
+      "Status"
+    ],
+    "fields": [
+      "Reserve No",
+      "WO No",
+      "Item",
+      "Qty",
+      "Warehouse",
+      "Required Date"
+    ],
+    "statuses": [
+      "Draft",
+      "Approved",
+      "Reserved",
+      "Released"
+    ],
+    "next": "Material Request"
+  },
+  {
+    "name": "Material Unreserved",
+    "group": "Stores",
+    "columns": [
+      "Unreserve No",
+      "Reserve No",
+      "Item",
+      "Qty",
+      "Warehouse",
+      "Date",
+      "Status"
+    ],
+    "fields": [
+      "Unreserve No",
+      "Reserve No",
+      "Item",
+      "Qty",
+      "Warehouse",
+      "Date"
+    ],
+    "statuses": [
+      "Draft",
+      "Approved",
+      "Released"
+    ],
+    "next": null
+  },
+  {
+    "name": "Menu",
+    "group": "Administration",
+    "columns": [
+      "Menu Code",
+      "Menu Caption",
+      "Parent Menu",
+      "Route",
+      "Status"
+    ],
+    "fields": [
+      "Menu Code",
+      "Menu Caption",
+      "Parent Menu",
+      "Route"
+    ],
+    "statuses": [
+      "Active",
+      "Inactive"
+    ],
+    "next": null
+  },
+  {
+    "name": "Modules",
+    "group": "Administration",
+    "columns": [
+      "Module Code",
+      "Module Name",
+      "Sequence",
+      "Status"
+    ],
+    "fields": [
+      "Module Code",
+      "Module Name",
+      "Sequence"
+    ],
+    "statuses": [
+      "Active",
+      "Inactive"
+    ],
+    "next": null
+  },
+  {
+    "name": "Opening Stock",
+    "group": "Stores",
+    "columns": [
+      "Entry No",
+      "Item",
+      "Warehouse",
+      "Qty",
+      "Rate",
+      "Status"
+    ],
+    "fields": [
+      "Entry No",
+      "Item",
+      "Warehouse",
+      "Qty",
+      "Rate"
+    ],
+    "statuses": [
+      "Draft",
+      "Posted"
+    ],
+    "next": null
+  },
+  {
+    "name": "Outsource DC Register",
+    "group": "Reports",
+    "columns": [
+      "Reference",
+      "Status"
+    ],
+    "fields": [],
+    "statuses": [],
+    "next": null
+  },
+  {
+    "name": "Outsource DC Register Created to Closed",
+    "group": "Reports",
+    "columns": [
+      "Reference",
+      "Status"
+    ],
+    "fields": [],
+    "statuses": [],
+    "next": null
+  },
+  {
+    "name": "Outsource DC Register Headerwise",
+    "group": "Reports",
+    "columns": [
+      "Reference",
+      "Status"
+    ],
+    "fields": [],
+    "statuses": [],
+    "next": null
+  },
+  {
+    "name": "Outsource Issue DC",
+    "group": "Production",
+    "columns": [
+      "DC No",
+      "Vendor",
+      "Work Order",
+      "Process",
+      "Qty",
+      "Status"
+    ],
+    "fields": [
+      "DC No",
+      "Vendor",
+      "Work Order",
+      "Process",
+      "Qty"
+    ],
+    "statuses": [
+      "Draft",
+      "Dispatched",
+      "Part Received",
+      "Closed"
+    ],
+    "next": "Outsource Receipt"
+  },
+  {
+    "name": "Outsource Receipt",
+    "group": "Production",
+    "columns": [
+      "Receipt No",
+      "Issue DC",
+      "Vendor",
+      "Process",
+      "Received Qty",
+      "Status"
+    ],
+    "fields": [
+      "Receipt No",
+      "Issue DC",
+      "Vendor",
+      "Process",
+      "Received Qty"
+    ],
+    "statuses": [
+      "Received",
+      "QC Pending",
+      "Accepted",
+      "Closed"
+    ],
+    "next": null
+  },
+  {
+    "name": "Outsource Receipt Register",
+    "group": "Reports",
+    "columns": [
+      "Reference",
+      "Status"
+    ],
+    "fields": [],
+    "statuses": [],
+    "next": null
+  },
+  {
+    "name": "Outward QC",
+    "group": "Quality",
+    "columns": [
+      "QC No",
+      "Output No",
+      "Product",
+      "Qty",
+      "Inspector",
+      "Status"
+    ],
+    "fields": [
+      "QC No",
+      "Output No",
+      "Product",
+      "Qty",
+      "Inspector"
+    ],
+    "statuses": [
+      "Pending",
+      "Passed",
+      "Rejected"
+    ],
+    "next": "Delivery Challan"
+  },
+  {
+    "name": "Outward QC Status Register",
+    "group": "Reports",
+    "columns": [
+      "Reference",
+      "Status"
+    ],
+    "fields": [],
+    "statuses": [],
+    "next": null
+  },
+  {
+    "name": "PO Number Details",
+    "group": "Shared",
+    "columns": [
+      "PO Number",
+      "Customer",
+      "PO Date",
+      "Value",
+      "Status"
+    ],
+    "fields": [
+      "PO Number",
+      "Customer",
+      "PO Date",
+      "Value"
+    ],
+    "statuses": [
+      "Open",
+      "Consumed",
+      "Closed"
+    ],
+    "next": null
+  },
+  {
+    "name": "Pending Approvals",
+    "group": "Shared",
+    "columns": [
+      "Document",
+      "Reference No",
+      "Requested By",
+      "Amount",
+      "Status"
+    ],
+    "fields": [
+      "Document",
+      "Reference No",
+      "Requested By",
+      "Amount"
+    ],
+    "statuses": [
+      "Pending",
+      "Approved",
+      "Rejected"
+    ],
+    "next": null
+  },
+  {
+    "name": "Pending Enquiry For QUotation",
+    "group": "Reports",
+    "columns": [
+      "Reference",
+      "Status"
+    ],
+    "fields": [],
+    "statuses": [],
+    "next": null
+  },
+  {
+    "name": "Pending Jobwork Inward for Quality",
+    "group": "Reports",
+    "columns": [
+      "Reference",
+      "Status"
+    ],
+    "fields": [],
+    "statuses": [],
+    "next": null
+  },
+  {
+    "name": "Pending Outsource DC to Receipt",
+    "group": "Reports",
+    "columns": [
+      "Reference",
+      "Status"
+    ],
+    "fields": [],
+    "statuses": [],
+    "next": null
+  },
+  {
+    "name": "Pending Payables",
+    "group": "Reports",
+    "columns": [
+      "Reference",
+      "Status"
+    ],
+    "fields": [],
+    "statuses": [],
+    "next": null
+  },
+  {
+    "name": "Pending Project Order Register",
+    "group": "Reports",
+    "columns": [
+      "Reference",
+      "Status"
+    ],
+    "fields": [],
+    "statuses": [],
+    "next": null
+  },
+  {
+    "name": "Pending Purchase Indent For GR",
+    "group": "Reports",
+    "columns": [
+      "Reference",
+      "Status"
+    ],
+    "fields": [],
+    "statuses": [],
+    "next": null
+  },
+  {
+    "name": "Pending Purchase Indent for order",
+    "group": "Reports",
+    "columns": [
+      "Reference",
+      "Status"
+    ],
+    "fields": [],
+    "statuses": [],
+    "next": null
+  },
+  {
+    "name": "Pending Purchase Order to GRN",
+    "group": "Reports",
+    "columns": [
+      "Reference",
+      "Status"
+    ],
+    "fields": [],
+    "statuses": [],
+    "next": null
+  },
+  {
+    "name": "Pending Receivables",
+    "group": "Reports",
+    "columns": [
+      "Reference",
+      "Status"
+    ],
+    "fields": [],
+    "statuses": [],
+    "next": null
+  },
+  {
+    "name": "Pending Sales Order for Invoice",
+    "group": "Reports",
+    "columns": [
+      "Reference",
+      "Status"
+    ],
+    "fields": [],
+    "statuses": [],
+    "next": null
+  },
+  {
+    "name": "Pending Sales Order for Work Order",
+    "group": "Reports",
+    "columns": [
+      "Reference",
+      "Status"
+    ],
+    "fields": [],
+    "statuses": [],
+    "next": null
+  },
+  {
+    "name": "Pending Work Order for Production Output",
+    "group": "Reports",
+    "columns": [
+      "Reference",
+      "Status"
+    ],
+    "fields": [],
+    "statuses": [],
+    "next": null
+  },
+  {
+    "name": "Pick Slip",
+    "group": "Stores",
+    "columns": [
+      "Pick No",
+      "SO No",
+      "Warehouse",
+      "Item",
+      "Qty",
+      "Picker",
+      "Status"
+    ],
+    "fields": [
+      "Pick No",
+      "SO No",
+      "Warehouse",
+      "Item",
+      "Qty",
+      "Picker"
+    ],
+    "statuses": [
+      "Draft",
+      "Allocated",
+      "Picked",
+      "Confirmed"
+    ],
+    "next": "Dispatch Intimation"
+  },
+  {
+    "name": "Planned Vs Work Orders",
+    "group": "Reports",
+    "columns": [
+      "Reference",
+      "Status"
+    ],
+    "fields": [],
+    "statuses": [],
+    "next": null
+  },
+  {
+    "name": "Process Master",
+    "group": "Production",
+    "columns": [
+      "Process Code",
+      "Process Name",
+      "Department",
+      "Status"
+    ],
+    "fields": [
+      "Process Code",
+      "Process Name",
+      "Department"
+    ],
+    "statuses": [
+      "Active",
+      "Inactive"
+    ],
+    "next": null
+  },
+  {
+    "name": "Process Price List",
+    "group": "Production",
+    "columns": [
+      "Price Ref",
+      "Process",
+      "Vendor",
+      "Rate",
+      "Effective Date",
+      "Status"
+    ],
+    "fields": [
+      "Price Ref",
+      "Process",
+      "Vendor",
+      "Rate",
+      "Effective Date"
+    ],
+    "statuses": [
+      "Draft",
+      "Active",
+      "Expired"
+    ],
+    "next": null
+  },
+  {
+    "name": "Procurement Planning",
+    "group": "Purchase",
+    "columns": [
+      "Plan No",
+      "Item",
+      "Required Qty",
+      "Available Qty",
+      "Need Date",
+      "Department",
+      "Status"
+    ],
+    "fields": [
+      "Plan No",
+      "Item",
+      "Required Qty",
+      "Available Qty",
+      "Need Date",
+      "Department"
+    ],
+    "statuses": [
+      "Draft",
+      "Reviewed",
+      "Approved",
+      "Released"
+    ],
+    "next": "Purchase Indents"
+  },
+  {
+    "name": "Procurement Registers",
+    "group": "Reports",
+    "columns": [
+      "Reference",
+      "Status"
+    ],
+    "fields": [],
+    "statuses": [],
+    "next": null
+  },
+  {
+    "name": "Procurement Schedule",
+    "group": "Purchase",
+    "columns": [
+      "Schedule No",
+      "PO No",
+      "Vendor",
+      "Item",
+      "Qty",
+      "Planned Date",
+      "Status"
+    ],
+    "fields": [
+      "Schedule No",
+      "PO No",
+      "Vendor",
+      "Item",
+      "Qty",
+      "Planned Date"
+    ],
+    "statuses": [
+      "Draft",
+      "Confirmed",
+      "Partially Delivered",
+      "Completed"
+    ],
+    "next": "GRN"
+  },
+  {
+    "name": "Procurement Vs Planned",
+    "group": "Reports",
+    "columns": [
+      "Reference",
+      "Status"
+    ],
+    "fields": [],
+    "statuses": [],
+    "next": null
+  },
+  {
+    "name": "Product Rack List",
+    "group": "Reports",
+    "columns": [
+      "Reference",
+      "Status"
+    ],
+    "fields": [],
+    "statuses": [],
+    "next": null
+  },
+  {
+    "name": "Production BOM",
+    "group": "Production",
+    "columns": [
+      "BOM No",
+      "Product",
+      "Revision",
+      "Status"
+    ],
+    "fields": [
+      "BOM No",
+      "Product",
+      "Revision"
+    ],
+    "statuses": [
+      "Draft",
+      "Approval Pending",
+      "Approved"
+    ],
+    "next": null
+  },
+  {
+    "name": "Production Output",
+    "group": "Production",
+    "columns": [
+      "Output No",
+      "WO No",
+      "Product",
+      "Good Qty",
+      "Reject Qty",
+      "Status"
+    ],
+    "fields": [
+      "Output No",
+      "WO No",
+      "Product",
+      "Good Qty",
+      "Reject Qty"
+    ],
+    "statuses": [
+      "Draft",
+      "QC Pending",
+      "Accepted"
+    ],
+    "next": "Outward QC"
+  },
+  {
+    "name": "Production Register",
+    "group": "Reports",
+    "columns": [
+      "Reference",
+      "Status"
+    ],
+    "fields": [],
+    "statuses": [],
+    "next": null
+  },
+  {
+    "name": "Production Schedule",
+    "group": "Production",
+    "columns": [
+      "Schedule No",
+      "WO No",
+      "Product",
+      "Qty",
+      "Machine",
+      "Planned Date",
+      "Status"
+    ],
+    "fields": [
+      "Schedule No",
+      "WO No",
+      "Product",
+      "Qty",
+      "Machine",
+      "Planned Date"
+    ],
+    "statuses": [
+      "Draft",
+      "Released",
+      "Running",
+      "Completed"
+    ],
+    "next": "Input to Production"
+  },
+  {
+    "name": "Production Vs Planned",
+    "group": "Reports",
+    "columns": [
+      "Reference",
+      "Status"
+    ],
+    "fields": [],
+    "statuses": [],
+    "next": null
+  },
+  {
+    "name": "Products",
+    "group": "Shared",
+    "columns": [
+      "Product Code",
+      "Product Name",
+      "Product Type",
+      "Group",
+      "UOM"
+    ],
+    "fields": [
+      "Product Code",
+      "Product Name",
+      "Product Type",
+      "Group",
+      "UOM"
+    ],
+    "statuses": [],
+    "next": null
+  },
+  {
+    "name": "Proforma Invoice",
+    "group": "Sales",
+    "columns": [
+      "Proforma No",
+      "Customer",
+      "SO No",
+      "Date",
+      "Amount",
+      "Status"
+    ],
+    "fields": [
+      "Proforma No",
+      "Customer",
+      "SO No",
+      "Date",
+      "Amount"
+    ],
+    "statuses": [
+      "Draft",
+      "Approved",
+      "Sent",
+      "Converted"
+    ],
+    "next": null
+  },
+  {
+    "name": "Proforma Invoice Register",
+    "group": "Reports",
+    "columns": [
+      "Reference",
+      "Status"
+    ],
+    "fields": [],
+    "statuses": [],
+    "next": null
+  },
+  {
+    "name": "Project Execution Vs Planned",
+    "group": "Reports",
+    "columns": [
+      "Reference",
+      "Status"
+    ],
+    "fields": [],
+    "statuses": [],
+    "next": null
+  },
+  {
+    "name": "Project Order",
+    "group": "Planning",
+    "columns": [
+      "Project Order No",
+      "Project No",
+      "Customer",
+      "SO No",
+      "Value",
+      "Due Date",
+      "Status"
+    ],
+    "fields": [
+      "Project Order No",
+      "Project No",
+      "Customer",
+      "SO No",
+      "Value",
+      "Due Date"
+    ],
+    "statuses": [
+      "Draft",
+      "Approved",
+      "Running",
+      "Completed"
+    ],
+    "next": "Work Order"
+  },
+  {
+    "name": "Project Order Register",
+    "group": "Reports",
+    "columns": [
+      "Reference",
+      "Status"
+    ],
+    "fields": [],
+    "statuses": [],
+    "next": null
+  },
+  {
+    "name": "Project Planning",
+    "group": "Planning",
+    "columns": [
+      "Project No",
+      "Customer",
+      "SO No",
+      "Start Date",
+      "Target Date",
+      "Owner",
+      "Status"
+    ],
+    "fields": [
+      "Project No",
+      "Customer",
+      "SO No",
+      "Start Date",
+      "Target Date",
+      "Owner"
+    ],
+    "statuses": [
+      "Draft",
+      "Approved",
+      "Active",
+      "Completed"
+    ],
+    "next": "Project Order"
+  },
+  {
+    "name": "Prospects",
+    "group": "Shared",
+    "columns": [
+      "Prospect",
+      "Contact",
+      "Source",
+      "Status"
+    ],
+    "fields": [
+      "Prospect",
+      "Contact",
+      "Source"
+    ],
+    "statuses": [
+      "New",
+      "Qualified",
+      "Customer",
+      "Lost"
+    ],
+    "next": null
+  },
+  {
+    "name": "Purchase",
+    "group": "Purchase",
+    "columns": [
+      "Invoice No",
+      "Vendor",
+      "PO No",
+      "Invoice Date",
+      "Taxable Amount",
+      "Status"
+    ],
+    "fields": [
+      "Invoice No",
+      "Vendor",
+      "PO No",
+      "Invoice Date",
+      "Taxable Amount"
+    ],
+    "statuses": [
+      "Draft",
+      "QC Cleared",
+      "Posted",
+      "Paid"
+    ],
+    "next": "Vendor Payments"
+  },
+  {
+    "name": "Purchase Indents",
+    "group": "Purchase",
+    "columns": [
+      "Indent No",
+      "Department",
+      "Item",
+      "Qty",
+      "Required Date",
+      "Status"
+    ],
+    "fields": [
+      "Indent No",
+      "Department",
+      "Item",
+      "Qty",
+      "Required Date"
+    ],
+    "statuses": [
+      "Draft",
+      "Approval Pending",
+      "Approved",
+      "Converted"
+    ],
+    "next": "Indent To Order"
+  },
+  {
+    "name": "Purchase Invoice Itemwise Register",
+    "group": "Reports",
+    "columns": [
+      "Reference",
+      "Status"
+    ],
+    "fields": [],
+    "statuses": [],
+    "next": null
+  },
+  {
+    "name": "Purchase Invoice Register",
+    "group": "Reports",
+    "columns": [
+      "Reference",
+      "Status"
+    ],
+    "fields": [],
+    "statuses": [],
+    "next": null
+  },
+  {
+    "name": "Purchase Order Register",
+    "group": "Reports",
+    "columns": [
+      "Reference",
+      "Status"
+    ],
+    "fields": [],
+    "statuses": [],
+    "next": null
+  },
+  {
+    "name": "Purchase Orders",
+    "group": "Purchase",
+    "columns": [
+      "PO No",
+      "Vendor",
+      "PO Date",
+      "Amount",
+      "Delivery Date",
+      "Status"
+    ],
+    "fields": [
+      "PO No",
+      "Vendor",
+      "PO Date",
+      "Amount",
+      "Delivery Date"
+    ],
+    "statuses": [
+      "Draft",
+      "Approval Pending",
+      "Approved",
+      "Sent",
+      "Partially Received",
+      "Received",
+      "Closed"
+    ],
+    "next": "GRN"
+  },
+  {
+    "name": "Purchase Return",
+    "group": "Purchase",
+    "columns": [
+      "Return No",
+      "GRN No",
+      "Vendor",
+      "Item",
+      "Qty",
+      "Reason",
+      "Status"
+    ],
+    "fields": [
+      "Return No",
+      "GRN No",
+      "Vendor",
+      "Item",
+      "Qty",
+      "Reason"
+    ],
+    "statuses": [
+      "Draft",
+      "Approval Pending",
+      "Approved",
+      "Returned"
+    ],
+    "next": null
+  },
+  {
+    "name": "Put Away",
+    "group": "Stores",
+    "columns": [
+      "Putaway No",
+      "GRN No",
+      "Item",
+      "Qty",
+      "Warehouse",
+      "Rack",
+      "Status"
+    ],
+    "fields": [
+      "Putaway No",
+      "GRN No",
+      "Item",
+      "Qty",
+      "Warehouse",
+      "Rack"
+    ],
+    "statuses": [
+      "Draft",
+      "QC Cleared",
+      "Put Away",
+      "Completed"
+    ],
+    "next": null
+  },
+  {
+    "name": "Quality Master",
+    "group": "Quality",
+    "columns": [
+      "Plan Code",
+      "Quality Plan",
+      "Product Group",
+      "Revision",
+      "Status"
+    ],
+    "fields": [
+      "Plan Code",
+      "Quality Plan",
+      "Product Group",
+      "Revision"
+    ],
+    "statuses": [
+      "Draft",
+      "Approved",
+      "Inactive"
+    ],
+    "next": null
+  },
+  {
+    "name": "RM Inward and Outward",
+    "group": "Shared",
+    "columns": [
+      "Entry No",
+      "Raw Material",
+      "Inward Qty",
+      "Outward Qty",
+      "Balance",
+      "Date"
+    ],
+    "fields": [
+      "Entry No",
+      "Raw Material",
+      "Inward Qty",
+      "Outward Qty",
+      "Balance",
+      "Date"
+    ],
+    "statuses": [],
+    "next": null
+  },
+  {
+    "name": "Regular Stock List",
+    "group": "Reports",
+    "columns": [
+      "Reference",
+      "Status"
+    ],
+    "fields": [],
+    "statuses": [],
+    "next": null
+  },
+  {
+    "name": "Rejection Note",
+    "group": "Quality",
+    "columns": [
+      "Rejection No",
+      "Work Order",
+      "Product",
+      "Qty",
+      "Reason",
+      "Status"
+    ],
+    "fields": [
+      "Rejection No",
+      "Work Order",
+      "Product",
+      "Qty",
+      "Reason"
+    ],
+    "statuses": [
+      "Open",
+      "Disposition Pending",
+      "Rework",
+      "Scrap",
+      "Closed"
+    ],
+    "next": null
+  },
+  {
+    "name": "Rejection Note Register",
+    "group": "Reports",
+    "columns": [
+      "Reference",
+      "Status"
+    ],
+    "fields": [],
+    "statuses": [],
+    "next": null
+  },
+  {
+    "name": "Remark Master",
+    "group": "Administration",
+    "columns": [
+      "Remark Code",
+      "Remark",
+      "Module",
+      "Status"
+    ],
+    "fields": [
+      "Remark Code",
+      "Remark",
+      "Module"
+    ],
+    "statuses": [
+      "Active",
+      "Inactive"
+    ],
+    "next": null
+  },
+  {
+    "name": "Reports",
+    "group": "Shared",
+    "columns": [
+      "Report Code",
+      "Report Name",
+      "Module",
+      "Export Type",
+      "Status"
+    ],
+    "fields": [
+      "Report Code",
+      "Report Name",
+      "Module",
+      "Export Type"
+    ],
+    "statuses": [
+      "Active",
+      "Inactive"
+    ],
+    "next": null
+  },
+  {
+    "name": "Return to Store",
+    "group": "Shared",
+    "columns": [
+      "Return No",
+      "WO No",
+      "Item",
+      "Qty",
+      "Warehouse",
+      "Date",
+      "Status"
+    ],
+    "fields": [
+      "Return No",
+      "WO No",
+      "Item",
+      "Qty",
+      "Warehouse",
+      "Date"
+    ],
+    "statuses": [
+      "Draft",
+      "Inspected",
+      "Accepted",
+      "Posted"
+    ],
+    "next": null
+  },
+  {
+    "name": "Role Permissions",
+    "group": "Administration",
+    "columns": [
+      "Role",
+      "Module",
+      "View",
+      "Create",
+      "Edit",
+      "Approve"
+    ],
+    "fields": [
+      "Role",
+      "Module",
+      "View",
+      "Create",
+      "Edit",
+      "Approve"
+    ],
+    "statuses": [],
+    "next": null
+  },
+  {
+    "name": "Route Card",
+    "group": "Production",
+    "columns": [
+      "Route No",
+      "Product",
+      "Process",
+      "Status"
+    ],
+    "fields": [
+      "Route No",
+      "Product",
+      "Process"
+    ],
+    "statuses": [
+      "Draft",
+      "Released",
+      "Closed"
+    ],
+    "next": null
+  },
+  {
+    "name": "Route Cards",
+    "group": "Production",
+    "columns": [
+      "Route No",
+      "WO No",
+      "Operation",
+      "Machine",
+      "Completed Qty",
+      "Status"
+    ],
+    "fields": [
+      "Route No",
+      "WO No",
+      "Operation",
+      "Machine",
+      "Completed Qty"
+    ],
+    "statuses": [
+      "Pending",
+      "Running",
+      "Completed"
+    ],
+    "next": "Production Output"
+  },
+  {
+    "name": "SO Number Details",
+    "group": "Shared",
+    "columns": [
+      "SO Number",
+      "Customer",
+      "Product",
+      "Qty",
+      "Delivery Date",
+      "Status"
+    ],
+    "fields": [
+      "SO Number",
+      "Customer",
+      "Product",
+      "Qty",
+      "Delivery Date"
+    ],
+    "statuses": [
+      "Open",
+      "In Production",
+      "Completed"
+    ],
+    "next": null
+  },
+  {
+    "name": "Sales Enquiries",
+    "group": "Sales",
+    "columns": [
+      "Enquiry No",
+      "Customer",
+      "Product",
+      "Qty",
+      "Expected Delivery",
+      "Status"
+    ],
+    "fields": [
+      "Enquiry No",
+      "Customer",
+      "Product",
+      "Qty",
+      "Expected Delivery"
+    ],
+    "statuses": [
+      "New",
+      "Under Review",
+      "Quoted",
+      "Won",
+      "Lost"
+    ],
+    "next": "Sales Quotations"
+  },
+  {
+    "name": "Sales Invoice",
+    "group": "Sales",
+    "columns": [
+      "#",
+      "Invoice No",
+      "Date",
+      "Customer",
+      "SO No",
+      "Reference",
+      "Status",
+      "Amount",
+      "Sync",
+      "Remarks"
+    ],
+    "fields": [
+      "Invoice No",
+      "Customer",
+      "SO No",
+      "Amount"
+    ],
+    "statuses": [
+      "DRAFT",
+      "APPROVED"
+    ],
+    "next": null
+  },
+  {
+    "name": "Sales Order Created & Closed",
+    "group": "Reports",
+    "columns": [
+      "Reference",
+      "Status"
+    ],
+    "fields": [],
+    "statuses": [],
+    "next": null
+  },
+  {
+    "name": "Sales Order Created & Closed Headerwise",
+    "group": "Reports",
+    "columns": [
+      "Reference",
+      "Status"
+    ],
+    "fields": [],
+    "statuses": [],
+    "next": null
+  },
+  {
+    "name": "Sales Order Register",
+    "group": "Reports",
+    "columns": [
+      "Reference",
+      "Status"
+    ],
+    "fields": [],
+    "statuses": [],
+    "next": null
+  },
+  {
+    "name": "Sales Orders",
+    "group": "Sales",
+    "columns": [
+      "SO No",
+      "Customer",
+      "Customer PO",
+      "Product",
+      "Qty",
+      "Delivery",
+      "Status"
+    ],
+    "fields": [
+      "SO No",
+      "Customer",
+      "Customer PO",
+      "Product",
+      "Qty",
+      "Delivery"
+    ],
+    "statuses": [
+      "Draft",
+      "Approved",
+      "Production Pending",
+      "Production Running",
+      "Ready to Dispatch",
+      "Completed"
+    ],
+    "next": "Work Order"
+  },
+  {
+    "name": "Sales Quotation Register",
+    "group": "Reports",
+    "columns": [
+      "Reference",
+      "Status"
+    ],
+    "fields": [],
+    "statuses": [],
+    "next": null
+  },
+  {
+    "name": "Sales Quotation Register Headerwise",
+    "group": "Reports",
+    "columns": [
+      "Reference",
+      "Status"
+    ],
+    "fields": [],
+    "statuses": [],
+    "next": null
+  },
+  {
+    "name": "Sales Quotations",
+    "group": "Sales",
+    "columns": [
+      "Quotation No",
+      "Customer",
+      "Enquiry",
+      "Amount",
+      "Status"
+    ],
+    "fields": [
+      "Quotation No",
+      "Customer",
+      "Enquiry",
+      "Amount"
+    ],
+    "statuses": [
+      "Draft",
+      "Approval Pending",
+      "Approved",
+      "Sent",
+      "Accepted",
+      "Rejected"
+    ],
+    "next": "Sales Orders"
+  },
+  {
+    "name": "Sales Register",
+    "group": "Reports",
+    "columns": [
+      "Reference",
+      "Status"
+    ],
+    "fields": [],
+    "statuses": [],
+    "next": null
+  },
+  {
+    "name": "Sales Register Headerwise",
+    "group": "Reports",
+    "columns": [
+      "Reference",
+      "Status"
+    ],
+    "fields": [],
+    "statuses": [],
+    "next": null
+  },
+  {
+    "name": "Sales Return",
+    "group": "Sales",
+    "columns": [
+      "Return No",
+      "Invoice",
+      "Customer",
+      "Product",
+      "Qty",
+      "Decision"
+    ],
+    "fields": [
+      "Return No",
+      "Invoice",
+      "Customer",
+      "Product",
+      "Qty"
+    ],
+    "statuses": [
+      "Inspection",
+      "Repair",
+      "Replace",
+      "Credit Note",
+      "Closed"
+    ],
+    "next": "Credit Note"
+  },
+  {
+    "name": "Scrap Entry",
+    "group": "Stores",
+    "columns": [
+      "Scrap No",
+      "Work Order",
+      "Material",
+      "Qty",
+      "Reason",
+      "Status"
+    ],
+    "fields": [
+      "Scrap No",
+      "Work Order",
+      "Material",
+      "Qty",
+      "Reason"
+    ],
+    "statuses": [
+      "Draft",
+      "Approved",
+      "Disposed"
+    ],
+    "next": null
+  },
+  {
+    "name": "Seal Uploads",
+    "group": "Shared",
+    "columns": [
+      "Seal No",
+      "Product",
+      "Drawing / Document",
+      "Uploaded By",
+      "Status"
+    ],
+    "fields": [
+      "Seal No",
+      "Product",
+      "Drawing / Document",
+      "Uploaded By"
+    ],
+    "statuses": [
+      "Draft",
+      "Verified",
+      "Approved"
+    ],
+    "next": null
+  },
+  {
+    "name": "Service Invoice",
+    "group": "Shared",
+    "columns": [
+      "Invoice No",
+      "Vendor",
+      "Job No",
+      "Service",
+      "Amount",
+      "Invoice Date",
+      "Status"
+    ],
+    "fields": [
+      "Invoice No",
+      "Vendor",
+      "Job No",
+      "Service",
+      "Amount",
+      "Invoice Date"
+    ],
+    "statuses": [
+      "Draft",
+      "Approval Pending",
+      "Approved",
+      "Posted"
+    ],
+    "next": "Vendor Payments"
+  },
+  {
+    "name": "Settings",
+    "group": "Administration",
+    "columns": [
+      "Reference",
+      "Description"
+    ],
+    "fields": [
+      "Reference"
+    ],
+    "statuses": [],
+    "next": null
+  },
+  {
+    "name": "Short Consumption Register",
+    "group": "Reports",
+    "columns": [
+      "Reference",
+      "Status"
+    ],
+    "fields": [],
+    "statuses": [],
+    "next": null
+  },
+  {
+    "name": "Shortage Stock",
+    "group": "Stores",
+    "columns": [
+      "Entry No",
+      "Item",
+      "Warehouse",
+      "Shortage Qty",
+      "Reason",
+      "Status"
+    ],
+    "fields": [
+      "Entry No",
+      "Item",
+      "Warehouse",
+      "Shortage Qty",
+      "Reason"
+    ],
+    "statuses": [
+      "Identified",
+      "Approved",
+      "Adjusted"
+    ],
+    "next": null
+  },
+  {
+    "name": "Stage Consumption",
+    "group": "Production",
+    "columns": [
+      "Consumption No",
+      "WO No",
+      "Operation",
+      "Item",
+      "Consumed Qty",
+      "Input No",
+      "Status"
+    ],
+    "fields": [
+      "Consumption No",
+      "WO No",
+      "Operation",
+      "Item",
+      "Consumed Qty",
+      "Input No"
+    ],
+    "statuses": [
+      "Draft",
+      "Recorded",
+      "Approved",
+      "Posted"
+    ],
+    "next": "Stage Receipt"
+  },
+  {
+    "name": "Stage Receipt",
+    "group": "Production",
+    "columns": [
+      "Receipt No",
+      "WO No",
+      "Operation",
+      "Machine",
+      "Good Qty",
+      "Reject Qty",
+      "Status"
+    ],
+    "fields": [
+      "Receipt No",
+      "WO No",
+      "Operation",
+      "Machine",
+      "Good Qty",
+      "Reject Qty"
+    ],
+    "statuses": [
+      "Draft",
+      "Recorded",
+      "Inspected",
+      "Completed"
+    ],
+    "next": "In-process QC"
+  },
+  {
+    "name": "Stock Adjustment",
+    "group": "Stores",
+    "columns": [
+      "Adjustment No",
+      "Item",
+      "Warehouse",
+      "Quantity Change",
+      "Reason",
+      "Date",
+      "Status"
+    ],
+    "fields": [
+      "Adjustment No",
+      "Item",
+      "Warehouse",
+      "Quantity Change",
+      "Reason",
+      "Date"
+    ],
+    "statuses": [
+      "Draft",
+      "Approval Pending",
+      "Approved",
+      "Posted"
+    ],
+    "next": null
+  },
+  {
+    "name": "Stock Ledger",
+    "group": "Reports",
+    "columns": [
+      "Reference",
+      "Status"
+    ],
+    "fields": [],
+    "statuses": [],
+    "next": null
+  },
+  {
+    "name": "Stock List",
+    "group": "Reports",
+    "columns": [
+      "Reference",
+      "Status"
+    ],
+    "fields": [],
+    "statuses": [],
+    "next": null
+  },
+  {
+    "name": "Stock Report",
+    "group": "Reports",
+    "columns": [
+      "Reference",
+      "Status"
+    ],
+    "fields": [],
+    "statuses": [],
+    "next": null
+  },
+  {
+    "name": "Stock Valuation",
+    "group": "Reports",
+    "columns": [
+      "Reference",
+      "Status"
+    ],
+    "fields": [],
+    "statuses": [],
+    "next": null
+  },
+  {
+    "name": "Tally Link - Purchase",
+    "group": "Purchase",
+    "columns": [
+      "Voucher No",
+      "Purchase Invoice",
+      "Vendor",
+      "Amount",
+      "Sync Status"
+    ],
+    "fields": [
+      "Voucher No",
+      "Purchase Invoice",
+      "Vendor",
+      "Amount"
+    ],
+    "statuses": [
+      "Pending",
+      "Synced",
+      "Failed"
+    ],
+    "next": null
+  },
+  {
+    "name": "Tally Link - Sales",
+    "group": "Sales",
+    "columns": [
+      "Voucher No",
+      "Sales Invoice",
+      "Customer",
+      "Amount",
+      "Sync Status"
+    ],
+    "fields": [
+      "Voucher No",
+      "Sales Invoice",
+      "Customer",
+      "Amount"
+    ],
+    "statuses": [
+      "Pending",
+      "Synced",
+      "Failed"
+    ],
+    "next": null
+  },
+  {
+    "name": "Terminate Order",
+    "group": "Shared",
+    "columns": [
+      "Termination No",
+      "SO No",
+      "Customer",
+      "Reason",
+      "Date",
+      "Approved By",
+      "Status"
+    ],
+    "fields": [
+      "Termination No",
+      "SO No",
+      "Customer",
+      "Reason",
+      "Date",
+      "Approved By"
+    ],
+    "statuses": [
+      "Draft",
+      "Approval Pending",
+      "Approved",
+      "Closed"
+    ],
+    "next": null
+  },
+  {
+    "name": "Terminated Purchase Order Register",
+    "group": "Reports",
+    "columns": [
+      "Reference",
+      "Status"
+    ],
+    "fields": [],
+    "statuses": [],
+    "next": null
+  },
+  {
+    "name": "Terminated Sales Order Register",
+    "group": "Reports",
+    "columns": [
+      "Reference",
+      "Status"
+    ],
+    "fields": [],
+    "statuses": [],
+    "next": null
+  },
+  {
+    "name": "Time Tracker",
+    "group": "Reports",
+    "columns": [
+      "Reference",
+      "Status"
+    ],
+    "fields": [],
+    "statuses": [],
+    "next": null
+  },
+  {
+    "name": "Transactions",
+    "group": "Shared",
+    "columns": [
+      "Transaction Code",
+      "Transaction Name",
+      "Module",
+      "Approval Required",
+      "Status"
+    ],
+    "fields": [
+      "Transaction Code",
+      "Transaction Name",
+      "Module",
+      "Approval Required"
+    ],
+    "statuses": [
+      "Active",
+      "Inactive"
+    ],
+    "next": null
+  },
+  {
+    "name": "Types",
+    "group": "Shared",
+    "columns": [
+      "Type Code",
+      "Type Name",
+      "Description"
+    ],
+    "fields": [
+      "Type Code",
+      "Type Name",
+      "Description"
+    ],
+    "statuses": [],
+    "next": null
+  },
+  {
+    "name": "UOM",
+    "group": "Stores",
+    "columns": [
+      "UOM Code",
+      "Unit Name",
+      "Symbol"
+    ],
+    "fields": [
+      "UOM Code",
+      "Unit Name",
+      "Symbol"
+    ],
+    "statuses": [],
+    "next": null
+  },
+  {
+    "name": "User Daily Task List",
+    "group": "Reports",
+    "columns": [
+      "Reference",
+      "Status"
+    ],
+    "fields": [],
+    "statuses": [],
+    "next": null
+  },
+  {
+    "name": "User Roles",
+    "group": "Administration",
+    "columns": [
+      "Role",
+      "Users",
+      "Description",
+      "Status"
+    ],
+    "fields": [
+      "Role",
+      "Users",
+      "Description"
+    ],
+    "statuses": [
+      "Active",
+      "Inactive"
+    ],
+    "next": null
+  },
+  {
+    "name": "User Wise Transactions List",
+    "group": "Reports",
+    "columns": [
+      "Reference",
+      "Status"
+    ],
+    "fields": [],
+    "statuses": [],
+    "next": null
+  },
+  {
+    "name": "Users",
+    "group": "Administration",
+    "columns": [
+      "User",
+      "Employee",
+      "Role",
+      "Department",
+      "Status"
+    ],
+    "fields": [
+      "User",
+      "Employee",
+      "Role",
+      "Department"
+    ],
+    "statuses": [
+      "Active",
+      "Locked",
+      "Inactive"
+    ],
+    "next": null
+  },
+  {
+    "name": "Vendor Master List",
+    "group": "Reports",
+    "columns": [
+      "Reference",
+      "Status"
+    ],
+    "fields": [],
+    "statuses": [],
+    "next": null
+  },
+  {
+    "name": "Vendor Payment History",
+    "group": "Reports",
+    "columns": [
+      "Reference",
+      "Status"
+    ],
+    "fields": [],
+    "statuses": [],
+    "next": null
+  },
+  {
+    "name": "Vendor Payments",
+    "group": "Purchase",
+    "columns": [
+      "Payment No",
+      "Vendor",
+      "Invoice",
+      "Date",
+      "Amount",
+      "Status"
+    ],
+    "fields": [
+      "Payment No",
+      "Vendor",
+      "Invoice",
+      "Date",
+      "Amount"
+    ],
+    "statuses": [
+      "Pending Approval",
+      "Approved",
+      "Paid"
+    ],
+    "next": null
+  },
+  {
+    "name": "Vendor Price List",
+    "group": "Purchase",
+    "columns": [
+      "Price Ref",
+      "Vendor",
+      "Item",
+      "UOM",
+      "Rate",
+      "Valid Until",
+      "Status"
+    ],
+    "fields": [
+      "Price Ref",
+      "Vendor",
+      "Item",
+      "UOM",
+      "Rate",
+      "Valid Until"
+    ],
+    "statuses": [
+      "Draft",
+      "Active",
+      "Expired"
+    ],
+    "next": null
+  },
+  {
+    "name": "Vendor Price List Report",
+    "group": "Reports",
+    "columns": [
+      "Reference",
+      "Status"
+    ],
+    "fields": [],
+    "statuses": [],
+    "next": null
+  },
+  {
+    "name": "Vendors",
+    "group": "Purchase",
+    "columns": [
+      "Code",
+      "Name"
+    ],
+    "fields": [
+      "Code",
+      "Name"
+    ],
+    "statuses": [],
+    "next": null
+  },
+  {
+    "name": "WIP Stock",
+    "group": "Reports",
+    "columns": [
+      "Reference",
+      "Status"
+    ],
+    "fields": [],
+    "statuses": [],
+    "next": null
+  },
+  {
+    "name": "Work Order",
+    "group": "Production",
+    "columns": [
+      "WO No",
+      "SO No",
+      "Product",
+      "Qty",
+      "Machine",
+      "Status"
+    ],
+    "fields": [
+      "WO No",
+      "SO No",
+      "Product",
+      "Qty",
+      "Machine"
+    ],
+    "statuses": [
+      "Planned",
+      "Released",
+      "Running",
+      "QC Pending",
+      "Completed"
+    ],
+    "next": "Material Request"
+  },
+  {
+    "name": "Work Order Register",
+    "group": "Reports",
+    "columns": [
+      "Reference",
+      "Status"
+    ],
+    "fields": [],
+    "statuses": [],
+    "next": null
+  },
+  {
+    "name": "Work Order Status",
+    "group": "Reports",
+    "columns": [
+      "Reference",
+      "Status"
+    ],
+    "fields": [],
+    "statuses": [],
+    "next": null
+  },
+  {
+    "name": "Work-Order-Wise Order",
+    "group": "Reports",
+    "columns": [
+      "Reference",
+      "Status"
+    ],
+    "fields": [],
+    "statuses": [],
+    "next": null
+  },
+  {
+    "name": "WorkCenter/Machine Master",
+    "group": "Production",
+    "columns": [
+      "Machine Code",
+      "Machine / Work Center",
+      "Department",
+      "Hourly Rate",
+      "Status"
+    ],
+    "fields": [
+      "Machine Code",
+      "Machine / Work Center",
+      "Department",
+      "Hourly Rate"
+    ],
+    "statuses": [
+      "Available",
+      "Running",
+      "Maintenance"
+    ],
+    "next": null
+  }
+]

@@ -1,0 +1,13 @@
+.erp-dialog-scrim{position:fixed;inset:0;z-index:2147483000;background:rgba(13,24,46,.52);display:flex;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(3px)}
+.erp-app-dialog{box-sizing:border-box;width:min(440px,100%);background:#fff;color:#1c304b;border:1px solid #dbe3ef;border-radius:16px;box-shadow:0 24px 70px rgba(12,26,52,.26);padding:26px;max-height:calc(100dvh - 40px);overflow-y:auto}
+.erp-dialog-glyph{width:38px;height:38px;border-radius:12px;display:grid;place-items:center;background:#e8f0ff;color:#2153a1;font-weight:800;font-size:22px;margin-bottom:13px}
+.erp-app-dialog h2{font-size:19px;line-height:1.35;margin:0 0 9px;font-weight:700;color:#172d4d}
+.erp-app-dialog p{font-size:14px;line-height:1.6;white-space:pre-wrap;overflow-wrap:anywhere;margin:0 0 22px;color:#53657d}
+.erp-dialog-actions{display:flex;justify-content:flex-end;gap:10px;flex-wrap:wrap}
+.erp-dialog-actions button{border:1px solid #c9d5e8;background:#fff;color:#233956;border-radius:9px;padding:10px 17px;font:inherit;font-weight:650;cursor:pointer;min-width:88px;min-height:42px;transition:background .15s,box-shadow .15s}
+.erp-dialog-actions button:hover{background:#edf2f9}
+.erp-dialog-actions button:focus-visible{outline:3px solid #78a6ed;outline-offset:2px}
+.erp-dialog-actions .erp-dialog-accept{color:#fff;background:#205bab;border-color:#205bab}
+.erp-dialog-actions .erp-dialog-accept:hover{background:#16498e}
+@media(max-width:500px){.erp-app-dialog{padding:20px;border-radius:13px}.erp-dialog-actions button{flex:1}}
+@media(prefers-reduced-motion:reduce){.erp-dialog-actions button{transition:none}}

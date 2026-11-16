@@ -105,12 +105,231 @@ button.premium-template-download{border:1px solid #dbe6f3;border-radius:7px;colo
 .premium-form-page .erp-form-grid>label{min-width:0;display:flex;flex-direction:column;gap:7px}
 .premium-form-page .erp-form-grid :is(input,select,textarea){width:100%;max-width:100%;min-width:0;box-sizing:border-box}
 .premium-form-page .erp-form-grid textarea{min-height:92px;resize:vertical}
-.erp-workflow-dialog{width:min(790px,calc(100vw - 40px))!important;max-width:790px!important}
-.erp-workflow-dialog>.modal-head{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
-.erp-workflow-dialog>.modal-head>div{flex:1 1 200px;min-width:0}
-.erp-workflow-dialog>.modal-grid{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:18px 20px!important;align-items:start}
-.erp-workflow-dialog>.modal-grid>label{min-width:0;display:flex;flex-direction:column;gap:7px}
-.erp-workflow-dialog>.modal-grid>label :is(input,select,textarea){width:100%!important;max-width:100%;min-width:0;box-sizing:border-box;min-height:41px}
-.erp-workflow-dialog>.modal-actions{display:flex;justify-content:flex-end;gap:10px;flex-wrap:wrap}
-@media(max-width:680px){.erp-workflow-dialog>.modal-grid{grid-template-columns:1fr!important}.erp-workflow-dialog>.modal-head{gap:10px}.premium-form-page>.page-title-row>.action-pills{margin-left:0;width:100%}.premium-form-page .erp-form-grid{grid-template-columns:1fr!important}}
+@media(max-width:680px){.premium-form-page>.page-title-row>.action-pills{margin-left:0;width:100%}.premium-form-page .erp-form-grid{grid-template-columns:1fr!important}}
 @media(prefers-reduced-motion:reduce){.erp-form-back{transition:none}.erp-form-back:hover{transform:none}}
+
+/* Existing document fields, now presented in a detailed and scannable ERP form. */
+.erp-detailed-form{display:flex;flex-direction:column;gap:15px;min-width:0;padding:14px clamp(14px,2vw,24px) 16px;}
+.erp-field-section{border:1px solid #e0e8f1;border-radius:13px;background:#fff;padding:0;min-width:0;overflow:hidden;}
+/* Transaction cards and sections share the same document surface. */
+.reference-sections{display:flex;flex-wrap:wrap;gap:8px;padding:0 0 3px}
+.reference-attachments{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(230px,100%),1fr));gap:14px}
+.reference-attachments h3{font-size:14px;margin-bottom:8px}
+.reference-panel[hidden]{display:none!important}
+
+/* Compact document layout using the OneERP theme. */
+.page-transition-shell > .transaction-editor-page {
+  display:grid;
+  grid-template-rows:auto minmax(0,1fr);
+  gap:6px;
+  overflow:hidden!important;
+  padding:10px 12px!important;
+  scrollbar-gutter:auto;
+}
+.transaction-editor-heading {
+  display:flex;
+  align-items:center;
+  flex-wrap:wrap;
+  gap:10px;
+  min-width:0;
+  padding:6px 10px;
+  background:var(--v14-surface);
+  border:1px solid var(--v14-border);
+  border-radius:8px;
+}
+.transaction-editor-title { flex:1 1 180px; min-width:0; }
+.transaction-editor-heading h1 { margin:0!important; overflow-wrap:anywhere; }
+.transaction-editor-heading h1:focus { outline:none; }
+.transaction-editor-heading p { margin:4px 0 0; font-size:12px; color:var(--v14-muted); overflow-wrap:anywhere; }
+.transaction-editor-actions { display:flex; flex-wrap:wrap; gap:6px; margin-inline-start:auto; }
+.transaction-editor-surface {
+  display:flex;
+  flex-direction:column;
+  min-height:0;
+  min-width:0;
+  background:var(--v14-surface);
+  border:1px solid var(--v14-border);
+  border-radius:8px;
+  overflow:hidden;
+}
+.transaction-editor-tools {
+  display:flex;
+  align-items:center;
+  flex-wrap:wrap;
+  flex:none;
+  gap:0 8px;
+  padding:0 8px;
+  border-bottom:1px solid var(--v14-border);
+  background:var(--v14-surface-soft);
+}
+.transaction-editor-tools > .reference-sections { gap:0; padding:0; }
+.transaction-fetch-trigger {
+  display:flex;
+  align-items:center;
+  gap:8px;
+  min-width:0;
+  margin-inline-start:auto;
+  padding-block:3px;
+  color:var(--v14-text);
+  font-size:12px;
+  overflow-wrap:anywhere;
+}
+.transaction-fetch-panel { flex:0 0 100%; padding:6px 0 8px; }
+.transaction-fetch-panel p { margin:6px 0 0; font-size:12px; }
+.transaction-section-tab {
+  background:none;
+  border:0;
+  border-bottom:2px solid transparent;
+  color:var(--v14-text);
+  cursor:pointer;
+  font:inherit;
+  font-size:13px;
+  font-weight:600;
+  padding:7px 10px;
+}
+.transaction-section-tab[aria-current="true"] {
+  background:var(--v14-primary-soft);
+  border-bottom-color:var(--v14-primary);
+  color:var(--v14-primary);
+}
+.transaction-section-tab:focus-visible,
+.transaction-editor-body:focus-visible { outline:2px solid var(--v14-primary); outline-offset:-2px; }
+.transaction-editor-body {
+  flex:1 1 auto;
+  min-height:0;
+  min-width:0;
+  overflow:auto;
+  overscroll-behavior:contain;
+  scrollbar-gutter:stable;
+  container-type:inline-size;
+}
+.transaction-editor-page .erp-detailed-form { gap:8px; padding:8px 10px; }
+.transaction-editor-page :is(.erp-field-section,.invoice-form-card > .reference-panel) {
+  border:1px solid var(--v14-border);
+  border-radius:7px;
+  min-width:0;
+}
+.transaction-section-heading {
+  margin:0;
+  padding:6px 10px;
+  background:var(--v14-surface-soft);
+  border-bottom:1px solid var(--v14-border);
+  color:var(--v14-text);
+  font-size:13px;
+  font-weight:700;
+}
+.transaction-editor-page :is(.erp-field-grid,.invoice-form-grid,.reference-fetch-grid) {
+  display:grid!important;
+  grid-template-columns:repeat(4,minmax(0,1fr))!important;
+  gap:7px 12px!important;
+  align-items:end;
+  margin:0!important;
+}
+.transaction-editor-page .reference-fetch-grid {
+  grid-template-columns:minmax(125px,1fr) minmax(135px,1.2fr) minmax(155px,1.7fr) auto!important;
+  padding:0!important;
+}
+.transaction-editor-page .reference-fetch-grid > button { justify-self:start; }
+.transaction-editor-page :is(.erp-field-grid,.invoice-form-grid) { padding:8px 10px!important; }
+.transaction-editor-page :is(.erp-field-grid,.invoice-form-grid,.reference-fetch-grid) > label {
+  display:grid!important;
+  grid-template-columns:minmax(0,1fr);
+  align-content:end;
+  align-self:stretch;
+  gap:3px!important;
+  margin:0!important;
+  min-width:0;
+}
+.transaction-editor-page :is(.erp-field-grid,.invoice-form-grid,.reference-fetch-grid) > label > span {
+  min-height:0!important;
+  overflow-wrap:anywhere;
+}
+.transaction-editor-page :is(.erp-field-grid,.invoice-form-grid,.reference-fetch-grid) :is(input,select,textarea) {
+  width:100%!important;
+  min-width:0;
+  height:38px!important;
+  min-height:38px!important;
+  padding:5px 8px!important;
+  box-sizing:border-box;
+}
+.transaction-editor-page :is(.erp-field-grid,.invoice-form-grid) textarea { height:auto!important; field-sizing:content; min-height:38px!important; resize:vertical; }
+.transaction-required::after { content:" *" / ""; color:var(--v14-danger); }
+.transaction-values {
+  display:flex;
+  flex-wrap:wrap;
+  gap:4px 16px;
+  margin:0;
+  padding:6px 10px;
+  min-width:0;
+  border:1px solid var(--v14-border);
+  border-radius:7px;
+  background:var(--v14-surface-soft);
+}
+.transaction-values > div { display:flex; align-items:baseline; gap:5px; min-width:0; }
+.transaction-values dt { flex:none; color:var(--v14-muted); font-size:11px; }
+.transaction-values dd { margin:0; color:var(--v14-text); font-weight:700; font-size:12px; overflow-wrap:anywhere; }
+.erp-form-source-section { display:grid; gap:6px; margin-top:8px; padding:8px 10px; border:1px solid var(--v14-border); border-radius:7px; }
+.erp-form-source-header { display:flex; align-items:center; gap:6px; font-size:12px; }
+.erp-linked-document h3 { margin:2px 0 4px; font-size:12px; overflow-wrap:anywhere; }
+.erp-linked-document .transaction-values { padding:4px 7px; }
+.transaction-attachment-card {
+  display:grid;
+  align-content:start;
+  gap:5px;
+  min-width:0;
+  padding:8px 10px;
+  border:1px solid var(--v14-border);
+  border-radius:7px;
+}
+.transaction-attachment-card h3 { margin:0; font-size:13px; }
+.transaction-attachment-card > a { overflow-wrap:anywhere; }
+.transaction-attachment-card .premium-upload-field.is-compact .premium-dropzone {
+  display:grid!important;
+  grid-template-columns:minmax(0,1fr) auto;
+  gap:4px 8px!important;
+  align-items:center!important;
+  min-height:0;
+  padding:8px;
+  text-align:start!important;
+}
+.transaction-attachment-card .premium-upload-symbol,
+.transaction-attachment-card .premium-dropzone > p { display:none!important; }
+.transaction-attachment-card .premium-dropzone > small {
+  grid-column:1/-1;
+  grid-row:2;
+  margin:0!important;
+}
+.transaction-attachment-card .premium-selected-file { margin-top:5px; }
+.transaction-editor-page .invoice-form-card { display:grid; gap:8px; min-width:0; padding:0!important; }
+.transaction-editor-page .invoice-form-card .reference-attachments { margin:0; }
+.transaction-editor-page .invoice-form-card .table-wrap { max-width:100%; overflow-x:auto; }
+.transaction-editor-page .invoice-form-card .table-wrap input { min-width:84px; }
+.transaction-editor-error {
+  margin:0;
+  padding:8px 12px;
+  border-bottom:1px solid #f0c8c8;
+  background:#fff3f2;
+  color:#942e2e;
+  font-size:13px;
+  max-height:20vh;
+  overflow:auto;
+}
+@container (max-width: 1000px) {
+  .transaction-editor-page :is(.erp-field-grid,.invoice-form-grid) { grid-template-columns:repeat(3,minmax(0,1fr))!important; }
+}
+@container (max-width: 740px) {
+  .transaction-editor-page :is(.erp-field-grid,.invoice-form-grid) { grid-template-columns:repeat(2,minmax(0,1fr))!important; }
+}
+@container (max-width: 345px) {
+  .transaction-editor-page :is(.erp-field-grid,.invoice-form-grid) { grid-template-columns:minmax(0,1fr)!important; }
+}
+@media(max-width:740px) {
+  .page-transition-shell > .transaction-editor-page { gap:5px; padding:6px!important; }
+  .transaction-editor-heading { gap:6px; }
+  .transaction-editor-page .reference-fetch-grid { grid-template-columns:minmax(0,1fr)!important; }
+}
+
+.invoice-editor-help { margin:0; padding:5px 10px 9px; color:var(--v14-muted); font-size:12px; }
+.invoice-product-grid { min-width:1300px; }
+.invoice-product-grid :nth-child(3) input { min-width:170px!important; }
+.invoice-form-card .invoice-lines-head { display:flex; flex-wrap:wrap; gap:8px; }

@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { showNotice as alert, askConfirmation as confirm, InAppDialogHost } from './in-app-dialog.jsx';
 import { createRoot } from 'react-dom/client';
 import {
   Archive, Bell, Boxes, Briefcase, Building, Building2, CalendarDays, CheckCircle2,
@@ -9,7 +10,7 @@ import {
   Upload, UserCircle2, Users, WalletCards, Wrench, X, ArrowRight, Factory,
   Truck, BadgeCheck, Boxes as StockIcon, Send, IndianRupee, Activity, ShieldCheck,
   Eye, Save, Trash2, BarChart3, Gauge, AlertTriangle, CircleDollarSign, Command,
-  PanelLeftClose, PanelLeftOpen, HelpCircle, MoreHorizontal, ExternalLink, Sparkles, Zap,
+  PanelLeftClose, PanelLeftOpen, HelpCircle, MoreHorizontal, ExternalLink, Sparkles, Zap, GitBranch,
   XCircle, Check, Keyboard, ArrowUpRight, TrendingUp, TrendingDown, MonitorCog
 } from 'lucide-react';
 import logo from './assets/dfab-logo.png';
@@ -20,10 +21,24 @@ import './premium-forms.css';
 import { PremiumUploadField, PremiumImportPage, FormSectionHeading, FormDialogBackdrop } from './premium-forms.jsx';
 import { todayISO, isoDate, displayDate, readStored, writeStored, fieldType, validateFields, parseCsv, csvCell, validateBackup, readAttachment } from './erp-utils.js';
 import { signInWithPassword, refreshSession, signOut } from './backend/supabase-rest.js';
+import AdminControl from './admin-control.jsx';
+import AdminPreview from './admin-preview.jsx';
+import {canUseLocalAdminPreview} from './admin-preview-policy.js';
+import './admin-preview.css';
+import { setAdminToken, loadMyAccess, loadWorkflowRuntime } from './admin-api.js';
+import { canAccess as canAdminAccess } from './admin-permissions.js';
 import { restorePreviousErpDataOnce, getRestoredDataStatus } from './restored-seed-data.js';
 import { initializeCloudStore, setCloudAccessToken, exportCloudSnapshot, flushCloudWrites, resetCloudWriteErrors, writeCloudValueConfirmed, writeCloudBatchConfirmed } from './backend/cloud-store.js';
-import { findRecord, recordToObject, validateConnectedRecord, resolveWorkflowContext } from './workflow-integrity.js';
+import { findRecord, recordToObject, validateConnectedRecord, resolveWorkflowContext, validateProductionProgress, receiptPostingStatus, canRejectProductionDocument, nextProductionStatus } from './workflow-integrity.js';
+import { describeDocument, documentReportRows, fetchConflict, hasDocumentValue, invoiceColumns } from './document-data.js';
 import { calculateInvoice } from './invoice-calculations.js';
+import { InvoiceProducts, InvoiceCharges, InvoiceExpenses } from './invoice-line-editor.jsx';
+import { imantraTransactions, imantraForwardStatuses, imantraReportDefinitions, imantraReportRows, validateImantraDocument, imantraReferenceSource, imantraForwardPrefill } from './imantra-integration.js';
+import {isRangedStockReport,postedStockMovements,stockBalances,stockMovementSources,stockReportRows,validateStockChange} from './imantra-stock.js';
+import {configuredSourceValue} from './admin-lineage.js';
+
+import { referenceForms, referenceDefaults, transactionHeader, referenceInputType, referenceOptions, invoiceHeaderKeys, detailsFromRow, rowStatus, rowMatchesColumns, applyReferenceFetch } from './reference-forms.js';
+import { ReferenceField, ReferenceAttachments, ReferenceFetch, TransactionEditor, TransactionValues } from './reference-form-controls.jsx';
 
 const groups = [];
 
@@ -42,6 +57,8 @@ function databaseSuggestions(label=''){
   const productDetails=objectRows('dfab-erp-products-details-v1');
   if(/product code|item code|raw material code/.test(name)) values.push(...products.map(r=>r?.[0]));
   else if(/product|item|material|raw material/.test(name)) values.push(...products.flatMap(r=>[r?.[0],r?.[1]]));
+  if(name==='prospect') values.push(...valuesAt('dfab-erp-prospects-v2',[0,1]),...customers.flatMap(r=>[r?.[0],r?.[1]]));
+  if(name==='kind attention') values.push(...arrayRows('dfab-live-kind-attention').map(r=>r?.name));
   if(/customer|consignee|party/.test(name)) values.push(...customers.flatMap(r=>[r?.[0],r?.[1]]));
   if(/vendor|supplier/.test(name)) values.push(...vendors.flatMap(r=>[r?.[0],r?.[1]]));
   if(/account/.test(name)) values.push(...customers.flatMap(r=>[r?.[0],r?.[1]]),...vendors.flatMap(r=>[r?.[0],r?.[1]]));
@@ -73,6 +90,14 @@ function databaseSuggestions(label=''){
   if(/transaction number|transaction record|reference no|reference$/.test(name)) ['Sales Enquiries','Sales Quotations','Sales Orders','Purchase Orders','GRN','Work Order','Material Request','Material Issue','Route Cards','Production Output','Delivery Challan','Vendor Payments','Customer Payments'].forEach(module=>values.push(...valuesAt(`dfab-erp-${module}`,[0])));
   if(/bom/.test(name)) values.push(...valuesAt('dfab-erp-production-bom-v2',[0]));
   if(/route card|linked route/.test(name)) values.push(...valuesAt('dfab-erp-route-card-v2',[0]));
+  // Additional operation references are sourced only from the matching saved document type.
+  if(imantraReferenceSource[Object.keys(imantraReferenceSource).find(key=>key.toLowerCase()===name)]) {
+    const refKey=Object.keys(imantraReferenceSource).find(key=>key.toLowerCase()===name);
+    values.push(...valuesAt(`dfab-erp-${imantraReferenceSource[refKey]}`,[0]));
+  }
+  if(/^project no$/.test(name))values.push(...valuesAt('dfab-erp-Project Planning',[0]));
+  if(/^reserve no$/.test(name))values.push(...valuesAt('dfab-erp-Material Reserve',[0]));
+  if(/^schedule no$/.test(name))values.push(...valuesAt('dfab-erp-Production Schedule',[0]),...valuesAt('dfab-erp-Dispatch Schedule',[0]));
   if(/location|store/.test(name)) values.push(...Object.values(productDetails).flatMap(d=>d?.location?[d.location]:[]));
   return uniqueText(values).slice(0,250);
 }
@@ -119,11 +144,11 @@ function referenceAutofill(label,value){
   return Object.fromEntries(Object.entries(data).filter(([,item])=>item!==undefined&&item!==null&&String(item).trim()!==''));
 }
 
-function DatabaseSuggestInput({label,value,onChange,type='text',placeholder='',min,step,max,required=false,className='',onResolved}){
-  const suggestions=type==='text'||type==='email'?databaseSuggestions(label):[];
+function DatabaseSuggestInput({label,value,onChange,type='text',placeholder='',min,step,max,required=false,className='',onResolved,disableSuggestions=false,ariaLabel,disabled=false}){
+  const suggestions=!disableSuggestions&&(type==='text'||type==='email')?databaseSuggestions(label):[];
   const listId=React.useId();
   const resolve=e=>{onChange(e);if(onResolved){const product=productFromDatabase(e.target.value);onResolved(e.target.value,product)}};
-  return <><input className={className} required={required} list={suggestions.length?listId:undefined} type={type} value={value??''} placeholder={placeholder} min={min} max={max} step={step} onChange={resolve}/>{suggestions.length>0&&<datalist id={listId}>{suggestions.map(option=><option key={option} value={option}/>)}</datalist>}</>;
+  return <><input className={className} aria-label={ariaLabel} disabled={disabled} required={required} list={suggestions.length?listId:undefined} type={type} value={value??''} placeholder={placeholder} min={min} max={max} step={step} onChange={resolve}/>{suggestions.length>0&&<datalist id={listId}>{suggestions.map(option=><option key={option} value={option}/>)}</datalist>}</>;
 }
 
 function collectDatabaseNotifications(){
@@ -134,8 +159,8 @@ function collectDatabaseNotifications(){
     const pageMap={'dfab-erp-products-v3':'Products','dfab-erp-customers-v2':'Customers','dfab-erp-vendors-v2':'Vendors','dfab-erp-production-bom-v2':'Production BOM','dfab-erp-route-card-v2':'Route Card','dfab-live-instruments':'Instrument Master','dfab-live-daily-tasks':'Daily Task Master'};const module=pageMap[key]||key.replace(/^dfab-(?:erp|live)-/,'').replace(/-v\d+$/,'').replaceAll('-',' ');
     for(const row of value){
       if(!Array.isArray(row)||!row.length)continue;
-      const status=String(row.at(-1)||'').toUpperCase();
-      if(/APPROVAL PENDING|PENDING APPROVAL|REJECTED|QC PENDING|CALIBRATION DUE/.test(status))push(module,row[0]||row[1],row.at(-1),module);
+      const status=String(rowStatus(row)||'').toUpperCase();
+      if(/APPROVAL PENDING|PENDING APPROVAL|REJECTED|QC PENDING|CALIBRATION DUE/.test(status))push(module,row[0]||row[1],rowStatus(row),module);
     }
   }
   const approvals=arrayRows('dfab-erp-Pending Approvals');
@@ -168,7 +193,10 @@ const menuTree = [
     { label:'Quality Control', icon:FileText, children:[['Inward QC',ReceiptText],['Outward QC',ReceiptText],['Inward Quality Rejection',ReceiptText],['Inward Quality',ReceiptText]] },
     { label:'Production', icon:ReceiptText, children:[['Work Order',ReceiptText],['Outsource Issue DC',ReceiptText],['Job Work Inward',ReceiptText],['Job Work Return DC',ReceiptText],['Outsource Receipt',ReceiptText],['Material Request',ReceiptText],['Route Cards',ReceiptText],['Rejection Note',ReceiptText]] },
     { label:'Approvals', icon:Menu, children:[['Pending Approvals',Menu]] },
-    { label:'Payments', icon:WalletCards, children:[['Vendor Payments',WalletCards],['Customer Payments',WalletCards]] }
+    { label:'Payments', icon:WalletCards, children:[['Vendor Payments',WalletCards],['Customer Payments',WalletCards]] },
+    { label:'Planning', icon:CalendarDays, children:[['Procurement Planning',CalendarDays],['Procurement Schedule',CalendarDays],['Production Schedule',CalendarDays],['Dispatch Schedule',Truck],['Project Planning',CalendarDays]] },
+    { label:'Warehouse & QC', icon:Package, children:[['Pick Slip',ClipboardList],['Put Away',Package],['In-process QC',CheckCircle2],['Job Work QC',CheckCircle2]] },
+    { label:'Additional Operations', icon:Factory, children:[['Import Purchase',FileText],['BOM-Based Work Order',Factory],['Input to Production',Package],['Stage Consumption',Package],['Stage Receipt',Package],['Excess Issue',Package],['Return to Store',Package],['Dispatch Intimation',Truck],['Material Reserve',ClipboardList],['Material Unreserved',ClipboardList],['Stock Adjustment',Package],['Job Order',FileText],['Jobwork Material Issue',Package],['Jobwork Material Receipt',Package],['Service Invoice',FileText],['Terminate Order',FileText],['Project Order',Factory],['Delivery Channel',Truck],['Purchase Return',Truck]] }
   ]},
   { label:'Reports', icon:FileText, children:[
     { label:'Stores', icon:FileText, children:[['Regular Stock List',FileText],['Jobwork Inward Register',FileText],['Work Order Register',FileText],['Stock Ledger',FileText],['Stock Report',FileText],['Groupwise Stock Report',FileText]] },
@@ -176,7 +204,8 @@ const menuTree = [
     { label:'Purchase', icon:FileText, children:[['Purchase Order Register',FileText],['Pending Purchase Indent for order',FileText],['Pending Purchase Indent For GR',FileText],['GRN Register',FileText],['Inward QC Register',FileText],['User Wise Transactions List',FileText],['Pending Purchase Order to GRN',FileText],['Pending Payables',FileText],['Purchase Invoice Register',FileText],['Purchase Invoice Itemwise Register',FileText]] },
     { label:'Sales', icon:FileText, children:[['Sales Register',FileText],['Enquiry Register',FileText],['Sales Order Register',FileText],['Sales Register Headerwise',FileText],['Sales Quotation Register',FileText],['Sales Order Created & Closed',FileText],['Sales Quotation Register Headerwise',FileText],['Sales Order Created & Closed Headerwise',FileText],['Credit Note Register',FileText],['Proforma Invoice Register',FileText],['Pending Sales Order for Work Order',FileText],['Pending Sales Order for Invoice',FileText],['Pending Enquiry For QUotation',FileText],['Pending Receivables',FileText],['DC Register Headerwise',FileText],['DC Register',FileText]] },
     { label:'Production', icon:FileText, children:[['Pending Work Order for Production Output',FileText],['Pending Outsource DC to Receipt',FileText],['Outsource DC Register Headerwise',FileText],['Outsource DC Register',FileText],['Outsource DC Register Created to Closed',FileText],['Outsource Receipt Register',FileText],['Rejection Note Register',FileText]] },
-    { label:'Quality', icon:FileText, children:[['Pending Jobwork Inward for Quality',FileText]] }
+    { label:'Quality', icon:FileText, children:[['Pending Jobwork Inward for Quality',FileText]] },
+    { label:'i-MANTRA Control Reports', icon:BarChart3, children:Object.keys(imantraReportDefinitions).map(name=>[name,FileText]) }
   ]},
   { label:'System', icon:Settings, children:[
     ['User Roles',CreditCard],
@@ -302,12 +331,20 @@ const coreConfigs = {
   , 'Menu': {columns:['Menu Code','Menu Caption','Parent Menu','Route','Status'],fields:['Menu Code','Menu Caption','Parent Menu','Route'],statuses:['Active','Inactive']}
 };
 
+Object.assign(coreConfigs, imantraTransactions);
+
 const seeds = {};
 
 const salesInvoiceRows = [];
 
 function App(){
   const [authenticated,setAuthenticated]=useState(false);
+  const [adminPreviewOpen,setAdminPreviewOpen]=useState(false);
+  const allowAdminPreview=canUseLocalAdminPreview(import.meta.env.DEV,window.location.hostname);
+  const [adminAccess,setAdminAccess]=useState(null);
+  const [workflowOverrides,setWorkflowOverrides]=useState({});
+  const refreshActiveWorkflow=async()=>{const edges=await loadWorkflowRuntime();setWorkflowOverrides(Object.fromEntries((Array.isArray(edges)?edges:[]).map(edge=>[edge.source_page,edge])));};
+  const establishAdminAccess=async token=>{setAdminToken(token);const access=await loadMyAccess();if(!access?.enabled)throw new Error('This account has no active ERP role. Ask your administrator to assign an access role.');await refreshActiveWorkflow();setAdminAccess(access);return access;};
   const [loginValues,setLoginValues]=useState({userId:localStorage.getItem('dfab-erp-user-email')||'',password:''});
   const [authLoading,setAuthLoading]=useState(false);
   const [loginError,setLoginError]=useState('');
@@ -327,7 +364,22 @@ function App(){
   const [booting,setBooting]=useState(true);
   useEffect(()=>{const h=e=>setToast(e.detail);window.addEventListener('erp-storage-error',h);return()=>window.removeEventListener('erp-storage-error',h)},[]);
   useEffect(()=>{const h=()=>setCloudRevision(v=>v+1);window.addEventListener('erp-cloud-change',h);return()=>window.removeEventListener('erp-cloud-change',h)},[]);
-  useEffect(()=>{let cancelled=false;const restore=async()=>{const savedRaw=localStorage.getItem('dfab-erp-supabase-session');if(!savedRaw){if(!cancelled)setSessionChecking(false);return}setAuthLoading(true);try{const saved=JSON.parse(savedRaw);let auth=saved;if(saved.refresh_token){auth=await refreshSession(saved.refresh_token)}if(!auth?.access_token)throw new Error('No valid session');setCloudAccessToken(auth.access_token);await initializeCloudStore(auth.access_token);const restored=await restorePreviousErpDataOnce();await initializeCloudStore(auth.access_token);const verifiedData=getRestoredDataStatus();if(!verifiedData.complete)throw new Error(`Supabase restore verification failed: ${verifiedData.products} products, ${verifiedData.customers} customers, ${verifiedData.vendors} vendors, ${verifiedData.invoices} invoices loaded.`);if(cancelled)return;localStorage.setItem('dfab-erp-supabase-session',JSON.stringify({access_token:auth.access_token,refresh_token:auth.refresh_token||saved.refresh_token,expires_at:auth.expires_at||null,user:localStorage.getItem('dfab-erp-user-email')||saved.user||''}));setLoginValues({userId:localStorage.getItem('dfab-erp-user-email')||saved.user||'',password:''});setAuthenticated(true);setBooting(true);if(restored.restored)setToast(`Supabase synced: ${verifiedData.products} products · ${verifiedData.customers} customers · ${verifiedData.vendors} vendors · ${verifiedData.invoices} invoices`)}catch{localStorage.removeItem('dfab-erp-supabase-session');setCloudAccessToken('')}finally{if(!cancelled){setAuthLoading(false);setSessionChecking(false)}}};restore();return()=>{cancelled=true}},[]);
+  useEffect(()=>{let cancelled=false;const restore=async()=>{const savedRaw=localStorage.getItem('dfab-erp-supabase-session');if(!savedRaw){if(!cancelled)setSessionChecking(false);return}setAuthLoading(true);try{const saved=JSON.parse(savedRaw);let auth=saved;if(saved.refresh_token){auth=await refreshSession(saved.refresh_token)}if(!auth?.access_token)throw new Error('No valid session');setCloudAccessToken(auth.access_token);const permissions=await establishAdminAccess(auth.access_token);await initializeCloudStore(auth.access_token);const restored=permissions.is_admin?await restorePreviousErpDataOnce():{restored:false};if(restored.restored)await initializeCloudStore(auth.access_token);const verifiedData=permissions.is_admin?getRestoredDataStatus():{complete:true};if(!verifiedData.complete)throw new Error('Administrator data migration verification failed. Review the Supabase restore state.');if(cancelled)return;localStorage.setItem('dfab-erp-supabase-session',JSON.stringify({access_token:auth.access_token,refresh_token:auth.refresh_token||saved.refresh_token,expires_at:auth.expires_at||null,user:localStorage.getItem('dfab-erp-user-email')||saved.user||''}));setLoginValues({userId:localStorage.getItem('dfab-erp-user-email')||saved.user||'',password:''});setAuthenticated(true);setBooting(true);if(restored.restored)setToast(`Supabase synced: ${verifiedData.products} products · ${verifiedData.customers} customers · ${verifiedData.vendors} vendors · ${verifiedData.invoices} invoices`)}catch(error){setLoginError(error?.message||'Session verification failed');localStorage.removeItem('dfab-erp-supabase-session');setCloudAccessToken('');setAdminToken('');setAdminAccess(null)}finally{if(!cancelled){setAuthLoading(false);setSessionChecking(false)}}};restore();return()=>{cancelled=true}},[]);
+  // Refresh the current published document routes when an employee returns to the ERP.
+  // This is read-only and does not touch existing records or change page state.
+  useEffect(()=>{
+    if(!authenticated)return;
+    let disposed=false;
+    const sync=()=>{
+      if(document.visibilityState!=='visible')return;
+      loadWorkflowRuntime().then(edges=>{
+        if(!disposed)setWorkflowOverrides(Object.fromEntries((Array.isArray(edges)?edges:[]).map(edge=>[edge.source_page,edge])));
+      }).catch(()=>{/* Keep last verified workflow on temporary connection errors. */});
+    };
+    window.addEventListener('focus',sync);
+    document.addEventListener('visibilitychange',sync);
+    return()=>{disposed=true;window.removeEventListener('focus',sync);document.removeEventListener('visibilitychange',sync)};
+  },[authenticated]);
   useEffect(()=>{if(!booting)return;const timer=setTimeout(()=>setBooting(false),520);return()=>clearTimeout(timer)},[booting]);
   const profileRef=useRef(null);
   useEffect(()=>{
@@ -349,19 +401,23 @@ function App(){
     if(prev[key]){const parts=key.split('/');parts.pop();return menuStateForPath(parts.join('/'));}
     return menuStateForPath(key);
   });
-  const goToPage=(page,menuPath=null)=>{if(page){const p=resolvePage(page);const selectedPath=menuPath!==null?menuPath:(findMenuParentPath(p)||'');setOpenMenus(menuStateForPath(selectedPath));setActivePage(p);if(window.innerWidth<=820)setSidebarOpen(false);setProfileOpen(false);setCommandOpen(false);setNotifyOpen(false);setToast(`${p} opened`)}};
-  const login=async e=>{e.preventDefault();if(!loginValues.userId.trim()||!loginValues.password.trim()){setLoginError('Enter your Supabase user email and password to continue.');return}setAuthLoading(true);setLoginError('');try{const auth=await signInWithPassword(loginValues.userId.trim(),loginValues.password);const token=auth?.access_token;if(!token)throw new Error('Supabase did not return an access token.');setCloudAccessToken(token);await initializeCloudStore(token);const restored=await restorePreviousErpDataOnce();await initializeCloudStore(token);const verifiedData=getRestoredDataStatus();if(!verifiedData.complete)throw new Error(`Supabase restore verification failed: ${verifiedData.products} products, ${verifiedData.customers} customers, ${verifiedData.vendors} vendors, ${verifiedData.invoices} invoices loaded.`);localStorage.setItem('dfab-erp-user-email',loginValues.userId.trim());localStorage.setItem('dfab-erp-supabase-session',JSON.stringify({access_token:token,refresh_token:auth.refresh_token||'',expires_at:auth.expires_at||null,user:loginValues.userId.trim()}));setActivePage('Home');setOpenMenus({});setSidebarOpen(window.innerWidth>820);setAuthenticated(true);setBooting(true);if(restored.restored)setToast(`Supabase synced: ${verifiedData.products} products · ${verifiedData.customers} customers · ${verifiedData.vendors} vendors · ${verifiedData.invoices} invoices`)}catch(error){setLoginError(error.message||'Login failed.')}finally{setAuthLoading(false)}};
-  const logout=async()=>{try{await flushCloudWrites()}catch(error){setToast(`Could not finish saving ERP changes: ${error.message}`);return;}let token='';try{token=JSON.parse(localStorage.getItem('dfab-erp-supabase-session')||'{}').access_token||''}catch{}try{await signOut(token)}catch{}localStorage.removeItem('dfab-erp-supabase-session');setCloudAccessToken('');setAuthenticated(false);setProfileOpen(false);setNotifyOpen(false);setCommandOpen(false);setActivePage('Home');setOpenMenus({});setSidebarOpen(true);setLoginValues({userId:localStorage.getItem('dfab-erp-user-email')||'',password:''})};
+  const canVisitPage=page=>resolvePage(page)==='Admin Control'?true:['Users','User Roles','Role Permissions'].includes(resolvePage(page))?Boolean(adminAccess?.is_admin):canAdminAccess(adminAccess,resolvePage(page),'view');
+  const canShowNode=raw=>{const n=normalizeNode(raw);return Array.isArray(n.children)?n.children.some(canShowNode):canVisitPage(n.page||n.label);};
+  const goToPage=(page,menuPath=null)=>{if(page){const p=resolvePage(page);if(!canVisitPage(p)){setToast('Your role does not have access to this ERP module.');return;}const selectedPath=menuPath!==null?menuPath:(findMenuParentPath(p)||'');setOpenMenus(menuStateForPath(selectedPath));setActivePage(p);if(window.innerWidth<=820)setSidebarOpen(false);setProfileOpen(false);setCommandOpen(false);setNotifyOpen(false);setToast(`${p} opened`)}};
+  const login=async e=>{e.preventDefault();if(!loginValues.userId.trim()||!loginValues.password.trim()){setLoginError('Enter your Supabase user email and password to continue.');return}setAuthLoading(true);setLoginError('');try{const auth=await signInWithPassword(loginValues.userId.trim(),loginValues.password);const token=auth?.access_token;if(!token)throw new Error('Supabase did not return an access token.');setCloudAccessToken(token);const permissions=await establishAdminAccess(token);await initializeCloudStore(token);const restored=permissions.is_admin?await restorePreviousErpDataOnce():{restored:false};if(restored.restored)await initializeCloudStore(token);const verifiedData=permissions.is_admin?getRestoredDataStatus():{complete:true};if(!verifiedData.complete)throw new Error('Administrator data restore verification failed.');localStorage.setItem('dfab-erp-user-email',loginValues.userId.trim());localStorage.setItem('dfab-erp-supabase-session',JSON.stringify({access_token:token,refresh_token:auth.refresh_token||'',expires_at:auth.expires_at||null,user:loginValues.userId.trim()}));setActivePage('Home');setOpenMenus({});setSidebarOpen(window.innerWidth>820);setAuthenticated(true);setBooting(true);if(restored.restored)setToast(`Supabase synced: ${verifiedData.products} products · ${verifiedData.customers} customers · ${verifiedData.vendors} vendors · ${verifiedData.invoices} invoices`)}catch(error){setCloudAccessToken('');setAdminToken('');setAdminAccess(null);setLoginError(error.message||'Login failed.')}finally{setAuthLoading(false)}};
+  const logout=async()=>{try{await flushCloudWrites()}catch(error){setToast(`Could not finish saving ERP changes: ${error.message}`);return;}let token='';try{token=JSON.parse(localStorage.getItem('dfab-erp-supabase-session')||'{}').access_token||''}catch{}try{await signOut(token)}catch{}localStorage.removeItem('dfab-erp-supabase-session');setCloudAccessToken('');setAdminToken('');setAdminAccess(null);setWorkflowOverrides({});setAuthenticated(false);setProfileOpen(false);setNotifyOpen(false);setCommandOpen(false);setActivePage('Home');setOpenMenus({});setSidebarOpen(true);setLoginValues({userId:localStorage.getItem('dfab-erp-user-email')||'',password:''})};
   const pageTitle=activePage==='Groups'?'Product Groups':(displayPageNames[activePage]||activePage);
   const commands=[
     ['Home','Executive dashboard',Gauge],['Sales Enquiries','Create and qualify enquiries',Activity],['Sales Quotations','Commercial quotations',FileText],['Sales Orders','Confirmed customer orders',ShoppingCart],['Purchase Orders','Procurement control',CreditCard],['GRN','Goods receipt',Truck],['Work Order','Production execution',Factory],['Pending Approvals','Approval inbox',BadgeCheck],['Sales Invoice','Billing and tax',IndianRupee],['Customer Payments','Collections',WalletCards],['Products','Product master',Package],['Customers','Customer master',Users],['Vendors','Vendor master',Building2],['Activity Log','Audit trail',Activity]
   ];
   const menuCommands=(nodes,parent='')=>nodes.flatMap(raw=>{const n=normalizeNode(raw);return n.children?menuCommands(n.children,n.label):[[resolvePage(n.page||n.label),parent,n.icon||FileText]]});commands.push(...menuCommands(menuTree),['Workflow Guide','ERP process and readiness',HelpCircle],['Settings','Workspace preferences',Settings],['Change Password','Sign-in security',ShieldCheck]);
-  const visibleCommands=commands.filter((c,i,all)=>all.findIndex(x=>x[0]===c[0])===i).filter(c=>(c[0]+' '+c[1]).toLowerCase().includes(commandQuery.toLowerCase()));
+  commands.push(['Admin Control','Department-wide workflow and access management',ShieldCheck]);
+  const visibleCommands=commands.filter((c,i,all)=>all.findIndex(x=>x[0]===c[0])===i).filter(c=>canVisitPage(c[0])&&(c[0]+' '+c[1]).toLowerCase().includes(commandQuery.toLowerCase()));
   const notifications=useMemo(()=>collectDatabaseNotifications(),[cloudRevision,activePage,notifyOpen]);
 
   if(sessionChecking)return <div className="erp-boot"><div className="boot-orb"><img src={logo} alt="DFAB"/></div><div className="boot-copy"><b>DFAB OneERP</b><span>Restoring secure session</span></div><div className="boot-bar"><i/></div></div>;
-  if(!authenticated)return <main className={`dfab-login-stage ${lampOn?'lamp-on':'lamp-off'}`}><section className="dfab-torch-scene" aria-label="Interactive welding torch"><div className="torch-glow"/><div className="torch-stage"><div className="steel-workpiece" aria-hidden="true"><span className="steel-top"/><span className="steel-seam"/><span className={`weld-bead ${lampOn?'active':''}`}/></div><button type="button" className="real-welding-torch" aria-pressed={lampOn} onClick={()=>setLampOn(v=>!v)} title={lampOn?'Stop welding':'Start welding'}><svg viewBox="0 0 420 300" role="img" aria-label="MIG welding torch"><defs><linearGradient id="torchHandle" x1="0" x2="1"><stop offset="0" stopColor="#17222d"/><stop offset=".5" stopColor="#3a4a58"/><stop offset="1" stopColor="#111923"/></linearGradient><linearGradient id="torchMetal" x1="0" x2="1"><stop offset="0" stopColor="#8798a8"/><stop offset=".5" stopColor="#d2dbe2"/><stop offset="1" stopColor="#566675"/></linearGradient><linearGradient id="torchCopper" x1="0" x2="1"><stop offset="0" stopColor="#8d4a21"/><stop offset=".5" stopColor="#e4974d"/><stop offset="1" stopColor="#6f3518"/></linearGradient></defs><path className="mig-cable" d="M15 245 C70 250, 90 225, 123 215"/><g className="mig-body"><path className="mig-grip" d="M104 184 L181 139 Q195 131 207 144 L235 185 Q241 196 230 204 L153 251 Q140 258 130 246 L99 202 Q91 190 104 184 Z" fill="url(#torchHandle)"/><path className="mig-rib" d="M125 188 L174 159 M135 204 L185 174 M146 219 L196 188 M157 234 L207 202"/><rect className="mig-trigger" x="171" y="182" width="42" height="18" rx="8" transform="rotate(-33 171 182)"/><path className="mig-neck" d="M202 151 C245 121, 272 94, 294 59" fill="none" stroke="url(#torchMetal)" strokeWidth="22" strokeLinecap="round"/><path className="mig-neck-shadow" d="M204 153 C246 122, 273 96, 295 60" fill="none" stroke="#1b2731" strokeWidth="4" strokeLinecap="round" opacity=".55"/><path className="mig-nozzle" d="M284 55 L314 38 L343 68 L318 92 L288 76 Z" fill="url(#torchCopper)"/><path className="mig-tip" d="M331 68 L362 80 L356 97 L324 86 Z" fill="url(#torchMetal)"/><circle className="mig-contact" cx="359" cy="89" r="7" fill="#d99143"/></g></svg><span className={`torch-arc ${lampOn?'active':''}`} aria-hidden="true"/><span className="torch-action-label">{lampOn?'Stop welding':'Weld to reveal'}</span></button><div className={`torch-sparks ${lampOn?'active':''}`} aria-hidden="true">{Array.from({length:14},(_,i)=><i key={i}/>)}</div></div></section><section className="dfab-login-side"><div className={`dfab-login-spotlight ${lampOn?'visible':''}`}><div className="spotlight-rim"/><div className={`weld-spark-burst ${lampOn?'active':''}`} aria-hidden="true"><span className="spark-core"/><span className="spark-ring"/><i/><i/><i/><i/><i/><i/></div><div className={`dfab-login-card-shell ${lampOn?'revealed':'prelit'}`}><form className={`dfab-login-card ${lampOn?'card-live':'card-muted'}`} onSubmit={login}><div className="dfab-login-head"><span>DFAB OneERP</span><h1>Welcome back</h1><p>Sign in to continue into the production workspace.</p></div><div className="login-status-row"><span><BadgeCheck size={14}/> Persistent secure session</span><span><MonitorCog size={14}/> Premium production workspace</span></div><label>Email<input type="email" autoFocus={lampOn} autoComplete="username" value={loginValues.userId} onChange={e=>setLoginValues(v=>({...v,userId:e.target.value}))} placeholder="name@company.com" readOnly={!lampOn} disabled={!lampOn}/></label><label>Password<input autoComplete="current-password" type="password" value={loginValues.password} onChange={e=>setLoginValues(v=>({...v,password:e.target.value}))} placeholder="Password" readOnly={!lampOn} disabled={!lampOn}/></label>{loginError&&lampOn&&<div className="imantra-login-error" role="alert">{loginError}</div>}<button className="dfab-login-submit" type="submit" disabled={authLoading||!lampOn}>{authLoading?'Signing in…':lampOn?'Login to ERP':'Weld to unlock'}</button></form><div className={`login-locked-note ${lampOn?'hidden':''}`}><Zap size={16}/><span>Activate the welding torch to illuminate and unlock the login panel.</span></div></div></div></section></main>;
+  if(!authenticated && adminPreviewOpen)return <AdminPreview publicMode={!allowAdminPreview} onClose={()=>setAdminPreviewOpen(false)}/>;
+  if(!authenticated)return <main className={`dfab-login-stage ${lampOn?'lamp-on':'lamp-off'}`}><section className="dfab-torch-scene" aria-label="Interactive welding torch"><div className="torch-glow"/><div className="torch-stage"><div className="steel-workpiece" aria-hidden="true"><span className="steel-top"/><span className="steel-seam"/><span className={`weld-bead ${lampOn?'active':''}`}/></div><button type="button" className="real-welding-torch" aria-pressed={lampOn} onClick={()=>setLampOn(v=>!v)} title={lampOn?'Stop welding':'Start welding'}><svg viewBox="0 0 420 300" role="img" aria-label="MIG welding torch"><defs><linearGradient id="torchHandle" x1="0" x2="1"><stop offset="0" stopColor="#17222d"/><stop offset=".5" stopColor="#3a4a58"/><stop offset="1" stopColor="#111923"/></linearGradient><linearGradient id="torchMetal" x1="0" x2="1"><stop offset="0" stopColor="#8798a8"/><stop offset=".5" stopColor="#d2dbe2"/><stop offset="1" stopColor="#566675"/></linearGradient><linearGradient id="torchCopper" x1="0" x2="1"><stop offset="0" stopColor="#8d4a21"/><stop offset=".5" stopColor="#e4974d"/><stop offset="1" stopColor="#6f3518"/></linearGradient></defs><path className="mig-cable" d="M15 245 C70 250, 90 225, 123 215"/><g className="mig-body"><path className="mig-grip" d="M104 184 L181 139 Q195 131 207 144 L235 185 Q241 196 230 204 L153 251 Q140 258 130 246 L99 202 Q91 190 104 184 Z" fill="url(#torchHandle)"/><path className="mig-rib" d="M125 188 L174 159 M135 204 L185 174 M146 219 L196 188 M157 234 L207 202"/><rect className="mig-trigger" x="171" y="182" width="42" height="18" rx="8" transform="rotate(-33 171 182)"/><path className="mig-neck" d="M202 151 C245 121, 272 94, 294 59" fill="none" stroke="url(#torchMetal)" strokeWidth="22" strokeLinecap="round"/><path className="mig-neck-shadow" d="M204 153 C246 122, 273 96, 295 60" fill="none" stroke="#1b2731" strokeWidth="4" strokeLinecap="round" opacity=".55"/><path className="mig-nozzle" d="M284 55 L314 38 L343 68 L318 92 L288 76 Z" fill="url(#torchCopper)"/><path className="mig-tip" d="M331 68 L362 80 L356 97 L324 86 Z" fill="url(#torchMetal)"/><circle className="mig-contact" cx="359" cy="89" r="7" fill="#d99143"/></g></svg><span className={`torch-arc ${lampOn?'active':''}`} aria-hidden="true"/><span className="torch-action-label">{lampOn?'Stop welding':'Weld to reveal'}</span></button><div className={`torch-sparks ${lampOn?'active':''}`} aria-hidden="true">{Array.from({length:14},(_,i)=><i key={i}/>)}</div></div></section><section className="dfab-login-side"><div className={`dfab-login-spotlight ${lampOn?'visible':''}`}><div className="spotlight-rim"/><div className={`weld-spark-burst ${lampOn?'active':''}`} aria-hidden="true"><span className="spark-core"/><span className="spark-ring"/><i/><i/><i/><i/><i/><i/></div><div className={`dfab-login-card-shell ${lampOn?'revealed':'prelit'}`}><form className={`dfab-login-card ${lampOn?'card-live':'card-muted'}`} onSubmit={login}><div className="dfab-login-head"><span>DFAB OneERP</span><h1>Welcome back</h1><p>Sign in to continue into the production workspace.</p></div><div className="login-status-row"><span><BadgeCheck size={14}/> Persistent secure session</span><span><MonitorCog size={14}/> Premium production workspace</span></div><label>Email<input type="email" autoFocus={lampOn} autoComplete="username" value={loginValues.userId} onChange={e=>setLoginValues(v=>({...v,userId:e.target.value}))} placeholder="name@company.com" readOnly={!lampOn} disabled={!lampOn}/></label><label>Password<input autoComplete="current-password" type="password" value={loginValues.password} onChange={e=>setLoginValues(v=>({...v,password:e.target.value}))} placeholder="Password" readOnly={!lampOn} disabled={!lampOn}/></label>{loginError&&lampOn&&<div className="imantra-login-error" role="alert">{loginError}</div>}<button className="dfab-login-submit" type="submit" disabled={authLoading||!lampOn}>{authLoading?'Signing in…':lampOn?'Login to ERP':'Weld to unlock'}</button></form><div className={`login-locked-note ${lampOn?'hidden':''}`}><Zap size={16}/><span>Activate the welding torch to illuminate and unlock the login panel.</span></div></div></div>{<button type="button" className="dfab-admin-preview-button" onClick={()=>setAdminPreviewOpen(true)}><ShieldCheck size={16}/> Admin Control Center · view without login</button>}</section></main>;
   if(booting)return <div className="erp-boot"><div className="boot-orb"><img src={logo} alt="DFAB"/></div><div className="boot-copy"><b>DFAB OneERP</b><span>Preparing enterprise workspace</span></div><div className="boot-bar"><i/></div></div>;
   return <div className="app-shell premium-motion-root">
     <header className="topbar premium-topbar">
@@ -371,29 +427,33 @@ function App(){
         <div className="breadcrumb premium-breadcrumb"><button className="breadcrumb-home" onClick={()=>goToPage('Home')}>Home</button>{activePage!=='Home'&&<><ChevronRight size={13}/><strong>{pageTitle}</strong></>}</div>
       </div>
       <div className="top-actions premium-actions">
+        <button type="button" className={`erp-top-admin-btn ${activePage==='Admin Control'?'is-active':''}`} aria-label="Open Admin Control section" aria-current={activePage==='Admin Control'?'page':undefined} title="Admin Control · employees, permissions and document connections" onClick={()=>goToPage('Admin Control')}><ShieldCheck size={17}/><span>Admin</span></button>
         <button className="global-search premium-search command-launcher" onClick={()=>setCommandOpen(true)}><Search size={17}/><span>Search customers, SO, PO, WO, invoice...</span><kbd>⌘ K</kbd></button>
         <button className="top-icon-btn" title="Help" onClick={()=>goToPage('Workflow Guide')}><HelpCircle size={19}/></button>
         <button aria-label={`Open notifications${notifications.length?` (${notifications.length} pending)`:``}`} className="mail-wrap premium-notify" onClick={()=>setNotifyOpen(v=>!v)}><Bell size={19}/>{notifications.length>0&&<span className="badge">{notifications.length>99?'99+':notifications.length}</span>}</button>
-        <div className="profile-box" ref={profileRef}><button aria-label="Open user menu" className="profile-trigger premium-profile" onClick={()=>setProfileOpen(v=>!v)}><span className="avatar">KG</span><span className="profile-meta"><b>{loginValues.userId.toUpperCase() || 'KABILG'}</b><small>Administrator</small></span><ChevronDown size={15}/></button>{profileOpen&&<div className="profile-dropdown premium-profile-dropdown"><div className="profile-drop-head"><b>{loginValues.userId.toUpperCase() || 'KABILG'}</b><span>DFAB Stainless Systems</span></div><button onClick={()=>goToPage('Settings')}>Settings</button><button onClick={()=>goToPage('Change Password')}>Change Password</button><button onClick={()=>goToPage('Activity Log')}>Activity Log</button><div className="profile-divider"/><button onClick={logout}>Logout</button></div>}</div>
+        <div className="profile-box" ref={profileRef}><button aria-label="Open user menu" className="profile-trigger premium-profile" onClick={()=>setProfileOpen(v=>!v)}><span className="avatar">KG</span><span className="profile-meta"><b>{loginValues.userId.toUpperCase() || 'KABILG'}</b><small>{adminAccess?.roles?.map(role=>role.name).join(', ')||'ERP Employee'}</small></span><ChevronDown size={15}/></button>{profileOpen&&<div className="profile-dropdown premium-profile-dropdown"><div className="profile-drop-head"><b>{loginValues.userId.toUpperCase() || 'KABILG'}</b><span>DFAB Stainless Systems</span></div><button onClick={()=>goToPage('Settings')}>Settings</button><button onClick={()=>goToPage('Change Password')}>Change Password</button><button onClick={()=>goToPage('Activity Log')}>Activity Log</button><div className="profile-divider"/><button onClick={logout}>Logout</button></div>}</div>
       </div>
     </header>
     <div className="workspace">
-      <aside className={`sidebar premium-sidebar ${sidebarOpen?'':'collapsed'}`}><div className="side-scroll"><div className="side-content"><div className="side-title">WORKSPACE</div>{menuTree.map(n=><NavNode key={n.label} node={n} path="" depth={0} openMenus={openMenus} toggleMenu={toggleMenu} activePage={activePage} goToPage={goToPage}/>)}</div></div><div className="sidebar-status-panel"><span className="sidebar-status-dot"/><div><b>Cloud workspace</b><small>Supabase connected</small></div></div><div className="company-card premium-company-card"><div><span>Company : <b>DFAB</b></span><span>Fin Year : <b>2026-2027</b></span><span>User : <b>{loginValues.userId.toUpperCase()||'KABILG'}</b></span></div><button className="sidebar-logout-btn" type="button" onClick={logout} title="Logout"><LogOut size={14}/></button></div></aside>
-      <div className="page-transition-shell" key={activePage}>{renderPage(activePage,{goToPage,filter,setFilter,filteredGroups,selected,setSelected})}</div>
+      <aside className={`sidebar premium-sidebar ${sidebarOpen?'':'collapsed'}`}><div className="side-scroll"><div className="side-content"><div className="side-title">WORKSPACE</div>{menuTree.filter(canShowNode).map(n=><NavNode key={n.label} node={n} path="" depth={0} openMenus={openMenus} toggleMenu={toggleMenu} activePage={activePage} goToPage={goToPage} canShowNode={canShowNode}/>)}</div></div><div className="sidebar-status-panel"><span className="sidebar-status-dot"/><div><b>Cloud workspace</b><small>Supabase connected</small></div></div><div className="company-card premium-company-card"><div><span>Company : <b>DFAB</b></span><span>Fin Year : <b>2026-2027</b></span><span>User : <b>{loginValues.userId.toUpperCase()||'KABILG'}</b></span></div><button className="sidebar-logout-btn" type="button" onClick={logout} title="Logout"><LogOut size={14}/></button></div></aside>
+      <div className="page-transition-shell" key={activePage}>{canVisitPage(activePage)?renderPage(activePage,{goToPage,filter,setFilter,filteredGroups,selected,setSelected,adminAccess,workflowOverrides,refreshActiveWorkflow}):<main className="content page-shell"><h1>Access restricted</h1><p>Your assigned ERP role cannot open this module. Contact an administrator to request access.</p><button className="action-pill blue" onClick={()=>goToPage('Home')}>Go to Home</button></main>}</div>
     </div>
     {notifyOpen&&<aside className="notification-drawer"><div className="drawer-head"><div><span>CONTROL CENTER</span><h3>Notifications</h3></div><button onClick={()=>setNotifyOpen(false)}><X size={18}/></button></div><div className="notify-list">{notifications.length?notifications.map((notice,index)=><button className="notify-item" key={`${notice.module}-${notice.reference}-${index}`} onClick={()=>goToPage(resolvePage(notice.page))}><span className="notify-dot"/><span><b>{notice.module}</b><small>{notice.reference}</small></span><em>{notice.status}</em></button>):<p className="empty-cell">No pending notifications</p>}</div><button className="drawer-footer" onClick={()=>goToPage('Pending Approvals')}>Open control tower <ArrowUpRight size={15}/></button></aside>}
     {commandOpen&&<div className="command-backdrop" onMouseDown={e=>{if(e.target===e.currentTarget)setCommandOpen(false)}}><section className="command-palette"><div className="command-input-row"><Search size={19}/><input autoFocus value={commandQuery} onChange={e=>setCommandQuery(e.target.value)} placeholder="Search pages, transactions and masters..."/><kbd>ESC</kbd></div><div className="command-meta"><span><Sparkles size={13}/> Quick navigation</span><span>{visibleCommands.length} results</span></div><div className="command-results">{!visibleCommands.length&&<p className="empty-cell">No matching pages. Try a module or document name.</p>}{visibleCommands.map(([name,desc,Icon])=><button key={name} onClick={()=>goToPage(name)}><span className="command-icon"><Icon size={17}/></span><span className="command-text"><b>{name}</b><small>{desc}</small></span><ArrowUpRight size={15}/></button>)}</div><div className="command-help"><span><Keyboard size={14}/> Ctrl/⌘ + K to open</span><span>Enterprise command palette</span></div></section></div>}
-    {toast&&<div className="erp-toast"><Check size={15}/>{toast}</div>}
+    {toast&&<div className="erp-toast" role="status"><Check size={15}/>{toast}</div>}
+    <InAppDialogHost/>
   </div>;
 }
 
-function NavNode({node:raw,path,depth,openMenus,toggleMenu,activePage,goToPage}){
-  const node=normalizeNode(raw);const Icon=node.icon||FileText;const key=path?`${path}/${node.label}`:node.label;const hasChildren=Array.isArray(node.children);const isOpen=!!openMenus[key];
+function NavNode({node:raw,path,depth,openMenus,toggleMenu,activePage,goToPage,canShowNode=()=>true}){
+  if(!canShowNode(raw))return null;const node=normalizeNode(raw);const Icon=node.icon||FileText;const key=path?`${path}/${node.label}`:node.label;const hasChildren=Array.isArray(node.children);const isOpen=!!openMenus[key];
   if(!hasChildren){const target=node.page||node.label;return <button className={`nav-tree-item depth-${Math.min(depth,3)} ${activePage===resolvePage(target)?'active':''}`} onClick={()=>goToPage(target,path)} title={node.label}><Icon size={14}/><span>{node.label}</span></button>}
-  return <div className="nav-tree-group"><button className={`nav-tree-parent depth-${Math.min(depth,3)}`} onClick={()=>toggleMenu(key)}><span><Icon size={15}/><span>{node.label}</span></span>{node.children.length>0?(isOpen?<ChevronDown size={16}/>:<ChevronRight size={16}/>):<ChevronRight size={16}/>}</button>{node.children.length>0&&<div className={`nav-tree-children ${isOpen?'is-open':''}`}><div className="nav-tree-children-inner">{node.children.map((c,i)=><NavNode key={`${normalizeNode(c).label}-${i}`} node={c} path={key} depth={depth+1} openMenus={openMenus} toggleMenu={toggleMenu} activePage={activePage} goToPage={goToPage}/>)}</div></div>}</div>;
+  return <div className="nav-tree-group"><button className={`nav-tree-parent depth-${Math.min(depth,3)}`} onClick={()=>toggleMenu(key)}><span><Icon size={15}/><span>{node.label}</span></span>{node.children.length>0?(isOpen?<ChevronDown size={16}/>:<ChevronRight size={16}/>):<ChevronRight size={16}/>}</button>{node.children.length>0&&<div className={`nav-tree-children ${isOpen?'is-open':''}`}><div className="nav-tree-children-inner">{node.children.filter(canShowNode).map((c,i)=><NavNode key={`${normalizeNode(c).label}-${i}`} node={c} path={key} depth={depth+1} openMenus={openMenus} toggleMenu={toggleMenu} activePage={activePage} goToPage={goToPage} canShowNode={canShowNode}/>)}</div></div>}</div>;
 }
 
 function renderPage(activePage,ctx){
+  if(activePage==='Admin Control'&&!ctx.adminAccess?.is_admin)return <main className="content page-shell admin-root"><div className="admin-title-row"><div><span className="admin-eyebrow">DFAB ONEERP · ADMINISTRATION</span><h1>Admin Control Center</h1><p>Connections, employee access, governance and audit</p></div></div><div className="admin-preview-warning"><ShieldCheck size={22}/><div><b>Administrator role required for live changes.</b><p>The Admin section is available to browse without a second login, but workflow publishing, employee invitations, database operations and permission updates require an authorized company administrator.</p></div></div><div className="admin-public-grid">{[['Workflow connections','Draft, validate and publish controlled document handoffs'],['Employees & logins','Invite, manage and deactivate staff'],['Access rights','Assign module-specific actions to departments and roles'],['Department setup','Manage departments and cost centres'],['Data governance','Map database sections to owner modules'],['Audit trail','Inspect changes made by administrators']].map(([name,description])=><section className="admin-card" key={name}><h2>{name}</h2><p>{description}</p></section>)}</div></main>;
+  if(activePage==='Admin Control'||['Users','User Roles','Role Permissions'].includes(activePage)) return <AdminControl initialTab={activePage==='Users'?'users':activePage==='User Roles'||activePage==='Role Permissions'?'roles':'overview'} onWorkflowPublished={ctx.refreshActiveWorkflow} storageKeys={Object.keys(exportCloudSnapshot())} storageCounts={Object.fromEntries(Object.entries(exportCloudSnapshot()).map(([key,value])=>[key,Array.isArray(value)?value.length:(value&&typeof value==='object'?Object.keys(value).length:0)]))}/>;
   if(activePage==='Workflow Guide') return <WorkflowGuide goToPage={ctx.goToPage}/>;
   if(activePage==='Settings') return <WorkspaceSettings/>;
   if(activePage==='Change Password') return <LocalSecurityPage/>;
@@ -423,15 +483,15 @@ function renderPage(activePage,ctx){
   if(activePage==='Process Price List') return <PriceListPage mode="process"/>;
   if(activePage==='Vendor Price List') return <PriceListPage mode="vendor"/>;
   if(activePage==='Customer Price List') return <PriceListPage mode="customer"/>;
-  if(activePage==='Sales Invoice') return <SalesInvoicePage/>;
+  if(activePage==='Sales Invoice') return <SalesInvoicePage access={ctx.adminAccess}/>;
   if(activePage==='Database Backup') return <DatabaseBackupPage/>;
-  if(liveReportConfigs[activePage]) return <LiveReportPage reportKey={activePage}/>;
+  if(liveReportConfigs[activePage]) return <LiveReportPage reportKey={activePage} access={ctx.adminAccess}/>;
   if(activePage==='User Roles') return <SystemUserRolesPage/>;
   if(['Modules','Masters','Transactions','Reports','Menu'].includes(activePage)) return <SystemApplicationPage type={activePage}/>;
   if(activePage==='Users') return <SystemUsersPage/>;
   if(activePage==='Role Permissions') return <RolePermissionsPage/>;
   if(activePage==='Activity Log') return <ActivityLogPage/>;
-  return <WorkflowPage key={activePage} title={activePage} goToPage={ctx.goToPage}/>;
+  return <WorkflowPage key={activePage} title={activePage} goToPage={ctx.goToPage} workflowOverride={ctx.workflowOverrides?.[activePage]} access={ctx.adminAccess}/>;
 }
 
 const workflowLanes=[
@@ -442,6 +502,7 @@ const workflowLanes=[
 ];
 
 const forwardRules={
+  ...imantraForwardStatuses,
   'CRM Pipeline':['Qualified','Quotation'],
   'Sales Enquiries':['New','Under Review','Quoted'],
   'Sales Quotations':['Approved','Sent','Accepted'],
@@ -499,10 +560,10 @@ function enterpriseDashboardData(){
   const workOrders=readStored('dfab-erp-Work Order',[]);
   const qc=[...readStored('dfab-erp-Inward QC',[]),...readStored('dfab-erp-Outward QC',[])];
   const pendingApprovals=approvals.filter(r=>String(r?.at?.(-1)||r?.[4]||'').toLowerCase().includes('pending')).length;
-  const activeSales=salesOrders.filter(r=>!/closed|completed|cancel/i.test(String(r?.at?.(-1)||''))).length;
-  const openPO=purchaseOrders.filter(r=>!/closed|completed|cancel/i.test(String(r?.at?.(-1)||''))).length;
-  const activeWO=workOrders.filter(r=>!/closed|completed|cancel/i.test(String(r?.at?.(-1)||''))).length;
-  const qcPending=qc.filter(r=>/pending|await/i.test(String(r?.at?.(-1)||''))).length;
+  const activeSales=salesOrders.filter(r=>!/closed|completed|cancel/i.test(String(rowStatus(r)||''))).length;
+  const openPO=purchaseOrders.filter(r=>!/closed|completed|cancel/i.test(String(rowStatus(r)||''))).length;
+  const activeWO=workOrders.filter(r=>!/closed|completed|cancel/i.test(String(rowStatus(r)||''))).length;
+  const qcPending=qc.filter(r=>/pending|await/i.test(String(rowStatus(r)||''))).length;
   return {pendingApprovals,activeSales,openPO,activeWO,qcPending};
 }
 
@@ -607,7 +668,7 @@ function ProductsPage(){
   const save=()=>{if(!form.code.trim()||!form.name.trim()||!form.group){alert('Product code, name and group are required.');return}const row=[form.code,form.name,form.type,form.group,form.uom,form.revision||'-',form.status];setRows(v=>editing>=0?v.map((r,i)=>i===editing?row:r):[row,...v]);setModal(false)};
   const importCsv=e=>{const file=e.target.files?.[0];if(!file)return;const reader=new FileReader();reader.onload=()=>{const parsed=parseCsv(String(reader.result)).slice(1).filter(r=>r.length>=2).map(r=>[r[0],r[1],r[2]||'Fabricated',r[3]||'UNASSIGNED',r[4]||'Nos',r[5]||'-',r[6]||'ACTIVE']);setRows(v=>[...parsed,...v]);e.target.value=''};reader.readAsText(file)};
   const counts={active:rows.filter(r=>r[6]==='ACTIVE').length,pending:rows.filter(r=>r[6].includes('PENDING')).length,inactive:rows.filter(r=>r[6]==='INACTIVE').length,rejected:rows.filter(r=>r[6]==='REJECTED').length,draft:rows.filter(r=>r[6]==='DRAFT').length};const cards=productCards.map((c,i)=>({...c,value:[rows.length,counts.active,counts.pending,counts.inactive,counts.rejected,counts.draft][i]}));
-  return <main className="content page-shell"><h1>Products</h1><div className="divider"/><StatCards items={cards}/><div className="toolbar-row"><div className="filters-inline"><div className="field-col small-col"><label>Select Type</label><select value={type} onChange={e=>setType(e.target.value)}><option value="">--SELECT--</option><option>Fabricated</option><option>Bought Out</option></select></div><div className="field-col wide-col"><label>Select Group</label><select value={group} onChange={e=>setGroup(e.target.value)}><option value="">--SELECT--</option>{groupOptions.map(g=><option key={g}>{g}</option>)}</select></div><div className="master-search"><input placeholder="Search products..." value={search} onChange={e=>setSearch(e.target.value)}/><button title="Search" onClick={e=>e.currentTarget.parentElement.querySelector('input')?.focus()}><Search size={17}/></button></div></div><div className="action-pills"><input ref={fileRef} hidden type="file" accept=".csv" onChange={importCsv}/><button className="action-pill gray" onClick={()=>fileRef.current?.click()}><FileSpreadsheet size={15}/> Excel Product Import</button><button className="action-pill blue" onClick={()=>open()}><Plus size={16}/> Create new</button></div></div><section className="card master-card compact-table"><div className="table-wrap"><table><thead><tr><th>Product Code</th><th>Product Name</th><th>Type</th><th>Group</th><th>UOM</th><th>Drawing Rev</th><th>Status</th><th>Action</th></tr></thead><tbody>{filtered.map(r=><tr key={r[0]}>{r.map((v,i)=><td key={i}>{i===0?<span className="linkish">{v}</span>:i===6?<span className={`status-pill ${v==='REJECTED'?'rejected':'approved'}`}>{v}</span>:v}</td>)}<td><div className="row-actions"><button title="Edit" onClick={()=>open(r)}><PencilLine size={15}/></button><button title="Toggle status" onClick={()=>setRows(v=>v.map(x=>x===r?[...x.slice(0,6),x[6]==='ACTIVE'?'INACTIVE':'ACTIVE']:x))}><ArrowRight size={15}/></button><button title="Delete" onClick={()=>confirm(`Delete ${r[0]}?`)&&setRows(v=>v.filter(x=>x!==r))}><Trash2 size={15}/></button></div></td></tr>)}</tbody></table></div></section>{modal&&<FormDialogBackdrop className="modal-backdrop"><div className="erp-modal"><div className="modal-head"><div><h2>{editing>=0?'Edit':'Create'} Product</h2><p>Product Master</p></div><button className="icon-btn dark" onClick={()=>setModal(false)}><X size={20}/></button></div><div className="modal-grid">{[['Product Code','code'],['Product Name','name'],['Type','type'],['Group','group'],['UOM','uom'],['Drawing Revision','revision'],['Status','status']].map(([label,key])=><label key={key}><span>{label}</span>{key==='type'?<select value={form[key]} onChange={e=>setForm({...form,[key]:e.target.value})}><option>Fabricated</option><option>Bought Out</option></select>:key==='group'?<select value={form[key]} onChange={e=>setForm({...form,[key]:e.target.value})}><option value="">--SELECT--</option>{groupOptions.map(g=><option key={g}>{g}</option>)}</select>:key==='status'?<select value={form[key]} onChange={e=>setForm({...form,[key]:e.target.value})}><option>ACTIVE</option><option>DRAFT</option><option>APPROVAL PENDING</option><option>INACTIVE</option><option>REJECTED</option></select>:<input value={form[key]} onChange={e=>setForm({...form,[key]:e.target.value})}/>}</label>)}</div><div className="modal-actions"><button className="action-pill gray" onClick={()=>setModal(false)}>Cancel</button><button className="action-pill blue" onClick={save}><Save size={15}/> Save</button></div></div></FormDialogBackdrop>}</main>}
+  return <main className="content page-shell"><h1>Products</h1><div className="divider"/><StatCards items={cards}/><div className="toolbar-row"><div className="filters-inline"><div className="field-col small-col"><label>Select Type</label><select value={type} onChange={e=>setType(e.target.value)}><option value="">--SELECT--</option><option>Fabricated</option><option>Bought Out</option></select></div><div className="field-col wide-col"><label>Select Group</label><select value={group} onChange={e=>setGroup(e.target.value)}><option value="">--SELECT--</option>{groupOptions.map(g=><option key={g}>{g}</option>)}</select></div><div className="master-search"><input placeholder="Search products..." value={search} onChange={e=>setSearch(e.target.value)}/><button title="Search" onClick={e=>e.currentTarget.parentElement.querySelector('input')?.focus()}><Search size={17}/></button></div></div><div className="action-pills"><input ref={fileRef} hidden type="file" accept=".csv" onChange={importCsv}/><button className="action-pill gray" onClick={()=>fileRef.current?.click()}><FileSpreadsheet size={15}/> Excel Product Import</button><button className="action-pill blue" onClick={()=>open()}><Plus size={16}/> Create new</button></div></div><section className="card master-card compact-table"><div className="table-wrap"><table><thead><tr><th>Product Code</th><th>Product Name</th><th>Type</th><th>Group</th><th>UOM</th><th>Drawing Rev</th><th>Status</th><th>Action</th></tr></thead><tbody>{filtered.map(r=><tr key={r[0]}>{r.map((v,i)=><td key={i}>{i===0?<span className="linkish">{v}</span>:i===6?<span className={`status-pill ${v==='REJECTED'?'rejected':'approved'}`}>{v}</span>:v}</td>)}<td><div className="row-actions"><button title="Edit" onClick={()=>open(r)}><PencilLine size={15}/></button><button title="Toggle status" onClick={()=>setRows(v=>v.map(x=>x===r?[...x.slice(0,6),x[6]==='ACTIVE'?'INACTIVE':'ACTIVE']:x))}><ArrowRight size={15}/></button><button title="Delete" onClick={async()=>{if(await confirm(`Delete ${r[0]}?`))setRows(v=>v.filter(x=>x!==r))}}><Trash2 size={15}/></button></div></td></tr>)}</tbody></table></div></section>{modal&&<FormDialogBackdrop className="modal-backdrop"><div className="erp-modal"><div className="modal-head"><div><h2>{editing>=0?'Edit':'Create'} Product</h2><p>Product Master</p></div><button className="icon-btn dark" onClick={()=>setModal(false)}><X size={20}/></button></div><div className="modal-grid">{[['Product Code','code'],['Product Name','name'],['Type','type'],['Group','group'],['UOM','uom'],['Drawing Revision','revision'],['Status','status']].map(([label,key])=><label key={key}><span>{label}</span>{key==='type'?<select value={form[key]} onChange={e=>setForm({...form,[key]:e.target.value})}><option>Fabricated</option><option>Bought Out</option></select>:key==='group'?<select value={form[key]} onChange={e=>setForm({...form,[key]:e.target.value})}><option value="">--SELECT--</option>{groupOptions.map(g=><option key={g}>{g}</option>)}</select>:key==='status'?<select value={form[key]} onChange={e=>setForm({...form,[key]:e.target.value})}><option>ACTIVE</option><option>DRAFT</option><option>APPROVAL PENDING</option><option>INACTIVE</option><option>REJECTED</option></select>:<input value={form[key]} onChange={e=>setForm({...form,[key]:e.target.value})}/>}</label>)}</div><div className="modal-actions"><button className="action-pill gray" onClick={()=>setModal(false)}>Cancel</button><button className="action-pill blue" onClick={save}><Save size={15}/> Save</button></div></div></FormDialogBackdrop>}</main>}
 
 // A page opening must not write its initial cached data back to Supabase.
 // Only user-driven row changes should persist, including intentional empty collections.
@@ -647,7 +708,7 @@ function HsnMasterPage(){
 function SmallProductMaster({title,buttonLabel,columns,initial,storageKey}){
   const [rows,setRows]=useStoredRows(storageKey,initial);const [modal,setModal]=useState(false);const [editing,setEditing]=useState(-1);const [form,setForm]=useState({});
   const open=(r=null)=>{setEditing(r?rows.indexOf(r):-1);const f={};columns.forEach((c,i)=>f[c]=r?.[i]||'');setForm(f);setModal(true)};const save=()=>{if(!form[columns[0]]?.trim()){alert(`${columns[0]} is required.`);return}const row=columns.map(c=>form[c]||'-');setRows(v=>editing>=0?v.map((x,i)=>i===editing?row:x):[...v,row]);setModal(false)};
-  return <main className="content page-shell"><div className="page-title-row"><h1>{title}</h1><button className="action-pill blue" onClick={()=>open()}><Plus size={15}/> {buttonLabel}</button></div><div className="divider"/><section className="card master-card"><div className="table-wrap"><table><thead><tr>{columns.map(c=><th key={c}>{c}</th>)}<th>Actions</th></tr></thead><tbody>{rows.map((r,ri)=><tr key={`${r[0]}-${ri}`}>{r.map((v,i)=><td key={i}>{v}</td>)}<td><div className="row-actions"><button onClick={()=>open(r)} title="Edit"><PencilLine size={14}/></button><button onClick={()=>confirm(`Delete ${r[0]}?`)&&setRows(v=>v.filter(x=>x!==r))} title="Delete"><Trash2 size={14}/></button></div></td></tr>)}</tbody></table></div></section>{modal&&<FormDialogBackdrop className="modal-backdrop"><div className="erp-modal small-master-modal"><div className="modal-head"><div><h2>{editing>=0?'Edit':buttonLabel}</h2><p>{title}</p></div><button className="icon-btn dark" onClick={()=>setModal(false)}><X size={20}/></button></div><div className="modal-grid">{columns.map(c=><label key={c}><span>{c}</span><input value={form[c]||''} onChange={e=>setForm({...form,[c]:e.target.value})}/></label>)}</div><div className="modal-actions"><button className="action-pill gray" onClick={()=>setModal(false)}>Close</button><button className="action-pill blue" onClick={save}><Save size={15}/> Save</button></div></div></FormDialogBackdrop>}</main>
+  return <main className="content page-shell"><div className="page-title-row"><h1>{title}</h1><button className="action-pill blue" onClick={()=>open()}><Plus size={15}/> {buttonLabel}</button></div><div className="divider"/><section className="card master-card"><div className="table-wrap"><table><thead><tr>{columns.map(c=><th key={c}>{c}</th>)}<th>Actions</th></tr></thead><tbody>{rows.map((r,ri)=><tr key={`${r[0]}-${ri}`}>{r.map((v,i)=><td key={i}>{v}</td>)}<td><div className="row-actions"><button onClick={()=>open(r)} title="Edit"><PencilLine size={14}/></button><button onClick={async()=>{if(await confirm(`Delete ${r[0]}?`))setRows(v=>v.filter(x=>x!==r))}} title="Delete"><Trash2 size={14}/></button></div></td></tr>)}</tbody></table></div></section>{modal&&<FormDialogBackdrop className="modal-backdrop"><div className="erp-modal small-master-modal"><div className="modal-head"><div><h2>{editing>=0?'Edit':buttonLabel}</h2><p>{title}</p></div><button className="icon-btn dark" onClick={()=>setModal(false)}><X size={20}/></button></div><div className="modal-grid">{columns.map(c=><label key={c}><span>{c}</span><input value={form[c]||''} onChange={e=>setForm({...form,[c]:e.target.value})}/></label>)}</div><div className="modal-actions"><button className="action-pill gray" onClick={()=>setModal(false)}>Close</button><button className="action-pill blue" onClick={save}><Save size={15}/> Save</button></div></div></FormDialogBackdrop>}</main>
 }
 function UomMasterPage(){return <SmallProductMaster title="Product UOMs" buttonLabel="Create New UOM" columns={['Product UOM','UOM Description']} storageKey="dfab-erp-uoms" initial={databaseSuggestions('UOM').map(x=>[x,x])}/>}
 function ProductTypePage(){return <SmallProductMaster title="Product Types" buttonLabel="Create New Type" columns={['Product Types']} storageKey="dfab-erp-product-types" initial={[]}/>}
@@ -705,7 +766,7 @@ function ProductListPage(){
     'Route Card':[['Route Card',form.linkedRoute||'No route card linked']]
   };const changeProfileStatus=()=>{const next=profileRow[6]==='ACTIVE'?'DEACTIVATED':'ACTIVE';const updated=[...profileRow.slice(0,6),next];setRows(v=>v.map(x=>x===profileRow?updated:x));setProfileRow(updated)};return <main className="content page-shell product-profile-sheet"><div className="page-title-row"><div><h1>Product Profile</h1><p className="page-subtitle">Products / {profileRow[0]}</p></div><button className="action-pill gray" onClick={()=>setScreen('list')}><X size={15}/> Close</button></div><div className="divider"/><section className="card product-profile-head"><div className="profile-product-photo">{form.photo?<img src={form.photo.dataUrl} alt={profileRow[1]} style={{width:90,height:90,objectFit:'contain'}}/>:<Package size={54}/>}<span>Product</span></div><div className="profile-facts">{[['Product code',profileRow[0]],['Product description',profileRow[1]],['Product group',profileRow[3]],['Product type',profileRow[2]],['Product status',profileRow[6]],['Product revision',profileRow[5]]].map(([k,v])=><div key={k}><span>{k}</span><b className={k==='Product status'?`profile-status ${String(v).toLowerCase()}`:''}>{v}</b></div>)}</div><div className="profile-actions"><button title="Edit Product" onClick={()=>openForm(profileRow)}><PencilLine size={18}/></button><button title={profileRow[6]==='ACTIVE'?'Deactivate Product':'Activate Product'} onClick={changeProfileStatus}>{profileRow[6]==='ACTIVE'?<CircleSlash size={18}/>:<CheckCircle2 size={18}/>}</button></div></section><section className="card product-profile-details"><div className="sheet-tabs">{Object.keys(profilePanels).map(x=><button className={profileTab===x?'active':''} key={x} onClick={()=>setProfileTab(x)}>{x}</button>)}</div><div className="profile-detail-grid">{profilePanels[profileTab].map(([k,v])=><div key={k}><span>{k}</span><b>{v}</b></div>)}</div></section><div className="profile-summary-grid"><section className="card profile-summary"><h3>Actions</h3><button className="stock-button" onClick={()=>alert('Stock movements are available in Reports → Stores → Stock Ledger. Inventory posting still requires backend integration.')}><ShoppingCart size={15}/> Stock</button></section><section className="card profile-summary"><h3>Inventory Status</h3><span>Current Stock</span><b>0.0000 {profileRow[4]}</b></section><section className="card profile-summary"><h3>Purchase Status</h3><span>Pending Purchase Order</span><b>0.00 {profileRow[4]}</b></section><section className="card profile-summary"><h3>Sales Status</h3><span>Pending Sales Order</span><b>0.00 {profileRow[4]}</b></section></div></main>}
   if(screen==='form')return <main className="content page-shell product-sheet premium-form-page"><div className="page-title-row"><button type="button" className="erp-form-back" onClick={()=>setScreen('list')} aria-label="Back to records"><ArrowLeft size={17}/> Back</button><div><h1>{editing>=0?'Edit Product':'Create New Product'}</h1><p className="page-subtitle">Please enter product details</p></div><div className="action-pills"><button className="action-pill blue" onClick={()=>save('APPROVAL PENDING')}><Send size={15}/> Submit</button><button className="action-pill green" onClick={()=>save('DRAFT')}><Save size={15}/> Save as Draft</button><button className="action-pill gray" onClick={()=>setScreen('list')}><X size={15}/> Close</button></div></div><div className="divider"/><section className="card product-form-card"><FormSectionHeading title="Product information" description="Add the core details that identify this product." icon={Package}/><div className="premium-record-layout"><div className="erp-form-grid premium-record-fields"><label><span>Product code*</span><input value={form.code} onChange={e=>setForm({...form,code:e.target.value})}/></label><label className="form-span-2"><span>Product description</span><textarea value={form.description} onChange={e=>setForm({...form,description:e.target.value})}/></label><label><span>Product type*</span><select value={form.type} onChange={e=>setForm({...form,type:e.target.value})}><option value="">--SELECT--</option>{typeOptions.map(x=><option key={x}>{x}</option>)}</select></label><label><span>Product group*</span><select value={form.group} onChange={e=>setForm({...form,group:e.target.value})}><option value="">--SELECT--</option>{groupOptions.map(x=><option key={x}>{x}</option>)}</select></label><label><span>Product Revision</span><input value={form.revision} onChange={e=>setForm({...form,revision:e.target.value})}/></label></div><aside className="premium-attachment-panel"><span className="premium-panel-caption">PRODUCT IMAGE</span><h3>Give it a clear identity</h3><p>A product image helps your team identify the right item.</p><PremiumUploadField label="Product Photo" compact value={form.photo} accept=".png,.jpg,.jpeg,.webp,.gif" onSelect={async file=>{const photo=await readAttachment(file);setForm(v=>({...v,photo}))}}/></aside></div><div className="sheet-tabs">{tabs.map(x=><button className={tab===x?'active':''} key={x} onClick={()=>setTab(x)}>{x}</button>)}</div><FormSectionHeading title={tab} description="Keep the related product details together." icon={ClipboardList}/><div className="erp-form-grid tab-form">{detailFields[tab].map(([label,key,type='text',options])=><label key={key}><span>{label} :</span>{type==='select'?<select value={form[key]||''} onChange={e=>setForm({...form,[key]:e.target.value})}>{options.map(x=><option key={x}>{x}</option>)}</select>:type==='file'?<PremiumUploadField label={label} value={form[key]} onSelect={async file=>{const attachment=await readAttachment(file);setForm(v=>({...v,[key]:attachment}))}}/>:<DatabaseSuggestInput label={label} type={type} value={form[key]||''} onChange={e=>setForm({...form,[key]:e.target.value})}/>}</label>)}</div></section></main>;
-  const selectMode=statusFilter==='ALL'||statusFilter==='APPROVAL PENDING';const toggleSelect=code=>setSelected(v=>v.includes(code)?v.filter(x=>x!==code):[...v,code]);const allSelected=filtered.length>0&&filtered.every(r=>selected.includes(r[0]));const toggleAll=()=>setSelected(allSelected?[]:filtered.map(r=>r[0]));const bulkStatus=status=>{setRows(v=>v.map(r=>selected.includes(r[0])?[...r.slice(0,6),status]:r));setSelected([]);setStatusFilter(status)};const bulkDelete=()=>{if(!selected.length){alert('Select at least one product.');return}if(confirm(`Delete ${selected.length} selected product(s)?`)){setRows(v=>v.filter(r=>!selected.includes(r[0])));setSelected([])}};const start=(page-1)*pageSize+1;const end=Math.min(page*pageSize,filtered.length);const pageButtons=Array.from(new Set([1,2,3,4,5,page-1,page,page+1,pages].filter(n=>n>=1&&n<=pages))).sort((a,b)=>a-b);const sheetTitle={ALL:'All Products',ACTIVE:'Active Products','APPROVAL PENDING':'Products Pending for Approval',DEACTIVATED:'Deactivated Products',REJECTED:'Rejected Products',DRAFT:'Products In Draft'}[statusFilter]||'Products';
+  const selectMode=statusFilter==='ALL'||statusFilter==='APPROVAL PENDING';const toggleSelect=code=>setSelected(v=>v.includes(code)?v.filter(x=>x!==code):[...v,code]);const allSelected=filtered.length>0&&filtered.every(r=>selected.includes(r[0]));const toggleAll=()=>setSelected(allSelected?[]:filtered.map(r=>r[0]));const bulkStatus=status=>{setRows(v=>v.map(r=>selected.includes(r[0])?[...r.slice(0,6),status]:r));setSelected([]);setStatusFilter(status)};const bulkDelete=async()=>{if(!selected.length){alert('Select at least one product.');return}if(await confirm(`Delete ${selected.length} selected product(s)?`)){setRows(v=>v.filter(r=>!selected.includes(r[0])));setSelected([])}};const start=(page-1)*pageSize+1;const end=Math.min(page*pageSize,filtered.length);const pageButtons=Array.from(new Set([1,2,3,4,5,page-1,page,page+1,pages].filter(n=>n>=1&&n<=pages))).sort((a,b)=>a-b);const sheetTitle={ALL:'All Products',ACTIVE:'Active Products','APPROVAL PENDING':'Products Pending for Approval',DEACTIVATED:'Deactivated Products',REJECTED:'Rejected Products',DRAFT:'Products In Draft'}[statusFilter]||'Products';
   return <main className="content page-shell product-list-live"><h1>Products</h1><div className="divider"/><StatCards items={cards} onSelect={i=>setStatusFilter(statusValues[i])}/><div className="toolbar-row"><div className="filters-inline"><div className="field-col small-col"><label>Select Type</label><select value={type} onChange={e=>setType(e.target.value)}><option value="">--SELECT--</option>{productTypes.map(x=><option key={x}>{x}</option>)}</select></div><div className="field-col wide-col"><label>Select Group</label><select value={group} onChange={e=>setGroup(e.target.value)}><option value="">--SELECT--</option>{groupOptions.map(x=><option key={x}>{x}</option>)}</select></div><button className="mini-filter-btn" onClick={()=>setApplied({type,group})}><Filter size={14}/> Filter</button></div><div className="action-pills"><button className="action-pill gray" onClick={()=>setScreen('import')}><FileSpreadsheet size={15}/> Excel Product Import</button><button className="action-pill blue" onClick={()=>openForm()}><Plus size={15}/> Create new</button></div></div>{statusFilter&&<section className="card product-data-card" data-status-sheet="true"><div className="customer-sheet-title product-sheet-title"><span>{sheetTitle} ({filtered.length})</span><div className="product-title-actions"><RefreshCw size={18}/>{selectMode&&<label><input type="checkbox" checked={allSelected} onChange={toggleAll}/> Select All</label>}{statusFilter==='ALL'&&<button className="action-pill red" onClick={bulkDelete}><Trash2 size={14}/> Delete Selected Products</button>}{statusFilter==='APPROVAL PENDING'&&<><button className="action-pill green" onClick={()=>bulkStatus('ACTIVE')}><CheckCircle2 size={14}/> Approve Selected Products</button><button className="action-pill red" onClick={()=>bulkStatus('REJECTED')}><ThumbsDown size={14}/> Reject Selected Products</button></>}</div></div>{filtered.length>0&&<><div className="product-table-controls"><div className="data-table-head"><label>Show <select value={pageSize} onChange={e=>setPageSize(Number(e.target.value))}>{[10,25,50,100].map(x=><option key={x}>{x}</option>)}</select> entries</label></div><div className="data-search"><span>Search:</span><input value={search} onChange={e=>setSearch(e.target.value)}/></div></div><div className="table-wrap"><table className="product-live-table"><thead><tr>{['Product Code','Description','Product Type','Group','UOM','Status'].map(x=><th key={x}>{x}</th>)}{selectMode&&<th><span>Select</span><br/><span>Delete</span></th>}</tr></thead><tbody>{pageRows.map(r=><tr key={r[0]}><td><button className="link-button" onClick={()=>openProfile(r)}>{r[0]}</button></td><td>{r[1]}</td><td>{r[2]}</td><td>{r[3]}</td><td>{r[4]}</td><td><span className={`status-pill ${r[6]==='REJECTED'?'rejected':r[6]==='DEACTIVATED'?'deactivated':'approved'}`}>{r[6]}</span></td>{selectMode&&<td className="select-cell"><input type="checkbox" checked={selected.includes(r[0])} onChange={()=>toggleSelect(r[0])}/></td>}</tr>)}</tbody></table></div><div className="data-table-foot"><span>Showing {start} to {end} of {filtered.length.toLocaleString()} entries</span><div className="pagination"><button disabled={page===1} onClick={()=>setPage(v=>Math.max(1,v-1))}>Previous</button>{pageButtons.map((n,i)=><React.Fragment key={n}>{i>0&&n-pageButtons[i-1]>1&&<span>…</span>}<button className={page===n?'active':''} onClick={()=>setPage(n)}>{n}</button></React.Fragment>)}<button disabled={page===pages} onClick={()=>setPage(v=>Math.min(pages,v+1))}>Next</button></div></div></>}{filtered.length===0&&<div className="product-zero-state">No product records are available in this status.</div>}</section>}</main>
 }
 
@@ -740,7 +801,7 @@ function EditableLines({columns,keys,rows,setRows}){
   }));
   return <div className="table-wrap editable-lines"><table><thead><tr><th>Actions</th><th>Sl.No.</th>{columns.map(x=><th key={x}>{x}</th>)}</tr></thead><tbody>{rows.map((r,i)=><tr key={i}><td><button className="line-remove" disabled={rows.length===1} onClick={()=>setRows(v=>v.filter((_,x)=>x!==i))}><Trash2 size={13}/></button></td><td>{i+1}</td>{keys.map((k,columnIndex)=><td key={k}><DatabaseSuggestInput label={columns[columnIndex]||k} type={/qty|rate|setup|cycle/.test(k)?'number':'text'} min="0" step="any" value={r[k]} onChange={e=>update(i,k,e.target.value)}/></td>)}</tr>)}</tbody></table></div>
 }
-function MasterRowsTable({columns,rows,setRows,onEdit}){return <section className="card master-card" data-status-sheet="true"><div className="table-wrap"><table><thead><tr>{columns.map(x=><th key={x}>{x}</th>)}<th>Actions</th></tr></thead><tbody>{rows.map((r,i)=><tr key={`${r[0]}-${i}`}>{r.map((v,j)=><td key={j}>{j===0?<button className="link-button" onClick={()=>onEdit?.(r)}>{v}</button>:j===r.length-1?<span className={`status-pill ${v==='REJECTED'?'rejected':'approved'}`}>{v}</span>:v}</td>)}<td><div className="row-actions">{onEdit&&<button title="Open sheet" onClick={()=>onEdit(r)}><PencilLine size={14}/></button>}<button title="Change status" onClick={()=>setRows(v=>v.map(x=>x===r?[...x.slice(0,-1),x.at(-1)==='ACTIVE'?'INACTIVE':'ACTIVE']:x))}><ArrowRight size={14}/></button><button title="Delete" onClick={()=>confirm(`Delete ${r[0]}?`)&&setRows(v=>v.filter(x=>x!==r))}><Trash2 size={14}/></button></div></td></tr>)}</tbody></table></div></section>}
+function MasterRowsTable({columns,rows,setRows,onEdit}){return <section className="card master-card" data-status-sheet="true"><div className="table-wrap"><table><thead><tr>{columns.map(x=><th key={x}>{x}</th>)}<th>Actions</th></tr></thead><tbody>{rows.map((r,i)=><tr key={`${r[0]}-${i}`}>{r.map((v,j)=><td key={j}>{j===0?<button className="link-button" onClick={()=>onEdit?.(r)}>{v}</button>:j===r.length-1?<span className={`status-pill ${v==='REJECTED'?'rejected':'approved'}`}>{v}</span>:v}</td>)}<td><div className="row-actions">{onEdit&&<button title="Open sheet" onClick={()=>onEdit(r)}><PencilLine size={14}/></button>}<button title="Change status" onClick={()=>setRows(v=>v.map(x=>x===r?[...x.slice(0,-1),x.at(-1)==='ACTIVE'?'INACTIVE':'ACTIVE']:x))}><ArrowRight size={14}/></button><button title="Delete" onClick={async()=>{if(await confirm(`Delete ${r[0]}?`))setRows(v=>v.filter(x=>x!==r))}}><Trash2 size={14}/></button></div></td></tr>)}</tbody></table></div></section>}
 
 const customerRows = [];
 
@@ -763,29 +824,63 @@ function EntityPage({title,cards,footerVisible=false}){
   const [rows,setRows]=useState(()=>readStored(key,initial));const [search,setSearch]=useState('');const [modal,setModal]=useState(false);const [editing,setEditing]=useState(-1);const [form,setForm]=useState({code:'',name:'',city:'',detail:'',status:'Active'});
   useSaveChangedRows(key,rows);const filtered=rows.filter(r=>r.join(' ').toLowerCase().includes(search.toLowerCase()));const stats=cards.map((c,i)=>({...c,value:[rows.length,rows.filter(r=>r[4]==='Active').length,rows.filter(r=>r[4]==='Approval Pending').length,rows.filter(r=>r[4]==='Deactivated').length,rows.filter(r=>r[4]==='Rejected').length,rows.filter(r=>r[4]==='Draft').length][i]}));
   const open=(r=null)=>{setEditing(r?rows.indexOf(r):-1);setForm(r?{code:r[0],name:r[1],city:r[2],detail:r[3],status:r[4]}:{code:`${title==='Customers'?'CUS':'VEN'}-${String(rows.length+1).padStart(3,'0')}`,name:'',city:'',detail:'',status:'Active'});setModal(true)};const save=()=>{if(!form.code.trim()||!form.name.trim()){alert('Code and name are required.');return}const r=[form.code,form.name,form.city||'-',form.detail||'-',form.status];setRows(v=>editing>=0?v.map((x,i)=>i===editing?r:x):[r,...v]);setModal(false)};
-  return <main className="content page-shell entity-page-shell"><h1>{title}</h1><div className="divider"/><StatCards items={stats}/><div className="toolbar-row entity-toolbar"><div className="master-search"><input placeholder={`Search ${title.toLowerCase()}...`} value={search} onChange={e=>setSearch(e.target.value)}/><button title="Search" onClick={e=>e.currentTarget.parentElement.querySelector('input')?.focus()}><Search size={17}/></button></div><div className="action-pills"><button className="action-pill green" onClick={()=>downloadCsv(`${title}.csv`,['Code','Name','City',title==='Customers'?'Payment Terms':'Material / Service','Status'],rows)}><FileSpreadsheet size={15}/> Excel</button><button className="action-pill blue" onClick={()=>open()}><Plus size={16}/> Create new</button></div></div><section className="card master-card compact-table"><div className="table-wrap"><table><thead><tr><th>Code</th><th>{title.slice(0,-1)} Name</th><th>City</th><th>{title==='Customers'?'Payment Terms':'Material / Service'}</th><th>Status</th><th>Action</th></tr></thead><tbody>{filtered.map(r=><tr key={r[0]}>{r.map((v,j)=><td key={j}>{j===0?<span className="linkish">{v}</span>:j===4?<span className={`status-pill ${v==='Rejected'?'rejected':'approved'}`}>{v}</span>:v}</td>)}<td><div className="row-actions"><button title="Edit" onClick={()=>open(r)}><PencilLine size={15}/></button><button title="Change status" onClick={()=>setRows(v=>v.map(x=>x===r?[...x.slice(0,4),x[4]==='Active'?'Deactivated':'Active']:x))}><ArrowRight size={15}/></button><button title="Delete" onClick={()=>confirm(`Delete ${r[0]}?`)&&setRows(v=>v.filter(x=>x!==r))}><Trash2 size={15}/></button></div></td></tr>)}</tbody></table></div></section>{footerVisible&&<div className="page-footer-note"><span>DFAB Stainless Systems Pvt Ltd Version 1.4</span><span>User Manual · Terms & Conditions</span></div>}{modal&&<FormDialogBackdrop className="modal-backdrop"><div className="erp-modal"><div className="modal-head"><div><h2>{editing>=0?'Edit':'Create'} {title.slice(0,-1)}</h2><p>{title} Master</p></div><button className="icon-btn dark" onClick={()=>setModal(false)}><X size={20}/></button></div><div className="modal-grid">{[['Code','code'],[`${title.slice(0,-1)} Name`,'name'],['City','city'],[title==='Customers'?'Payment Terms':'Material / Service','detail']].map(([label,k])=><label key={k}><span>{label}</span><input value={form[k]} onChange={e=>setForm({...form,[k]:e.target.value})}/></label>)}<label><span>Status</span><select value={form.status} onChange={e=>setForm({...form,status:e.target.value})}><option>Active</option><option>Draft</option><option>Approval Pending</option><option>Deactivated</option><option>Rejected</option></select></label></div><div className="modal-actions"><button className="action-pill gray" onClick={()=>setModal(false)}>Cancel</button><button className="action-pill blue" onClick={save}><Save size={15}/> Save</button></div></div></FormDialogBackdrop>}</main>}
+  return <main className="content page-shell entity-page-shell"><h1>{title}</h1><div className="divider"/><StatCards items={stats}/><div className="toolbar-row entity-toolbar"><div className="master-search"><input placeholder={`Search ${title.toLowerCase()}...`} value={search} onChange={e=>setSearch(e.target.value)}/><button title="Search" onClick={e=>e.currentTarget.parentElement.querySelector('input')?.focus()}><Search size={17}/></button></div><div className="action-pills"><button className="action-pill green" onClick={()=>downloadCsv(`${title}.csv`,['Code','Name','City',title==='Customers'?'Payment Terms':'Material / Service','Status'],rows)}><FileSpreadsheet size={15}/> Excel</button><button className="action-pill blue" onClick={()=>open()}><Plus size={16}/> Create new</button></div></div><section className="card master-card compact-table"><div className="table-wrap"><table><thead><tr><th>Code</th><th>{title.slice(0,-1)} Name</th><th>City</th><th>{title==='Customers'?'Payment Terms':'Material / Service'}</th><th>Status</th><th>Action</th></tr></thead><tbody>{filtered.map(r=><tr key={r[0]}>{r.map((v,j)=><td key={j}>{j===0?<span className="linkish">{v}</span>:j===4?<span className={`status-pill ${v==='Rejected'?'rejected':'approved'}`}>{v}</span>:v}</td>)}<td><div className="row-actions"><button title="Edit" onClick={()=>open(r)}><PencilLine size={15}/></button><button title="Change status" onClick={()=>setRows(v=>v.map(x=>x===r?[...x.slice(0,4),x[4]==='Active'?'Deactivated':'Active']:x))}><ArrowRight size={15}/></button><button title="Delete" onClick={async()=>{if(await confirm(`Delete ${r[0]}?`))setRows(v=>v.filter(x=>x!==r))}}><Trash2 size={15}/></button></div></td></tr>)}</tbody></table></div></section>{footerVisible&&<div className="page-footer-note"><span>DFAB Stainless Systems Pvt Ltd Version 1.4</span><span>User Manual · Terms & Conditions</span></div>}{modal&&<FormDialogBackdrop className="modal-backdrop"><div className="erp-modal"><div className="modal-head"><div><h2>{editing>=0?'Edit':'Create'} {title.slice(0,-1)}</h2><p>{title} Master</p></div><button className="icon-btn dark" onClick={()=>setModal(false)}><X size={20}/></button></div><div className="modal-grid">{[['Code','code'],[`${title.slice(0,-1)} Name`,'name'],['City','city'],[title==='Customers'?'Payment Terms':'Material / Service','detail']].map(([label,k])=><label key={k}><span>{label}</span><input value={form[k]} onChange={e=>setForm({...form,[k]:e.target.value})}/></label>)}<label><span>Status</span><select value={form.status} onChange={e=>setForm({...form,status:e.target.value})}><option>Active</option><option>Draft</option><option>Approval Pending</option><option>Deactivated</option><option>Rejected</option></select></label></div><div className="modal-actions"><button className="action-pill gray" onClick={()=>setModal(false)}>Cancel</button><button className="action-pill blue" onClick={save}><Save size={15}/> Save</button></div></div></FormDialogBackdrop>}</main>}
 
-function SalesInvoicePage(){
-  const empty={date:todayISO(),series:'LOCAL',customer:'',consignee:'',category:'Manufacturing and Supply',dc:'',po:'',vehicle:'',project:'',terms:'30 Days',dispatch:'Road',country:'India',attention:'',scope:'',currency:'INR',taxRate:'18'};
+function SalesInvoicePage({access}){
+  const empty={date:todayISO(),series:'LOCAL',customer:'',consignee:'',category:'Labour Job',dc:'',po:'',vehicle:'',project:'',terms:'30 Days',dispatch:'Road',country:'India',attention:'',scope:'',currency:'INR',taxRate:'18'};
   const newLine=()=>({code:'',description:'',quantity:'1',rate:'0'});
   const [rows,setRows]=useStoredRows('dfab-erp-sales-invoices-v2',salesInvoiceRows,true);
   const [details,setDetails]=useStoredRows('dfab-invoice-details-v1',{},true);
-  const [search,setSearch]=useState('');const [statusFilter,setStatusFilter]=useState('ALL');const [editor,setEditor]=useState(false);useEffect(()=>{document.querySelector('.page-transition-shell>.content')?.scrollTo(0,0)},[editor]);const [editing,setEditing]=useState(null);const [form,setForm]=useState(empty);const [lines,setLines]=useState([newLine()]);const [selected,setSelected]=useState(null);const [from,setFrom]=useState('');const [to,setTo]=useState('');
+  const [search,setSearch]=useState('');const [statusFilter,setStatusFilter]=useState('ALL');const [editor,setEditor]=useState(false);const [editing,setEditing]=useState(null);const [form,setForm]=useState(empty);const [lines,setLines]=useState([newLine()]);const [selected,setSelected]=useState(null);const [from,setFrom]=useState('');const [to,setTo]=useState('');
   const [savingInvoice,setSavingInvoice]=useState(false);
+  const [section,setSection]=useState('Details');
+  const [reading,setReading]=useState(false);
+  const [formError,setFormError]=useState('');
+  const [attachments,setAttachments]=useState({});
+  const [charges,setCharges]=useState({});
+  const [expenses,setExpenses]=useState({});
+  const invoiceReference=referenceForms['Sales Invoice'];
+  const invoiceFields=['Date','Series','Customer','Consignee',...invoiceReference.fields,'Sales Order Reference','Tax (%)'].map(label=>({
+    label,key:invoiceHeaderKeys[label]||label,
+    type:label==='Tax (%)'?'number':referenceInputType(label),
+    options:label==='Series'?invoiceReference.series:referenceOptions('Sales Invoice',label)
+  }));
+  const fetchInvoice=(source,record)=>{
+    const conflict=fetchConflict('sourceOrder',form,record);
+    if(conflict)return 'Clear the Sales Order Reference before fetching a different sales order.';
+    const values=referenceFetchValues(source,record,invoiceFields.filter(field=>!['Date','Series','Tax (%)'].includes(field.label)));
+    const line=lines[0];
+    const blankLine=lines.length===1&&!line.description&&!line.code&&line.quantity==='1'&&line.rate==='0';
+    const {Product,Qty,UOM}=record.fields;
+    if(blankLine&&hasDocumentValue(Product))setLines([{...newLine(),description:Product,quantity:hasDocumentValue(Qty)?String(Qty):'1',uom:UOM||''}]);
+    setForm(current=>({...applyReferenceFetch(current,values),sourceOrder:record.number}));
+    return '';
+  };
   let invoicePreview=null;
-  try {invoicePreview=calculateInvoice(lines,String(form.taxRate??''))} catch {/* Form editing can contain temporarily incomplete values. */}
-  const gross=invoicePreview?.total??0;
-  const updateLine=(index,key,value)=>setLines(v=>v.map((line,i)=>i===index?{...line,[key]:value}:line));
-  const open=(row=null)=>{setEditing(row?.[1]||null);setForm({...empty,...(row?{date:isoDate(row[2]),customer:row[3],po:row[4],project:row[5]}:{}),...details[row?.[1]]?.form});let savedLines=details[row?.[1]]?.lines;if(!savedLines&&row?.[10]){try{savedLines=JSON.parse(row[10])}catch{/* Legacy summary-only invoice. */}}setLines(savedLines?.length?savedLines:[newLine()]);setEditor(true);setSelected(null)};
+  try {invoicePreview=calculateInvoice(lines,String(form.taxRate??''),charges,expenses)} catch {/* Form editing can contain temporarily incomplete values. */}
+  const updateLine=(index,key,value)=>{
+    const product=key==='code'?productFromDatabase(value):null;
+    const detail=product?objectRows('dfab-erp-products-details-v1')[product[0]]:null;
+    setLines(current=>current.map((line,i)=>i!==index?line:{
+      ...line,[key]:value,...(product?{description:product[1]||'',uom:product[4]||line.uom,
+        rate:detail?.sellingPrice||line.rate}:{})
+    }));
+  };
+  const updateCharge=(key,field,value)=>setCharges(current=>({
+    ...current,[key]:field?{...current[key],[field]:value}:value
+  }));
+  const open=(row=null)=>{setEditing(row?.[1]||null);setForm({...empty,...(row?{date:isoDate(row[2]),customer:row[3],po:row[4],project:row[5]}:{}),...details[row?.[1]]?.form});let savedLines=details[row?.[1]]?.lines;if(!savedLines&&row?.[10]){try{savedLines=JSON.parse(row[10])}catch{/* Legacy summary-only invoice. */}}setLines(savedLines?.length?savedLines:[newLine()]);setAttachments(details[row?.[1]]?.files||{});setCharges(details[row?.[1]]?.charges||{});setExpenses(details[row?.[1]]?.expenses||{});setSection('Details');setFormError('');setEditor(true);setSelected(null)};
   const submitInvoice=async status=>{
-    if(savingInvoice)return;
-    if(!form.customer.trim()||!isoDate(form.date)){alert('A valid invoice date and customer are required.');return}
+    if(savingInvoice||reading)return;
+    if(!form.customer.trim()||!isoDate(form.date)){setSection('Details');setFormError('A valid invoice date and customer are required.');return}
     let totals;
-    try {totals=calculateInvoice(lines,String(form.taxRate??''))}
-    catch(error){alert(error.message);return}
+    try {totals=calculateInvoice(lines,String(form.taxRate??''),charges,expenses)}
+    catch(error){const errorSection=error.message.startsWith('Tax (%)')?'Additional details':
+      error.message.startsWith('Charges:')?'Charges':error.message.startsWith('External expenses:')?'External Expenses':'Products';
+      setSection(errorSection);setFormError(error.message);return}
     const paid=readStored('dfab-erp-Customer Payments',[]).some(r=>String(r?.[2]||'').toLowerCase()===String(editing||'').toLowerCase());
     const previous=editing&&rows.find(r=>r[1]===editing);
-    if(editing&&(paid||previous?.[6]==='APPROVED')){alert('An approved invoice or invoice with linked payments cannot be changed.');return}
+    if(editing&&(paid||previous?.[6]==='APPROVED')){setFormError('An approved invoice or invoice with linked payments cannot be changed.');return}
     let serial=827+rows.length;
     const fy=Number(form.date.slice(0,4))-(Number(form.date.slice(5,7))<4?1:0);
     const prefix=`${form.series==='EXPORT'?'EXP':'SI'}/${String(fy).slice(-2)}-${String(fy+1).slice(-2)}/`;
@@ -793,7 +888,8 @@ function SalesInvoicePage(){
     const number=editing||`${prefix}${String(serial).padStart(4,'0')}`;
     const row=[previous?.[0]||String(rows.length+1),number,displayDate(form.date),form.customer,form.po||'-',form.project||'-',status,totals.total.toFixed(2),previous?.[8]||'NOT CONNECTED',previous?.[9]||'',JSON.stringify(lines)];
     const updatedRows=editing?rows.map(r=>r[1]===editing?row:r):[row,...rows];
-    const updatedDetails={...details,[number]:{form:{...form},lines:lines.map(line=>({...line})),taxable:totals.taxable,tax:totals.tax,total:totals.total}};
+    const updatedDetails={...details,[number]:{form:{...form},files:Object.fromEntries(Object.entries(attachments).filter(([,file])=>file)),lines:lines.map(line=>({...line})),charges,expenses,taxable:totals.taxable,tax:totals.tax,total:totals.total}};
+    setFormError('');
     setSavingInvoice(true);
     try {
       await writeCloudBatchConfirmed([
@@ -802,7 +898,29 @@ function SalesInvoicePage(){
       ]);
       setRows(updatedRows);setDetails(updatedDetails);
       setStatusFilter(status);setEditor(false);setEditing(null);
-    }catch(error){alert(`Invoice was not fully saved in Supabase: ${error.message}. Please check the database before trying again.`)}
+    }catch(error){setFormError(`Invoice was not fully saved in Supabase: ${error.message}. Please check the database before trying again.`)}
+    finally{setSavingInvoice(false)}
+  };
+  const canDecideInvoice=canAdminAccess(access,'Sales Invoice','edit')&&canAdminAccess(access,'Sales Invoice','approve');
+  const decideInvoice=async status=>{
+    if(savingInvoice||selected?.[6]!=='APPROVAL PENDING'||!canDecideInvoice)return;
+    const number=selected[1];
+    if(status==='APPROVED'){
+      const detail=details[number];
+      try {
+        if(!detail?.form?.customer||!isoDate(detail.form.date))throw new Error('Complete the customer and invoice date before approval.');
+        const total=calculateInvoice(detail.lines,String(detail.form.taxRate??''),detail.charges,detail.expenses).total;
+        if(total.toFixed(2)!==String(selected[7]))throw new Error('Verify and resubmit the invoice totals before approval.');
+      } catch(error){alert(error.message);return}
+    }
+    setSavingInvoice(true);
+    const next=rows.map(row=>row[1]===number?row.map((value,index)=>index===6?status:value):row);
+    try {
+      await writeCloudValueConfirmed('dfab-erp-sales-invoices-v2',next,rows);
+      setRows(next);
+      setSelected(next.find(row=>row[1]===number));
+      setStatusFilter(status);
+    } catch(error){alert(`Invoice decision was not confirmed: ${error.message}`)}
     finally{setSavingInvoice(false)}
   };
   const deleteDraftInvoice=async()=>{
@@ -812,7 +930,7 @@ function SalesInvoicePage(){
     const hasPayment=readStored('dfab-erp-Customer Payments',[]).some(r=>String(r?.[2]||'').toLowerCase()===String(number).toLowerCase());
     const hasRelated=links.some(link=>String(link.reference)===String(number)||String(link.created)===String(number));
     if(selected[6]!=='DRAFT'||hasPayment||hasRelated){alert('Only an unlinked draft invoice can be deleted. Use a controlled cancellation for approved or linked invoices.');return}
-    if(!confirm(`Delete draft invoice ${number}?`))return;
+    if(!await confirm(`Delete draft invoice ${number}?`))return;
     const updatedRows=rows.filter(r=>r[1]!==number);
     const updatedDetails={...details};delete updatedDetails[number];
     setSavingInvoice(true);
@@ -827,8 +945,47 @@ function SalesInvoicePage(){
   };
   const statusValues=['ALL','APPROVED','APPROVAL PENDING','REJECTED','DRAFT'];const totalValue=rows.reduce((sum,r)=>sum+(Number(r[7])||0),0);const cards=salesInvoiceCards.map((card,index)=>({...card,value:index===5?totalValue.toLocaleString('en-IN',{minimumFractionDigits:2,maximumFractionDigits:2}):index===0?rows.length:rows.filter(r=>r[6]===statusValues[index]).length}));
   const filtered=rows.filter(r=>(statusFilter==='ALL'||r[6]===statusFilter)&&(!from||isoDate(r[2])>=from)&&(!to||isoDate(r[2])<=to)&&r.slice(0,10).join(' ').toLowerCase().includes(search.toLowerCase()));
-  if(editor)return <main className="content page-shell transaction-editor premium-form-page"><div className="page-title-row"><div><h1>{editing?'Edit':'New'} Sales Invoice</h1><p className="page-subtitle">{editing||'Create an invoice draft with editable header and line items.'}</p></div><div className="action-pills"><button className="action-pill gray" onClick={()=>setEditor(false)}><X size={15}/> Cancel</button><button className="action-pill green" disabled={savingInvoice} onClick={()=>submitInvoice('DRAFT')}><Save size={15}/> Save as Draft</button><button className="action-pill blue" disabled={savingInvoice} onClick={()=>submitInvoice('APPROVAL PENDING')}><Send size={15}/> Submit for Approval</button></div></div><div className="divider"/><section className="card invoice-form-card"><div className="invoice-form-head"><span>INVOICE DETAILS</span><b>{editing||'New invoice'}</b></div><div className="invoice-form-grid">{[['Date','date','date'],['Series','series','select',['LOCAL','EXPORT']],['Customer','customer'],['Consignee','consignee'],['Invoice Category','category','select',['Manufacturing and Supply','Labour Job']],['DC Number','dc'],['Buyer PO No.','po'],['Vehicle No.','vehicle'],['Project Name','project'],['Terms of payment','terms'],['Mode of Dispatch','dispatch'],['Country of Shipment/Destination','country'],['Kind Attention','attention'],['Scope Of Work','scope'],['Currency Type','currency','select',['INR','USD','EUR','GBP']],['Tax (%)','taxRate','number']].map(([label,key,type='text',options])=><label key={key}><span>{label}</span>{type==='select'?<select value={form[key]} onChange={e=>setForm(v=>({...v,[key]:e.target.value}))}>{options.map(o=><option key={o}>{o}</option>)}</select>:<DatabaseSuggestInput label={label} type={type} min={type==='number'?0:undefined} max={key==='taxRate'?100:undefined} step={type==='number'?'any':undefined} value={form[key]} onChange={e=>setForm(v=>({...v,[key]:e.target.value}))}/>}</label>)}</div><p className="data-notice">Tax is an editable combined percentage. Confirm place of supply, HSN, CGST/SGST versus IGST and export tax treatment before issuing a statutory invoice.</p><div className="invoice-lines-head"><b>Line items</b><button className="action-pill blue" onClick={()=>setLines(v=>[...v,newLine()])}><Plus size={15}/> Add Line Item</button></div><div className="table-wrap"><table><thead><tr>{['#','Product Code','Description','Quantity','Rate','Taxable Amount','Tax','Gross Amount','Action'].map(h=><th key={h}>{h}</th>)}</tr></thead><tbody>{lines.map((line,i)=>{const amount=invoicePreview?.details?.[i]?.taxable??0;const lineTax=invoicePreview?.details?.[i]?.tax??0;const lineGross=invoicePreview?.details?.[i]?.gross??0;return <tr key={i}><td>{i+1}</td>{['code','description','quantity','rate'].map(key=><td key={key}><DatabaseSuggestInput label={key==='code'?'Product Code':key==='description'?'Product Description':key} type={['quantity','rate'].includes(key)?'number':'text'} min="0" step="any" value={line[key]} onChange={e=>{const value=e.target.value;updateLine(i,key,value);if(key==='code'){const product=productFromDatabase(value);if(product){updateLine(i,'description',product[1]||'');const detail=objectRows('dfab-erp-products-details-v1')[product[0]];if(detail?.sellingPrice)updateLine(i,'rate',detail.sellingPrice)}}}}/></td>)}<td>{amount.toFixed(2)}</td><td>{lineTax.toFixed(2)}</td><td>{lineGross.toFixed(2)}</td><td><button className="line-remove" title="Remove line" disabled={lines.length===1} onClick={()=>setLines(v=>v.filter((_,x)=>x!==i))}><Trash2 size={14}/></button></td></tr>})}</tbody></table></div><div className="invoice-total">Total ({form.currency}): {gross.toFixed(2)}</div></section></main>;
-  return <main className="content page-shell sales-page-shell"><h1>Sales Invoice</h1><div className="divider"/><StatCards items={cards} onSelect={i=>i<5&&setStatusFilter(statusValues[i])}/><div className="toolbar-row"><p className="data-notice">Invoice amounts and legacy samples are retained. E-invoice and email services are not connected.</p><div className="action-pills"><button className="action-pill green" onClick={()=>downloadCsv('Sales-Invoices.csv',['#','Invoice No','Date','Customer','PO','Project','Status','Amount','E-Invoice','Mail'],filtered.map(r=>r.slice(0,10)))}>Export CSV</button><button className="action-pill blue" onClick={()=>open()}><Plus size={16}/> Create new</button></div></div><section className="card report-card sales-scroll-card"><div className="report-header-line"><h2>Sales Invoice ({statusFilter})</h2><div className="report-header-actions"><label>From <input aria-label="From date" type="date" value={from} max={to||undefined} onChange={e=>setFrom(e.target.value)}/></label><label>To <input aria-label="To date" type="date" value={to} min={from||undefined} onChange={e=>setTo(e.target.value)}/></label><button className="refresh-btn" onClick={()=>{setFrom('');setTo('');setSearch('');setStatusFilter('ALL')}}><RefreshCw size={14}/> Reset filters</button></div></div><div className="table-controls"><span>{filtered.length} invoice(s)</span><label>Search <input value={search} onChange={e=>setSearch(e.target.value)}/></label></div><div className="table-wrap sales-table-wrap" tabIndex="0" aria-label="Scrollable sales invoice data"><table><thead><tr>{['#','Invoice No.','Date','Party','PO Number','Project Name','Status','Amount','E-Invoice Status','Mail Status'].map(h=><th key={h}>{h}</th>)}</tr></thead><tbody>{filtered.length?filtered.map(r=><tr key={r[1]}>{r.slice(0,10).map((v,i)=><td key={i}>{i===1?<button className="link-button" onClick={()=>setSelected(r)}>{v}</button>:v}</td>)}</tr>):<tr><td colSpan="10" className="empty-cell">No invoices match these filters.</td></tr>}</tbody></table></div></section>{selected&&<div className="modal-backdrop"><section className="erp-modal"><div className="modal-head"><h2>{selected[1]}</h2><button className="icon-btn dark" title="Close invoice" onClick={()=>setSelected(null)}><X size={20}/></button></div><div className="report-detail-grid">{[['Customer',selected[3]],['Date',selected[2]],['Status',selected[6]],['Amount',selected[7]],...Object.entries(details[selected[1]]?.form||{})].map(([k,v])=><div key={k}><span>{k}</span><b>{v||'-'}</b></div>)}</div><div className="modal-actions"><button className="action-pill blue" disabled={selected?.[6]==='APPROVED'||readStored('dfab-erp-Customer Payments',[]).some(r=>r?.[2]===selected?.[1])} onClick={()=>open(selected)}><PencilLine size={15}/> Edit invoice</button><button className="action-pill red" disabled={savingInvoice} onClick={deleteDraftInvoice}><Trash2 size={15}/> Delete</button><button className="action-pill gray" onClick={()=>setSelected(null)}>Close</button></div></section></div>}</main>;
+  if(editor)return <TransactionEditor title={editing?'Edit Sales Invoice':'New Sales Invoice'}
+    reference={editing} busy={savingInvoice||reading} error={formError} onBack={()=>setEditor(false)}
+    sections={['Details','Additional details','Products','Charges','External Expenses','Attachments']} active={section} onSectionChange={setSection}
+    fetch={<ReferenceFetch title="Sales Invoice" getRecords={module=>canAdminAccess(access,module,'view')?getReferenceRecords(module):[]} onFetch={fetchInvoice} disabled={savingInvoice}/>}
+    actions={<>
+      <button type="button" className="action-pill green" disabled={savingInvoice||reading} onClick={()=>submitInvoice('DRAFT')}><Save size={15}/> {savingInvoice?'Saving…':'Save as Draft'}</button>
+      <button type="button" className="action-pill blue" disabled={savingInvoice||reading} onClick={()=>submitInvoice('APPROVAL PENDING')}><Send size={15}/> Submit for Approval</button>
+    </>}>
+    <div className="erp-detailed-form">
+      <TransactionValues label="Invoice summary" values={[
+        ['Status',editing?rows.find(row=>row[1]===editing)?.[6]:'New'],
+        ['Currency',form.currency],
+        ['Sales Order',form.sourceOrder],
+        ['Taxable amount',invoicePreview?.taxable.toFixed(2)??'—'],
+        ['Tax',invoicePreview?.tax.toFixed(2)??'—'],
+        ['Total',invoicePreview?.total.toFixed(2)??'—'],
+        ['External expenses',invoicePreview?.expenseTotal?invoicePreview.expenseTotal.toFixed(2):undefined]
+      ]}/>
+      <div className="invoice-form-card">
+          <div className="reference-panel" hidden={section!=='Details'&&section!=='Additional details'}>
+    <h2 className="transaction-section-heading">{section==='Details'?'Invoice details':'Additional details'}</h2>
+    <div className="invoice-form-grid">{(section==='Details'?invoiceFields.slice(0,12):invoiceFields.slice(12)).map(field=>
+      <ReferenceField key={field.label} field={field} value={form[field.key]} Suggest={DatabaseSuggestInput} onChange={(key,value)=>setForm(current=>({...current,[key]:value}))}/>
+    )}</div>
+  </div>
+  {section==='Attachments'&&<ReferenceAttachments labels={invoiceReference.files} files={attachments} disabled={reading||savingInvoice}
+    onReading={setReading} onChange={(key,value)=>setAttachments(current=>({...current,[key]:value}))}/>}
+  {section==='Products'&&<InvoiceProducts lines={lines} totals={invoicePreview} onChange={updateLine}
+    Suggest={DatabaseSuggestInput} disabled={savingInvoice} onAdd={()=>setLines(current=>[...current,newLine()])}
+    onRemove={index=>setLines(current=>current.filter((_,i)=>i!==index))}/>}
+  {section==='Charges'&&<InvoiceCharges charges={charges} totals={invoicePreview} onChange={updateCharge} disabled={savingInvoice}/>}
+  {section==='External Expenses'&&<InvoiceExpenses expenses={expenses} disabled={savingInvoice}
+    onChange={(key,value)=>setExpenses(current=>({...current,[key]:value}))}/>}
+
+      </div>
+    </div>
+  </TransactionEditor>;
+  return <main className="content page-shell sales-page-shell"><h1>Sales Invoice</h1><div className="divider"/><StatCards items={cards} onSelect={i=>i<5&&setStatusFilter(statusValues[i])}/><div className="toolbar-row"><p className="data-notice">Invoice amounts and legacy samples are retained. E-invoice and email services are not connected.</p><div className="action-pills"><button className="action-pill green" onClick={()=>downloadCsv('Sales-Invoices.csv',['#','Invoice No','Date','Customer','PO','Project','Status','Amount','E-Invoice','Mail'],filtered.map(r=>r.slice(0,10)))}>Export CSV</button><button className="action-pill blue" onClick={()=>open()}><Plus size={16}/> Create new</button></div></div><section className="card report-card sales-scroll-card"><div className="report-header-line"><h2>Sales Invoice ({statusFilter})</h2><div className="report-header-actions"><label>From <input aria-label="From date" type="date" value={from} max={to||undefined} onChange={e=>setFrom(e.target.value)}/></label><label>To <input aria-label="To date" type="date" value={to} min={from||undefined} onChange={e=>setTo(e.target.value)}/></label><button className="refresh-btn" onClick={()=>{setFrom('');setTo('');setSearch('');setStatusFilter('ALL')}}><RefreshCw size={14}/> Reset filters</button></div></div><div className="table-controls"><span>{filtered.length} invoice(s)</span><label>Search <input value={search} onChange={e=>setSearch(e.target.value)}/></label></div><div className="table-wrap sales-table-wrap" tabIndex="0" aria-label="Scrollable sales invoice data"><table><thead><tr>{['#','Invoice No.','Date','Party','PO Number','Project Name','Status','Amount','E-Invoice Status','Mail Status'].map(h=><th key={h}>{h}</th>)}</tr></thead><tbody>{filtered.length?filtered.map(r=><tr key={r[1]}>{r.slice(0,10).map((v,i)=><td key={i}>{i===1?<button className="link-button" onClick={()=>setSelected(r)}>{v}</button>:v}</td>)}</tr>):<tr><td colSpan="10" className="empty-cell">No invoices match these filters.</td></tr>}</tbody></table></div></section>{selected&&<div className="modal-backdrop"><section className="erp-modal"><div className="modal-head"><h2>{selected[1]}</h2><button className="icon-btn dark" title="Close invoice" onClick={()=>setSelected(null)}><X size={20}/></button></div><div className="report-detail-grid">{[['Customer',selected[3]],['Date',selected[2]],['Status',selected[6]],['Amount',selected[7]],...Object.entries(details[selected[1]]?.form||{})].map(([k,v])=><div key={k}><span>{k}</span><b>{v||'-'}</b></div>)}</div><div className="modal-actions">{selected[6]==='APPROVAL PENDING'&&canDecideInvoice&&<>
+      <button type="button" className="action-pill green" disabled={savingInvoice} onClick={()=>decideInvoice('APPROVED')}>Approve invoice</button>
+      <button type="button" className="action-pill red" disabled={savingInvoice} onClick={()=>decideInvoice('REJECTED')}>Reject invoice</button>
+    </>}<button className="action-pill blue" disabled={selected?.[6]==='APPROVED'||readStored('dfab-erp-Customer Payments',[]).some(r=>r?.[2]===selected?.[1])} onClick={()=>open(selected)}><PencilLine size={15}/> Edit invoice</button><button className="action-pill red" disabled={savingInvoice} onClick={deleteDraftInvoice}><Trash2 size={15}/> Delete</button><button className="action-pill gray" onClick={()=>setSelected(null)}>Close</button></div></section></div>}</main>;
 }
 
 const liveAccountOptions=[];
@@ -848,7 +1005,7 @@ function LiveCrudPage({title,buttonLabel,saveLabel,columns,fields,initialRows,st
   const filtered=rows.filter(r=>Object.values(r).join(' ').toLowerCase().includes(search.toLowerCase()));const pages=Math.max(1,Math.ceil(filtered.length/entries));const shown=filtered.slice((page-1)*entries,page*entries);useEffect(()=>setPage(1),[search,entries]);useEffect(()=>{if(page>pages)setPage(pages)},[page,pages]);
   const open=row=>{const index=row?rows.indexOf(row):-1;setEditing(index);setForm(row?{...row}:{});setModal(true)};
   const save=()=>{const required=fields.find(f=>f.required!==false);if(required&&!String(form[required.key]||'').trim()){alert(`${required.label} is required.`);return}const row={...form};fields.forEach(f=>row[f.key]=form[f.key]||'');columns.forEach(c=>{if(!(c.key in row))row[c.key]=form[c.key]||''});setRows(v=>editing>=0?v.map((x,i)=>i===editing?{...x,...row}:x):[{...row},...v]);setModal(false)};
-  return <main className="content page-shell live-master-page"><div className="page-title-row"><h1>{title}</h1><button className="action-pill blue" onClick={()=>open()}><Plus size={15}/>{buttonLabel}</button></div><div className="divider"/><section className="card customer-data-card live-datatable-card"><div className="customer-table-controls"><label>Show <select value={entries} onChange={e=>setEntries(Number(e.target.value))}><option>10</option><option>25</option><option>50</option><option>100</option></select> entries</label><label>Search: <input value={search} onChange={e=>setSearch(e.target.value)}/></label></div><div className="table-wrap"><table className="live-master-table"><thead><tr><th>SI.No</th>{columns.map(c=><th key={c.key}>{c.label}</th>)}<th>Actions</th></tr></thead><tbody>{shown.length?shown.map((row,i)=><tr key={`${row[columns[0].key]}-${i}`}><td>{(page-1)*entries+i+1}</td>{columns.map((c,ci)=><td key={c.key}>{ci===0?<button className="link-button" onClick={()=>open(row)}>{row[c.key]||'-'}</button>:row[`${c.key}Attachment`]?.dataUrl?<a className="link-button" href={row[`${c.key}Attachment`].dataUrl} download={row[`${c.key}Attachment`].name}>{row[c.key]}</a>:row[c.key]||'-'}</td>)}<td><div className="row-actions"><button title="Edit" onClick={()=>open(row)}><PencilLine size={14}/></button><button title="Delete" onClick={()=>confirm('Delete this record?')&&setRows(v=>v.filter(x=>x!==row))}><Trash2 size={14}/></button></div></td></tr>):<tr><td className="empty-cell" colSpan={columns.length+2}>{emptyText}</td></tr>}</tbody></table></div><div className="data-table-foot"><span>Showing {filtered.length?((page-1)*entries)+1:0} to {Math.min(page*entries,filtered.length)} of {filtered.length} entries</span><div className="pagination"><button disabled={page===1} onClick={()=>setPage(p=>p-1)}>Previous</button>{Array.from({length:Math.min(5,pages)},(_,i)=>i+1).map(x=><button className={page===x?'active':''} onClick={()=>setPage(x)} key={x}>{x}</button>)}<button disabled={page===pages} onClick={()=>setPage(p=>p+1)}>Next</button></div></div></section>{modal&&<LiveMasterModal title={`${editing>=0?'Edit':'Add'} ${title.replace(' Master','')}`} fields={fields} form={form} setForm={setForm} onClose={()=>setModal(false)} onSave={save} saveLabel={saveLabel||`Save ${title.replace(' Master','')}`}/>}</main>
+  return <main className="content page-shell live-master-page"><div className="page-title-row"><h1>{title}</h1><button className="action-pill blue" onClick={()=>open()}><Plus size={15}/>{buttonLabel}</button></div><div className="divider"/><section className="card customer-data-card live-datatable-card"><div className="customer-table-controls"><label>Show <select value={entries} onChange={e=>setEntries(Number(e.target.value))}><option>10</option><option>25</option><option>50</option><option>100</option></select> entries</label><label>Search: <input value={search} onChange={e=>setSearch(e.target.value)}/></label></div><div className="table-wrap"><table className="live-master-table"><thead><tr><th>SI.No</th>{columns.map(c=><th key={c.key}>{c.label}</th>)}<th>Actions</th></tr></thead><tbody>{shown.length?shown.map((row,i)=><tr key={`${row[columns[0].key]}-${i}`}><td>{(page-1)*entries+i+1}</td>{columns.map((c,ci)=><td key={c.key}>{ci===0?<button className="link-button" onClick={()=>open(row)}>{row[c.key]||'-'}</button>:row[`${c.key}Attachment`]?.dataUrl?<a className="link-button" href={row[`${c.key}Attachment`].dataUrl} download={row[`${c.key}Attachment`].name}>{row[c.key]}</a>:row[c.key]||'-'}</td>)}<td><div className="row-actions"><button title="Edit" onClick={()=>open(row)}><PencilLine size={14}/></button><button title="Delete" onClick={async()=>{if(await confirm('Delete this record?'))setRows(v=>v.filter(x=>x!==row))}}><Trash2 size={14}/></button></div></td></tr>):<tr><td className="empty-cell" colSpan={columns.length+2}>{emptyText}</td></tr>}</tbody></table></div><div className="data-table-foot"><span>Showing {filtered.length?((page-1)*entries)+1:0} to {Math.min(page*entries,filtered.length)} of {filtered.length} entries</span><div className="pagination"><button disabled={page===1} onClick={()=>setPage(p=>p-1)}>Previous</button>{Array.from({length:Math.min(5,pages)},(_,i)=>i+1).map(x=><button className={page===x?'active':''} onClick={()=>setPage(x)} key={x}>{x}</button>)}<button disabled={page===pages} onClick={()=>setPage(p=>p+1)}>Next</button></div></div></section>{modal&&<LiveMasterModal title={`${editing>=0?'Edit':'Add'} ${title.replace(' Master','')}`} fields={fields} form={form} setForm={setForm} onClose={()=>setModal(false)} onSave={save} saveLabel={saveLabel||`Save ${title.replace(' Master','')}`}/>}</main>
 }
 
 function InstrumentMasterPage(){return <LiveCrudPage title="Instrument" buttonLabel="Add New Instrument" saveLabel="Save Instrument" storageKey="dfab-live-instruments" columns={[{label:'Instrument Name',key:'name'},{label:'Instrument Code',key:'code'},{label:'Serial Number',key:'serial'},{label:'Make',key:'make'},{label:'Calibration Date',key:'calibrationDate'},{label:'Review Date',key:'reviewDate'}]} fields={[{label:'Instrument Name',key:'name'},{label:'Instrument Code',key:'code'},{label:'Serial Number',key:'serial'},{label:'Make',key:'make'},{label:'Capacity',key:'capacity'},{label:'Least Count',key:'leastCount'},{label:'Frequency',key:'frequency'},{label:'Calibration Date',key:'calibrationDate',type:'date'},{label:'Calibrated By',key:'calibratedBy'},{label:'Review Date',key:'reviewDate',type:'date'},{label:'Reviewed By',key:'reviewedBy'}]} initialRows={[]}/>}
@@ -884,13 +1041,13 @@ function AssetAllocationPage(){
 function ProcessMasterPage(){
   const [rows,setRows]=useStoredRows('dfab-live-process',[]);const [subProcesses,setSubProcesses]=useStoredRows('dfab-live-subprocesses',[]);const [search,setSearch]=useState('');const [modal,setModal]=useState('');const [editing,setEditing]=useState(-1);const [form,setForm]=useState({});const filtered=rows.filter(r=>Object.values(r).join(' ').toLowerCase().includes(search.toLowerCase()));
   const open=(type,row)=>{setModal(type);setEditing(row?rows.indexOf(row):-1);setForm(row?{...row}:type==='sub'?{parent:row?.code||''}:{})};const save=()=>{if(modal==='sub'){if(!form.parent||!form.name?.trim())return alert('Parent Process and Sub Process Name are required.');setSubProcesses(v=>[...v,{parent:form.parent,name:form.name.trim(),description:form.description||''}]);setModal('');setForm({});return}if(!form.code?.trim())return alert('Process Name is required.');const row={code:form.code,description:form.description||'',workcenter:form.workcenter||'',vendor:form.vendor||'',rate:form.rate||''};setRows(v=>editing>=0?v.map((x,i)=>i===editing?row:x):[...v,row]);setModal('')};
-  return <main className="content page-shell live-master-page"><div className="page-title-row"><h1>Process</h1><button className="action-pill blue" onClick={()=>open('process')}><Plus size={15}/>Add New Process</button></div><div className="divider"/><section className="card live-datatable-card"><div className="customer-table-controls"><label>Show <select defaultValue="10"><option>10</option><option>25</option><option>50</option><option>100</option></select> entries</label><label>Search: <input value={search} onChange={e=>setSearch(e.target.value)}/></label></div><div className="table-wrap"><table><thead><tr>{['SI.No','Process Code','Process Description','Vendor Name','Rate','Sub process','Actions'].map(x=><th key={x}>{x}</th>)}</tr></thead><tbody>{filtered.map((r,i)=><tr key={`${r.code}-${i}`}><td>{i+1}</td><td>{r.code}</td><td>{r.description}</td><td>{r.vendor}</td><td>{r.rate}</td><td><button className="action-pill blue compact-action" onClick={()=>{setModal('sub');setForm({parent:r.code,name:'',description:''})}}>{`Sub Process (${subProcesses.filter(s=>s.parent===r.code).length})`}</button></td><td><div className="row-actions"><button onClick={()=>open('process',r)}><PencilLine size={14}/></button><button onClick={()=>confirm('Delete this process?')&&setRows(v=>v.filter(x=>x!==r))}><Trash2 size={14}/></button></div></td></tr>)}</tbody></table></div></section>{modal&&<LiveMasterModal title={modal==='sub'?'Add Sub Process':'Add New Process'} fields={modal==='sub'?[{label:'Parent Process',key:'parent'},{label:'Sub Process Name',key:'name'},{label:'Sub Process Description',key:'description',type:'textarea',wide:true}]:[{label:'Process Name',key:'code',placeholder:'Enter process name'},{label:'Process Description',key:'description',type:'textarea',wide:true,placeholder:'Enter process description'},{label:'Workcenter',key:'workcenter',type:'select',options:['INODE','DFAB Unit1','OUT SOURCE']},{label:'Account',key:'vendor',type:'select',options:liveAccountOptions},{label:'Rate',key:'rate',placeholder:'Enter Rate'}]} form={form} setForm={setForm} onClose={()=>setModal('')} onSave={save} saveLabel={modal==='sub'?'Save Sub Process':'Save Process'}/>}</main>
+  return <main className="content page-shell live-master-page"><div className="page-title-row"><h1>Process</h1><button className="action-pill blue" onClick={()=>open('process')}><Plus size={15}/>Add New Process</button></div><div className="divider"/><section className="card live-datatable-card"><div className="customer-table-controls"><label>Show <select defaultValue="10"><option>10</option><option>25</option><option>50</option><option>100</option></select> entries</label><label>Search: <input value={search} onChange={e=>setSearch(e.target.value)}/></label></div><div className="table-wrap"><table><thead><tr>{['SI.No','Process Code','Process Description','Vendor Name','Rate','Sub process','Actions'].map(x=><th key={x}>{x}</th>)}</tr></thead><tbody>{filtered.map((r,i)=><tr key={`${r.code}-${i}`}><td>{i+1}</td><td>{r.code}</td><td>{r.description}</td><td>{r.vendor}</td><td>{r.rate}</td><td><button className="action-pill blue compact-action" onClick={()=>{setModal('sub');setForm({parent:r.code,name:'',description:''})}}>{`Sub Process (${subProcesses.filter(s=>s.parent===r.code).length})`}</button></td><td><div className="row-actions"><button onClick={()=>open('process',r)}><PencilLine size={14}/></button><button onClick={async()=>{if(await confirm('Delete this process?'))setRows(v=>v.filter(x=>x!==r))}}><Trash2 size={14}/></button></div></td></tr>)}</tbody></table></div></section>{modal&&<LiveMasterModal title={modal==='sub'?'Add Sub Process':'Add New Process'} fields={modal==='sub'?[{label:'Parent Process',key:'parent'},{label:'Sub Process Name',key:'name'},{label:'Sub Process Description',key:'description',type:'textarea',wide:true}]:[{label:'Process Name',key:'code',placeholder:'Enter process name'},{label:'Process Description',key:'description',type:'textarea',wide:true,placeholder:'Enter process description'},{label:'Workcenter',key:'workcenter',type:'select',options:['INODE','DFAB Unit1','OUT SOURCE']},{label:'Account',key:'vendor',type:'select',options:liveAccountOptions},{label:'Rate',key:'rate',placeholder:'Enter Rate'}]} form={form} setForm={setForm} onClose={()=>setModal('')} onSave={save} saveLabel={modal==='sub'?'Save Sub Process':'Save Process'}/>}</main>
 }
 
 function WorkCenterMasterPage(){
   const [centers,setCenters]=useStoredRows('dfab-live-workcenters',[]);const [machines,setMachines]=useStoredRows('dfab-live-machines',[]);const [selected,setSelected]=useState('');const [modal,setModal]=useState('');const [form,setForm]=useState({});
   const save=()=>{if(modal==='workcenter'){if(!form.name?.trim())return alert('Workcenter Name is required.');setCenters(v=>[...v,{name:form.name,location:form.location||'',remarks:form.remarks||''}])}else{if(!form.workcenter||!form.code?.trim()||!form.name?.trim())return alert('Workcenter, Machine Code and Machine Name are required.');setMachines(v=>[...v,{...form}])}setModal('');setForm({})};const machineFields=[{label:'* Workcenter Name:(mandatory)',key:'workcenter',type:'select',options:centers.map(x=>x.name)},{label:'* Machine Code(mandatory)',key:'code',placeholder:'Enter machine code'},{label:'* Machine Name(mandatory)',key:'name',placeholder:'Enter machine name'},{label:'Machine Make',key:'make',placeholder:'Enter machine make'},{label:'Machine Model',key:'model',placeholder:'Enter machine model'},{label:'Machine Serial No.',key:'serial',placeholder:'Enter machine serial number'},{label:'Machine Vendor',key:'vendor',placeholder:'Enter machine vendor'},{label:'Purchase Date',key:'purchaseDate'},{label:'Commissioned Date',key:'commissionedDate'},{label:'Machine Value',key:'value',type:'number'},{label:'Cost per Hour',key:'cost',type:'number'},{label:'Last Maintenance Date',key:'lastMaintenance'},{label:'Maintenance Due Date',key:'maintenanceDue'},{label:'Calibration Date',key:'calibrationDate'},{label:'Calibrated By.',key:'calibratedBy'}];
-  return <main className="content page-shell live-master-page"><div className="page-title-row"><h1>Workcenter</h1><div className="action-pills"><button className="action-pill blue" onClick={()=>{setModal('machine');setForm({workcenter:selected})}}><Plus size={15}/>Add New Machine</button><button className="action-pill blue" onClick={()=>{setModal('workcenter');setForm({})}}><Plus size={15}/>Add New WorkCenter</button></div></div><div className="divider"/><section className="card live-datatable-card"><div className="customer-table-controls"><label>Show <select defaultValue="10"><option>10</option><option>25</option><option>50</option><option>100</option></select> entries</label><label>Search: <input/></label></div><div className="table-wrap"><table><thead><tr>{['SI.No','WorkCenter Name','WorkCenter Location','Machine List','Action'].map(x=><th key={x}>{x}</th>)}</tr></thead><tbody>{centers.map((c,i)=><tr key={c.name}><td>{i+1}</td><td>{c.name}</td><td>{c.location}</td><td><button className="action-pill blue compact-action" onClick={()=>setSelected(selected===c.name?'':c.name)}>Machine List</button></td><td><div className="row-actions"><button onClick={()=>{setModal('workcenter');setForm({...c})}}><PencilLine size={14}/></button><button onClick={()=>confirm('Delete this workcenter?')&&setCenters(v=>v.filter(x=>x!==c))}><Trash2 size={14}/></button></div></td></tr>)}</tbody></table></div></section>{selected&&<section className="card live-datatable-card machine-list-sheet"><div className="customer-sheet-title"><span>{selected} — Machine List</span><RefreshCw size={17}/></div><div className="table-wrap"><table><thead><tr>{['Machine Code','Machine Name','Make','Model','Serial Number','Cost per Hour','Actions'].map(x=><th key={x}>{x}</th>)}</tr></thead><tbody>{machines.filter(m=>m.workcenter===selected).length?machines.filter(m=>m.workcenter===selected).map(m=><tr key={m.code}><td>{m.code}</td><td>{m.name}</td><td>{m.make||'-'}</td><td>{m.model||'-'}</td><td>{m.serial||'-'}</td><td>{m.cost||'-'}</td><td><button className="row-icon-danger" onClick={()=>setMachines(v=>v.filter(x=>x!==m))}><Trash2 size={14}/></button></td></tr>):<tr><td colSpan="7" className="empty-cell">No machines available</td></tr>}</tbody></table></div></section>}{modal&&<LiveMasterModal title={modal==='workcenter'?'Add New WorkCenter':'Add New Machine'} fields={modal==='workcenter'?[{label:'* Workcenter Name',key:'name',placeholder:'Enter workcenter name'},{label:'Workcenter Location',key:'location',placeholder:'Enter workcenter location'},{label:'Workcenter Remarks',key:'remarks',type:'textarea',wide:true,placeholder:'Enter workcenter remarks'}]:machineFields} form={form} setForm={setForm} onClose={()=>setModal('')} onSave={save} saveLabel={modal==='workcenter'?'Save WorkCenter':'Save Machine'}/>}</main>
+  return <main className="content page-shell live-master-page"><div className="page-title-row"><h1>Workcenter</h1><div className="action-pills"><button className="action-pill blue" onClick={()=>{setModal('machine');setForm({workcenter:selected})}}><Plus size={15}/>Add New Machine</button><button className="action-pill blue" onClick={()=>{setModal('workcenter');setForm({})}}><Plus size={15}/>Add New WorkCenter</button></div></div><div className="divider"/><section className="card live-datatable-card"><div className="customer-table-controls"><label>Show <select defaultValue="10"><option>10</option><option>25</option><option>50</option><option>100</option></select> entries</label><label>Search: <input/></label></div><div className="table-wrap"><table><thead><tr>{['SI.No','WorkCenter Name','WorkCenter Location','Machine List','Action'].map(x=><th key={x}>{x}</th>)}</tr></thead><tbody>{centers.map((c,i)=><tr key={c.name}><td>{i+1}</td><td>{c.name}</td><td>{c.location}</td><td><button className="action-pill blue compact-action" onClick={()=>setSelected(selected===c.name?'':c.name)}>Machine List</button></td><td><div className="row-actions"><button onClick={()=>{setModal('workcenter');setForm({...c})}}><PencilLine size={14}/></button><button onClick={async()=>{if(await confirm('Delete this workcenter?'))setCenters(v=>v.filter(x=>x!==c))}}><Trash2 size={14}/></button></div></td></tr>)}</tbody></table></div></section>{selected&&<section className="card live-datatable-card machine-list-sheet"><div className="customer-sheet-title"><span>{selected} — Machine List</span><RefreshCw size={17}/></div><div className="table-wrap"><table><thead><tr>{['Machine Code','Machine Name','Make','Model','Serial Number','Cost per Hour','Actions'].map(x=><th key={x}>{x}</th>)}</tr></thead><tbody>{machines.filter(m=>m.workcenter===selected).length?machines.filter(m=>m.workcenter===selected).map(m=><tr key={m.code}><td>{m.code}</td><td>{m.name}</td><td>{m.make||'-'}</td><td>{m.model||'-'}</td><td>{m.serial||'-'}</td><td>{m.cost||'-'}</td><td><button className="row-icon-danger" onClick={()=>setMachines(v=>v.filter(x=>x!==m))}><Trash2 size={14}/></button></td></tr>):<tr><td colSpan="7" className="empty-cell">No machines available</td></tr>}</tbody></table></div></section>}{modal&&<LiveMasterModal title={modal==='workcenter'?'Add New WorkCenter':'Add New Machine'} fields={modal==='workcenter'?[{label:'* Workcenter Name',key:'name',placeholder:'Enter workcenter name'},{label:'Workcenter Location',key:'location',placeholder:'Enter workcenter location'},{label:'Workcenter Remarks',key:'remarks',type:'textarea',wide:true,placeholder:'Enter workcenter remarks'}]:machineFields} form={form} setForm={setForm} onClose={()=>setModal('')} onSave={save} saveLabel={modal==='workcenter'?'Save WorkCenter':'Save Machine'}/>}</main>
 }
 
 const priceProductsFromDatabase=()=>arrayRows('dfab-erp-products-v3').map(row=>[row?.[0]||'',row?.[1]||row?.[0]||'']).filter(row=>row[0]);
@@ -958,6 +1115,13 @@ const liveReportConfigs={
   'Pending Jobwork Inward for Quality':{columns:['Jobwork Inward No','Date','Customer','Customer DC No','Product','Received Qty','Inspected Qty','Pending Qty','Aging Days','Status'],filters:['date','customer','status']}
 };
 
+for (const [name, definition] of Object.entries(imantraReportDefinitions)) {
+  liveReportConfigs[name] = {columns:definition.columns,filters:['date','status']};
+}
+liveReportConfigs['Stock List'].columns=['Item','Inward Qty','Outward Qty','Available Qty'];
+liveReportConfigs['Stock Valuation'].columns=['Item','Available Qty','Known Unit Cost','Estimated Value'];
+liveReportConfigs['Inventory Ageing'].columns=['Item','Latest Dated Movement','Available Qty'];
+
 const reportParams={
   dates:[{label:'From Date',key:'fromDate',value:`${todayISO().slice(0,7)}-01`,kind:'date'},{label:'To Date',key:'toDate',value:todayISO(),kind:'date'}],
   productRange:[{label:'From Product',key:'fromProduct',value:'',kind:'lookup'},{label:'To Product',key:'toProduct',value:'',kind:'lookup'}]
@@ -1015,7 +1179,18 @@ const liveReportLayouts={
 
 const reportSamples = {customers:[],vendors:[],products:[],users:[]};
 const normalizeColumn=value=>String(value||'').toLowerCase().replace(/[^a-z0-9]/g,'');
-function reportRowsFromDatabase(reportKey,targetColumns){
+function reportRowsFromDatabase(reportKey,targetColumns,parameters={},canRead=()=>true){
+  if(isRangedStockReport(reportKey)||reportKey==='Product Rack List')return stockReportRows(reportKey,targetColumns,arrayRows,objectRows('dfab-erp-products-details-v1'),parameters);
+  const documents=documentReportRows(reportKey,targetColumns,getReferenceRecords,readStored,canRead);
+  if(documents!==null)return documents;
+  if(['Stock List','Stock Valuation','Inventory Ageing'].includes(reportKey)){
+    const balances=stockBalances(postedStockMovements(key=>arrayRows(key)));
+    if(reportKey==='Stock List')return balances.map(r=>[r.item,r.inward,r.outward,r.closing]);
+    if(reportKey==='Stock Valuation')return balances.map(r=>[r.item,r.closing,r.rate??'Not costed',r.rate===null?'Not costed':Math.round(r.closing*r.rate*100)/100]);
+    return balances.map(r=>[r.item,r.lastDate||'Date unavailable',r.closing]);
+  }
+  const integrated=imantraReportRows(reportKey,key=>arrayRows(key),coreConfigs);
+  if(integrated!==null)return integrated;
   const pickSource=()=>{
     if(/Vendor Master List/i.test(reportKey))return {rows:arrayRows('dfab-erp-vendors-v2'),columns:['Account Code','Vendor Name','City','State','Country','Email Id','Contact No.','GST Status','Account Status']};
     if(/Customer Master List/i.test(reportKey))return {rows:arrayRows('dfab-erp-customers-v2'),columns:['Account Code','Customer Name','City','State','Country','Email Id','Contact No.','GST Status','Account Status']};
@@ -1055,22 +1230,61 @@ function reportRowsFromDatabase(reportKey,targetColumns){
     });
   });
 }
-function LiveReportPage({reportKey}){
+function reportParameterMatches(reportKey,columns,row,param,value){
+  const term=String(value??'').replace(/^--|--$/g,'').trim().toLowerCase();
+  if(!term||term==='all')return true;
+  if(param.kind==='date'){
+    if(isRangedStockReport(reportKey))return true;
+    const index=columns.findIndex(column=>/^(date|.* date)$/i.test(column));
+    if(index<0)return true;
+    const date=isoDate(row[index]),bound=isoDate(value);
+    if(!date||!bound)return false;
+    if(param.key==='toDate')return date<=bound;
+    if(param.key==='fromDate')return date>=bound;
+    return date===bound;
+  }
+  const product=columns.findIndex(column=>['Product Code','Product','Product / Service','Item','Description'].includes(column));
+  if(param.key==='fromProduct'||param.key==='toProduct'){
+    if(product<0)return true;
+    const sort=String(row[product]??'').toLowerCase().localeCompare(term,undefined,{numeric:true});
+    return param.key==='fromProduct'?sort>=0:sort<=0;
+  }
+  const aliases={product:['Product Code','Product Description','Product','Description','Item'],customer:['Customer','Customer Name'],
+    vendor:['Vendor','Vendor Name'],group:['Group'],user:['User']};
+  const matching=columns.flatMap((column,index)=>aliases[param.key]?.includes(column)?[row[index]]:[]);
+  return (matching.length?matching.join(' '):row.join(' ')).toLowerCase().includes(term);
+}
+const balanceDependencies={
+  'Pending Receivables':['Sales Invoice','Customer Payments'],
+  'Pending Payables':['Purchase','Vendor Payments'],
+  'Pending Purchase Order to GRN':['Purchase Orders','GRN'],
+  'Pending Purchase Indent For GR':['Purchase Orders','GRN'],
+  'Pending Work Order for Production Output':['Work Order','Production Output'],
+  'Pending Sales Order for Work Order':['Sales Orders','Work Order'],
+  'Pending Sales Order for Invoice':['Sales Orders','Sales Invoice','Delivery Challan']
+};
+const stockBalanceReports=new Set(['Stock List','Stock Valuation','Inventory Ageing','Product Rack List']);
+function LiveReportPage({reportKey,access}){
+  const required=isRangedStockReport(reportKey)||stockBalanceReports.has(reportKey)?stockMovementSources:balanceDependencies[reportKey]||[];
+  const canCalculate=required.every(source=>canAdminAccess(access,source,'view'));
+
   const config=liveReportConfigs[reportKey],layout=liveReportLayouts[reportKey]||{title:config.title||reportKey,params:[]};
   const initialValues=Object.fromEntries(layout.params.map(p=>[p.key,p.value||'']));
-  const [values,setValues]=useState(initialValues);const [generated,setGenerated]=useState(false);const [search,setSearch]=useState('');const [entries,setEntries]=useState(10);const [page,setPage]=useState(1);const [selected,setSelected]=useState(null);
+  const [values,setValues]=useState(initialValues);const [generated,setGenerated]=useState(false);const [generation,setGeneration]=useState(0);const [search,setSearch]=useState('');const [entries,setEntries]=useState(10);const [page,setPage]=useState(1);const [selected,setSelected]=useState(null);
   useEffect(()=>{setValues(initialValues);setGenerated(false);setSearch('');setPage(1)},[reportKey]);
-  const rows=useMemo(()=>reportRowsFromDatabase(reportKey,config.columns),[reportKey,generated]);
-  const filtered=rows.filter(r=>{if(!r.join(' ').toLowerCase().includes(search.toLowerCase()))return false;return layout.params.every(param=>{const value=values[param.key];if(!value||value==='All'||value==='ALL')return true;if(param.kind==='date'){const d=config.columns.findIndex(c=>/date/i.test(c));if(d<0)return true;const date=isoDate(r[d]),bound=isoDate(value);return /to|end/i.test(param.key+' '+param.label)?date<=bound:date>=bound}const term=String(value).replace(/^--|--$/g,'').trim().toLowerCase();return !term||r.join(' ').toLowerCase().includes(term)})});const pages=Math.max(1,Math.ceil(filtered.length/entries));const shown=filtered.slice((page-1)*entries,page*entries);
-  const generate=()=>{const dates=layout.params.filter(p=>p.kind==='date');const from=dates.find(p=>/from|start/i.test(p.key+' '+p.label)),to=dates.find(p=>/to|end/i.test(p.key+' '+p.label));if(from&&to&&isoDate(values[from.key])>isoDate(values[to.key])){alert('From date must be before To date.');return}setGenerated(true);setPage(1);requestAnimationFrame(()=>document.querySelector('[data-generated-report]')?.scrollIntoView({behavior:'smooth',block:'start'}))};
-  return <main className="content page-shell live-report-page exact-report-page"><h1>{layout.title}</h1><p className="data-notice">Live report · rows are loaded from the Supabase-backed ERP records. No demonstration rows are generated.</p><div className="divider"/><section className="exact-report-parameters"><div className="exact-report-fields">{layout.params.map(param=><label key={param.key}><span>{param.label}</span><div className={`report-param-input ${param.kind==='lookup'?'lookup':''}`}><DatabaseSuggestInput label={param.label} type={param.kind==='date'?'date':'text'} value={param.kind==='date'?isoDate(values[param.key]):(values[param.key]||'')} onChange={e=>setValues(v=>({...v,[param.key]:e.target.value}))}/>{param.kind==='date'?<CalendarDays size={14}/>:param.kind==='lookup'?<Search size={14}/>:null}</div></label>)}</div><div className="exact-report-rule"/><div className="exact-report-buttons"><button className="action-pill blue" onClick={generate}><FileText size={14}/> Generate Report</button><button className="action-pill blue" disabled={!generated} onClick={()=>window.print()}><FileText size={14}/> Print Report</button><button className="action-pill blue" disabled={!generated} onClick={()=>downloadCsv(`${layout.title}.csv`,config.columns,generated?filtered:[])}><FileSpreadsheet size={14}/> Export CSV</button></div></section>{!generated?<div className="report-generate-placeholder">Select parameters and click "Generate"</div>:<section className="card live-report-sheet generated-report-sheet" data-generated-report><div className="customer-sheet-title"><span>{layout.title}</span><RefreshCw size={17}/></div><div className="customer-table-controls"><label>Show <select value={entries} onChange={e=>{setEntries(Number(e.target.value));setPage(1)}}><option>10</option><option>25</option><option>50</option><option>100</option></select> entries</label><label>Search: <input value={search} onChange={e=>{setSearch(e.target.value);setPage(1)}}/></label></div><div className="table-wrap live-report-table-wrap"><table className="live-report-table"><thead><tr><th>SI.No</th>{config.columns.map(c=><th key={c}>{c}</th>)}</tr></thead><tbody>{shown.length?shown.map((row,i)=><tr key={`${reportKey}-${i}`}><td>{(page-1)*entries+i+1}</td>{row.map((v,ci)=><td key={ci}>{ci===0?<button className="link-button" onClick={()=>setSelected(row)}>{v}</button>:/Status|Disposition/.test(config.columns[ci])?<span className={`status-pill ${String(v).includes('PENDING')?'rejected':'approved'}`}>{v}</span>:v}</td>)}</tr>):<tr><td colSpan={config.columns.length+1} className="empty-cell">No matching records found</td></tr>}</tbody></table></div><div className="data-table-foot"><span>Showing {filtered.length?(page-1)*entries+1:0} to {Math.min(page*entries,filtered.length)} of {filtered.length} entries</span><div className="pagination"><button disabled={page===1} onClick={()=>setPage(p=>p-1)}>Previous</button>{Array.from({length:Math.min(5,pages)},(_,i)=>i+1).map(p=><button key={p} className={page===p?'active':''} onClick={()=>setPage(p)}>{p}</button>)}{pages>5&&<span>… {pages}</span>}<button disabled={page===pages} onClick={()=>setPage(p=>p+1)}>Next</button></div></div></section>}{selected&&<div className="modal-backdrop" onMouseDown={e=>e.target===e.currentTarget&&setSelected(null)}><div className="erp-modal report-detail-modal"><div className="modal-head"><div><h2>{layout.title} Details</h2><p>{selected[0]}</p></div><button className="icon-btn dark" onClick={()=>setSelected(null)}><X size={20}/></button></div><div className="report-detail-grid">{config.columns.map((c,i)=><div key={c}><span>{c}</span><b>{selected[i]}</b></div>)}</div><div className="modal-actions"><button className="action-pill gray" onClick={()=>setSelected(null)}>Close</button></div></div></div>}<div className="page-footer-note"><span>DFAB Stainless Systems Pvt Ltd Version 1.4 - Inode Technologies Pvt. Ltd.,</span><span>User Manual · Terms & Conditions</span></div></main>
+  const rows=useMemo(()=>canCalculate?reportRowsFromDatabase(reportKey,config.columns,values,source=>canAdminAccess(access,source,'view')):[],[access,canCalculate,reportKey,generation,values]);
+  const filtered=rows.filter(row=>row.join(' ').toLowerCase().includes(search.toLowerCase())
+    &&layout.params.every(param=>reportParameterMatches(reportKey,config.columns,row,param,values[param.key])));
+  const pages=Math.max(1,Math.ceil(filtered.length/entries));const shown=filtered.slice((page-1)*entries,page*entries);
+  const generate=()=>{const dates=layout.params.filter(p=>p.kind==='date');const from=dates.find(p=>/from|start/i.test(p.key+' '+p.label)),to=dates.find(p=>/to|end/i.test(p.key+' '+p.label));if(from&&to&&isoDate(values[from.key])>isoDate(values[to.key])){alert('From date must be before To date.');return}setGenerated(true);setGeneration(value=>value+1);setPage(1);requestAnimationFrame(()=>document.querySelector('[data-generated-report]')?.scrollIntoView({behavior:'smooth',block:'start'}))};
+  return <main className="content page-shell live-report-page exact-report-page"><h1>{layout.title}</h1><p className="data-notice">Live report · rows are loaded from the Supabase-backed ERP records. No demonstration rows are generated.</p>{!canCalculate&&<p className="data-notice" role="status">This report requires view access to its source transactions.</p>}{isRangedStockReport(reportKey)&&<p className="data-notice">Dated reports exclude undated movements. Balances are blank where undated movements prevent an accurate total.</p>}<div className="divider"/><section className="exact-report-parameters"><div className="exact-report-fields">{layout.params.map(param=><label key={param.key}><span>{param.label}</span><div className={`report-param-input ${param.kind==='lookup'?'lookup':''}`}><DatabaseSuggestInput label={param.label} type={param.kind==='date'?'date':'text'} value={param.kind==='date'?isoDate(values[param.key]):(values[param.key]||'')} onChange={e=>{setPage(1);setValues(v=>({...v,[param.key]:e.target.value}))}}/>{param.kind==='date'?<CalendarDays size={14}/>:param.kind==='lookup'?<Search size={14}/>:null}</div></label>)}</div><div className="exact-report-rule"/><div className="exact-report-buttons"><button className="action-pill blue" onClick={generate} disabled={!canCalculate}><FileText size={14}/> Generate Report</button><button className="action-pill blue" disabled={!generated} onClick={()=>window.print()}><FileText size={14}/> Print Report</button><button className="action-pill blue" disabled={!generated} onClick={()=>downloadCsv(`${layout.title}.csv`,config.columns,generated?filtered:[])}><FileSpreadsheet size={14}/> Export CSV</button></div></section>{!generated?<div className="report-generate-placeholder">Select parameters and click "Generate"</div>:<section className="card live-report-sheet generated-report-sheet" data-generated-report><div className="customer-sheet-title"><span>{layout.title}</span><RefreshCw size={17}/></div><div className="customer-table-controls"><label>Show <select value={entries} onChange={e=>{setEntries(Number(e.target.value));setPage(1)}}><option>10</option><option>25</option><option>50</option><option>100</option></select> entries</label><label>Search: <input value={search} onChange={e=>{setSearch(e.target.value);setPage(1)}}/></label></div><div className="table-wrap live-report-table-wrap"><table className="live-report-table"><thead><tr><th>SI.No</th>{config.columns.map(c=><th key={c}>{c}</th>)}</tr></thead><tbody>{shown.length?shown.map((row,i)=><tr key={`${reportKey}-${i}`}><td>{(page-1)*entries+i+1}</td>{row.map((v,ci)=><td key={ci}>{ci===0?<button className="link-button" onClick={()=>setSelected(row)}>{v}</button>:/Status|Disposition/.test(config.columns[ci])?<span className={`status-pill ${String(v).includes('PENDING')?'rejected':'approved'}`}>{v}</span>:v}</td>)}</tr>):<tr><td colSpan={config.columns.length+1} className="empty-cell">No matching records found</td></tr>}</tbody></table></div><div className="data-table-foot"><span>Showing {filtered.length?(page-1)*entries+1:0} to {Math.min(page*entries,filtered.length)} of {filtered.length} entries</span><div className="pagination"><button disabled={page===1} onClick={()=>setPage(p=>p-1)}>Previous</button>{Array.from({length:Math.min(5,pages)},(_,i)=>i+1).map(p=><button key={p} className={page===p?'active':''} onClick={()=>setPage(p)}>{p}</button>)}{pages>5&&<span>… {pages}</span>}<button disabled={page===pages} onClick={()=>setPage(p=>p+1)}>Next</button></div></div></section>}{selected&&<div className="modal-backdrop" onMouseDown={e=>e.target===e.currentTarget&&setSelected(null)}><div className="erp-modal report-detail-modal"><div className="modal-head"><div><h2>{layout.title} Details</h2><p>{selected[0]}</p></div><button className="icon-btn dark" onClick={()=>setSelected(null)}><X size={20}/></button></div><div className="report-detail-grid">{config.columns.map((c,i)=><div key={c}><span>{c}</span><b>{selected[i]}</b></div>)}</div><div className="modal-actions"><button className="action-pill gray" onClick={()=>setSelected(null)}>Close</button></div></div></div>}<div className="page-footer-note"><span>DFAB Stainless Systems Pvt Ltd Version 1.4 - Inode Technologies Pvt. Ltd.,</span><span>User Manual · Terms & Conditions</span></div></main>
 }
 
 function LegacyLiveReportPage({reportKey}){
   const config=liveReportConfigs[reportKey],title=config.title||reportKey;const [search,setSearch]=useState('');const [entries,setEntries]=useState(10);const [page,setPage]=useState(1);const [selected,setSelected]=useState(null);const [from,setFrom]=useState('2026-04-01');const [to,setTo]=useState(todayISO());const [account,setAccount]=useState('');const [status,setStatus]=useState('');const [refreshing,setRefreshing]=useState(false);
   const rows=useMemo(()=>readStored(`dfab-report-${reportKey}`,[]),[reportKey]);const filtered=rows.filter(r=>r.join(' ').toLowerCase().includes(search.toLowerCase())&&(!account||r.join(' ').toLowerCase().includes(account.toLowerCase()))&&(!status||r.join(' ').includes(status)));const pages=Math.max(1,Math.ceil(filtered.length/entries));const shown=filtered.slice((page-1)*entries,page*entries);useEffect(()=>setPage(1),[search,entries,account,status]);
   const refresh=()=>{setRefreshing(true);setTimeout(()=>setRefreshing(false),450)};
-  return <main className="content page-shell live-report-page"><div className="page-title-row"><h1>{title}</h1></div><div className="divider"/><section className="card report-filter-card"><div className="report-filter-grid">{config.filters.includes('date')&&<><label><span>From Date</span><input type="date" value={from} onChange={e=>setFrom(e.target.value)}/></label><label><span>To Date</span><input type="date" value={to} onChange={e=>setTo(e.target.value)}/></label></>}{config.filters.some(x=>['vendor','customer','user','group','product'].includes(x))&&<label><span>{config.filters.includes('vendor')?'Vendor':config.filters.includes('customer')?'Customer':config.filters.includes('user')?'User':config.filters.includes('group')?'Product Group':'Product'}</span><select value={account} onChange={e=>setAccount(e.target.value)}><option value="">-- Select All --</option>{(config.filters.includes('vendor')?databaseSuggestions('Vendor'):config.filters.includes('customer')?databaseSuggestions('Customer'):config.filters.includes('user')?databaseSuggestions('User'):config.filters.includes('group')?databaseSuggestions('Product Group'):databaseSuggestions('Product Code')).map(x=><option key={x}>{x}</option>)}</select></label>}{config.filters.includes('status')&&<label><span>Status</span><select value={status} onChange={e=>setStatus(e.target.value)}><option value="">-- Select All --</option><option>APPROVED</option><option>PENDING</option></select></label>}<div className="report-filter-actions"><button className="action-pill blue" onClick={refresh}><RefreshCw size={14} className={refreshing?'spin':''}/> Refresh</button><button className="action-pill green" onClick={()=>downloadCsv(`${title}.csv`,config.columns,filtered)}><FileSpreadsheet size={14}/> Excel</button></div></div></section><section className="card live-report-sheet"><div className="customer-sheet-title"><span>{title}</span><button className="sheet-refresh" onClick={refresh} title="Refresh report"><RefreshCw size={17} className={refreshing?'spin':''}/></button></div><div className="customer-table-controls"><label>Show <select value={entries} onChange={e=>setEntries(Number(e.target.value))}><option>10</option><option>25</option><option>50</option><option>100</option></select> entries</label><label>Search: <input value={search} onChange={e=>setSearch(e.target.value)}/></label></div><div className="table-wrap live-report-table-wrap"><table className="live-report-table"><thead><tr><th>SI.No</th>{config.columns.map(c=><th key={c}>{c}</th>)}</tr></thead><tbody>{shown.length?shown.map((row,i)=><tr key={`${reportKey}-${i}`}><td>{(page-1)*entries+i+1}</td>{row.map((v,ci)=><td key={ci}>{ci===0?<button className="link-button" onClick={()=>setSelected(row)}>{v}</button>:/Status|Disposition/.test(config.columns[ci])?<span className={`status-pill ${String(v).includes('PENDING')?'rejected':'approved'}`}>{v}</span>:v}</td>)}</tr>):<tr><td colSpan={config.columns.length+1} className="empty-cell">No matching records found</td></tr>}</tbody></table></div><div className="data-table-foot"><span>Showing {filtered.length?(page-1)*entries+1:0} to {Math.min(page*entries,filtered.length)} of {filtered.length} entries</span><div className="pagination"><button disabled={page===1} onClick={()=>setPage(p=>p-1)}>Previous</button>{Array.from({length:Math.min(5,pages)},(_,i)=>i+1).map(p=><button key={p} className={page===p?'active':''} onClick={()=>setPage(p)}>{p}</button>)}{pages>5&&<span>… {pages}</span>}<button disabled={page===pages} onClick={()=>setPage(p=>p+1)}>Next</button></div></div></section><div className="page-footer-note"><span>DFAB Stainless Systems Pvt Ltd Version 1.4 - Inode Technologies Pvt. Ltd.,</span><span>User Manual · Terms & Conditions</span></div>{selected&&<div className="modal-backdrop" onMouseDown={e=>e.target===e.currentTarget&&setSelected(null)}><div className="erp-modal report-detail-modal"><div className="modal-head"><div><h2>{title} Details</h2><p>{selected[0]}</p></div><button className="icon-btn dark" onClick={()=>setSelected(null)}><X size={20}/></button></div><div className="report-detail-grid">{config.columns.map((c,i)=><div key={c}><span>{c}</span><b>{selected[i]}</b></div>)}</div><div className="modal-actions"><button className="action-pill gray" onClick={()=>setSelected(null)}>Close</button><button className="action-pill green" onClick={()=>downloadCsv(`${title}-detail.csv`,config.columns,[selected])}><FileSpreadsheet size={14}/> Excel</button></div></div></div>}</main>
+  return <main className="content page-shell live-report-page"><div className="page-title-row"><h1>{title}</h1></div><div className="divider"/><section className="card report-filter-card"><div className="report-filter-grid">{config.filters.includes('date')&&<><label><span>From Date</span><input type="date" value={from} onChange={e=>setFrom(e.target.value)}/></label><label><span>To Date</span><input type="date" value={to} onChange={e=>setTo(e.target.value)}/></label></>}{config.filters.some(x=>['vendor','customer','user','group','product'].includes(x))&&<label><span>{config.filters.includes('vendor')?'Vendor':config.filters.includes('customer')?'Customer':config.filters.includes('user')?'User':config.filters.includes('group')?'Product Group':'Product'}</span><select value={account} onChange={e=>setAccount(e.target.value)}><option value="">-- Select All --</option>{(config.filters.includes('vendor')?databaseSuggestions('Vendor'):config.filters.includes('customer')?databaseSuggestions('Customer'):config.filters.includes('user')?databaseSuggestions('User'):config.filters.includes('group')?databaseSuggestions('Product Group'):databaseSuggestions('Product Code')).map(x=><option key={x}>{x}</option>)}</select></label>}{config.filters.includes('status')&&<label><span>Status</span><select value={status} onChange={e=>setStatus(e.target.value)}><option value="">-- Select All --</option><option>APPROVED</option><option>PENDING</option></select></label>}<div className="report-filter-actions"><button className="action-pill blue" onClick={refresh}><RefreshCw size={14} className={refreshing?'spin':''}/> Refresh</button><button className="action-pill green" onClick={()=>downloadCsv(`${title}.csv`,config.columns,filtered.map(row=>row.slice(0,config.columns.length)))}><FileSpreadsheet size={14}/> Excel</button></div></div></section><section className="card live-report-sheet"><div className="customer-sheet-title"><span>{title}</span><button className="sheet-refresh" onClick={refresh} title="Refresh report"><RefreshCw size={17} className={refreshing?'spin':''}/></button></div><div className="customer-table-controls"><label>Show <select value={entries} onChange={e=>setEntries(Number(e.target.value))}><option>10</option><option>25</option><option>50</option><option>100</option></select> entries</label><label>Search: <input value={search} onChange={e=>setSearch(e.target.value)}/></label></div><div className="table-wrap live-report-table-wrap"><table className="live-report-table"><thead><tr><th>SI.No</th>{config.columns.map(c=><th key={c}>{c}</th>)}</tr></thead><tbody>{shown.length?shown.map((row,i)=><tr key={`${reportKey}-${i}`}><td>{(page-1)*entries+i+1}</td>{row.map((v,ci)=><td key={ci}>{ci===0?<button className="link-button" onClick={()=>setSelected(row)}>{v}</button>:/Status|Disposition/.test(config.columns[ci])?<span className={`status-pill ${String(v).includes('PENDING')?'rejected':'approved'}`}>{v}</span>:v}</td>)}</tr>):<tr><td colSpan={config.columns.length+1} className="empty-cell">No matching records found</td></tr>}</tbody></table></div><div className="data-table-foot"><span>Showing {filtered.length?(page-1)*entries+1:0} to {Math.min(page*entries,filtered.length)} of {filtered.length} entries</span><div className="pagination"><button disabled={page===1} onClick={()=>setPage(p=>p-1)}>Previous</button>{Array.from({length:Math.min(5,pages)},(_,i)=>i+1).map(p=><button key={p} className={page===p?'active':''} onClick={()=>setPage(p)}>{p}</button>)}{pages>5&&<span>… {pages}</span>}<button disabled={page===pages} onClick={()=>setPage(p=>p+1)}>Next</button></div></div></section><div className="page-footer-note"><span>DFAB Stainless Systems Pvt Ltd Version 1.4 - Inode Technologies Pvt. Ltd.,</span><span>User Manual · Terms & Conditions</span></div>{selected&&<div className="modal-backdrop" onMouseDown={e=>e.target===e.currentTarget&&setSelected(null)}><div className="erp-modal report-detail-modal"><div className="modal-head"><div><h2>{title} Details</h2><p>{selected[0]}</p></div><button className="icon-btn dark" onClick={()=>setSelected(null)}><X size={20}/></button></div><div className="report-detail-grid">{config.columns.map((c,i)=><div key={c}><span>{c}</span><b>{selected[i]}</b></div>)}</div><div className="modal-actions"><button className="action-pill gray" onClick={()=>setSelected(null)}>Close</button><button className="action-pill green" onClick={()=>downloadCsv(`${title}-detail.csv`,config.columns,[selected])}><FileSpreadsheet size={14}/> Excel</button></div></div></div>}</main>
 }
 
 const systemApplicationConfigs={
@@ -1102,63 +1316,149 @@ function ActivityLogPage(){
   return <main className="content page-shell live-report-page"><div className="page-title-row"><h1>Activity Log</h1><p className="data-notice">Supabase-backed activity log workspace. No seeded audit events are included in this clean build.</p><button className="action-pill green" onClick={()=>downloadCsv('Activity Log.csv',['Date & Time','User','Action','Module','Reference','Details','IP Address'],filtered)}><FileSpreadsheet size={15}/> Excel</button></div><div className="divider"/><section className="card report-filter-card"><div className="report-filter-grid"><label><span>From Date</span><input type="date" defaultValue="2026-09-01"/></label><label><span>To Date</span><input type="date" defaultValue="2026-09-17"/></label><label><span>User</span><select value={user} onChange={e=>setUser(e.target.value)}><option value="">-- All Users --</option>{reportSamples.users.map(x=><option key={x}>{x}</option>)}</select></label><label><span>Action</span><select value={action} onChange={e=>setAction(e.target.value)}><option value="">-- All Actions --</option><option>LOGIN</option><option>CREATE</option><option>UPDATE</option><option>APPROVE</option><option>EXPORT</option></select></label></div></section><section className="card live-report-sheet"><div className="customer-sheet-title"><span>Activity Log</span><Activity size={17}/></div><div className="customer-table-controls"><label>Show <select defaultValue="50"><option>10</option><option>25</option><option>50</option><option>100</option></select> entries</label><label>Search: <input value={search} onChange={e=>setSearch(e.target.value)}/></label></div><div className="table-wrap live-report-table-wrap"><table className="live-report-table"><thead><tr>{['SI.No','Date & Time','User','Action','Module','Reference','Details','IP Address'].map(x=><th key={x}>{x}</th>)}</tr></thead><tbody>{filtered.map((r,i)=><tr key={i}><td>{i+1}</td>{r.map((v,n)=><td key={n}>{n===2?<span className="status-pill approved">{v}</span>:v}</td>)}</tr>)}</tbody></table></div><div className="data-table-foot"><span>Showing 1 to {filtered.length} of {filtered.length} entries</span></div></section></main>
 }
 
-function WorkflowPage({title,goToPage}){
-  const config=coreConfigs[title]||getGenericConfig(title);
+function getReferenceRecords(module){
+  const invoice=module==='Sales Invoice';
+  const bom=module==='Production BOM';
+  const columns=invoice?invoiceColumns:bom?['BOM No','Product','Customer','Qty','Revision','Status']:(coreConfigs[module]||getGenericConfig(module)).columns;
+  const key=invoice?'dfab-erp-sales-invoices-v2':bom?'dfab-erp-production-bom-v2':`dfab-erp-${module}`;
+  const details=invoice?readStored('dfab-invoice-details-v1',{}):{};
+  const records=(readStored(key,[])||[]).filter(Array.isArray).map(row=>describeDocument(module,columns,row,details?.[row[1]])).filter(record=>record.number);
+  const links=readStored('dfab-workflow-links-v1',[]);
+  const lookup=(page,field,value)=>{
+    if(!hasDocumentValue(value))return null;
+    const names=(coreConfigs[page]||getGenericConfig(page)).columns;
+    const matching=findRecord(readStored(`dfab-erp-${page}`,[]),names,field,value);
+    return matching?describeDocument(page,names,matching).fields:null;
+  };
+  return records.map(record=>{
+    const fields=resolveWorkflowContext(module,record.fields,lookup,links);
+    return {...record,fields,party:fields.Customer||fields.Vendor||fields.Supplier};
+  });
+}
+
+function referenceFetchValues(source,record,fields){
+  const result={};
+  const from=record.fields;
+  for(const {key,label,type} of fields){
+    const mapped=source.fields[key]||source.fields[label];
+    const alternates={
+        Customer:['Customer','Prospect'],Vendor:['Vendor','Supplier'],Supplier:['Vendor','Supplier'],
+        Product:['Product','Item','Material'],Item:['Item','Product','Material'],
+        Material:['Material','Item','Product'],Qty:['Qty','Good Qty','Received Qty'],
+        'Received Qty':['Qty'],'Taxable Amount':['Amount'],'Delivery Date':['Delivery','Required Date'],
+        Delivery:['Delivery','Expected Delivery'],'PO Date':['Date'],
+        'Work Order':['Work Order','WO No']
+      }[key]||[];
+    const value=[mapped,key,label,...alternates].filter(Boolean).map(name=>from[name])
+      .find(item=>String(item??'').trim()&&item!=='-');
+    result[key]=type==='date'?isoDate(value):value;
+  }
+  if(source.reference&&fields.some(field=>field.key===source.reference)) result[source.reference]=record.number;
+  return result;
+}
+
+function WorkflowPage({title,goToPage,workflowOverride,access}){
+  const baseConfig=coreConfigs[title]||getGenericConfig(title);
+  const config=workflowOverride?.target_page?{...baseConfig,next:workflowOverride.target_page}:baseConfig;
+  const permitted=action=>canAdminAccess(access,title,action);
   const storageKey=`dfab-erp-${title}`;
-  const [rows,setRows]=useState(()=>{const parsed=readStored(storageKey,[]);const compatible=Array.isArray(parsed)&&parsed.every(r=>Array.isArray(r)&&r.length===config.columns.length);return compatible?parsed:[]});
+  const [rows,setRows]=useState(()=>{const parsed=readStored(storageKey,[]);const compatible=Array.isArray(parsed)&&parsed.every(r=>rowMatchesColumns(config.columns,r));return compatible?parsed:[]});
   const [search,setSearch]=useState('');
-  const [modal,setModal]=useState(false);
+  const [editor,setEditor]=useState(false);
   const [form,setForm]=useState({});
   const [editing,setEditing]=useState(-1);
   const [saving,setSaving]=useState(false);
-  const lookup=(module,field,reference)=>{
-    const fromInvoice=module==='Sales Invoice';
-    const key=fromInvoice?'dfab-erp-sales-invoices-v2':`dfab-erp-${module}`;
-    const columns=fromInvoice?['#','Invoice No','Date','Customer','SO No','Reference','Status','Amount','Sync','Remarks']:(coreConfigs[module]||getGenericConfig(module)).columns;
-    const found=findRecord(readStored(key,[]),columns,field,reference);
-    return found?recordToObject(columns,found):null;
+  const [section,setSection]=useState('Details');
+  const [reading,setReading]=useState(false);
+  const [formError,setFormError]=useState('');
+  const [attachments,setAttachments]=useState({});
+  const [fetchedFrom,setFetchedFrom]=useState(null);
+  const reference=referenceForms[title];
+  const header=transactionHeader(title,config);
+  const sections=['Details',...(header.length>12?['Additional details']:[]),...(reference?.files.length?['Attachments']:[])];
+  const remainingFields=config.fields.filter(key=>!header.some(field=>field.inSummary&&field.key===key));
+  const updateAttachments=(key,value)=>setAttachments(current=>({...current,[key]:value}));
+  const fetchIntoForm=(source,record)=>{
+    const allowed=[...header.filter(field=>field.key!=='Date'&&field.key!=='Series'),...remainingFields
+      .filter(key=>key!==config.columns[0]).map(key=>({key,label:key,type:fieldType(key)}))];
+    const fields=['Customer Payments','Vendor Payments'].includes(title)?allowed.filter(field=>field.key!=='Amount'):allowed;
+    const reference=source.relatedReference||source.reference;
+    const relatedNumber=source.relatedReference?record.fields[reference]:record.number;
+    const conflict=fetchConflict(reference,form,{number:relatedNumber});
+    if(conflict)return conflict;
+    const next=applyReferenceFetch(form,referenceFetchValues(source,record,fields));
+    if(!Object.keys(next).some(key=>next[key]!==form[key]))return 'All matching fields are already filled.';
+    setForm(next);
+    setFetchedFrom({module:source.module,number:record.number,field:source.reference});
+    return '';
   };
-  const persist=async(next)=>{
+  const lookup=(module,field,reference)=>hasDocumentValue(reference)
+    ?getReferenceRecords(module).find(record=>String(record.fields[field]??'').trim().toLowerCase()===String(reference).trim().toLowerCase())?.fields||null
+    :null;
+  const persist=async(next,reportError=alert)=>{
+    const stockError=validateStockChange(title,rows,next,arrayRows);
+    if(stockError){reportError(stockError);return false}
     setSaving(true);
     try {await writeCloudValueConfirmed(storageKey,next,rows);setRows(next);return true;}
-    catch(error){alert(`Supabase did not confirm this change. Nothing was applied to this page: ${error.message}`);return false;}
+    catch(error){reportError(`Supabase did not confirm this change. Nothing was applied to this page: ${error.message}`);return false;}
     finally{setSaving(false)}
   };
-  const filtered=rows.filter(r=>r.join(' ').toLowerCase().includes(search.toLowerCase()));
+  const filtered=rows.filter(r=>r.slice(0,config.columns.length).join(' ').toLowerCase().includes(search.toLowerCase()));
   const statusIndex=config.columns.findIndex(c=>/status|stage|decision/i.test(c));
   const advance=async i=>{if(saving||statusIndex<0||!config.statuses)return;
-    const updated=rows.map((r,idx)=>{if(idx!==i)return r;const p=config.statuses.indexOf(r[statusIndex]);if(p<0||p>=config.statuses.length-1)return r;const n=[...r];n[statusIndex]=config.statuses[p+1];return n});
+    const updated=rows.map((row,index)=>{
+      if(index!==i)return row;
+      const status=nextProductionStatus(config.statuses,row[statusIndex]);
+      if(!status)return row;
+      const next=[...row];
+      if(title==='Customer Payments'){
+        if(row[statusIndex]!=='Pending')return row;
+        const receipt=recordToObject(config.columns,row);
+        next[statusIndex]=receiptPostingStatus(receipt,lookup('Sales Invoice','Invoice No',receipt.Invoice),rows)||'Part Paid';
+      }else next[statusIndex]=status;
+      return next;
+    });
     if(updated[i]===rows[i])return;
     const source=recordToObject(config.columns,updated[i]);
-    const error=validateConnectedRecord(title,source,lookup,rows);
+    const error=validateFields(config.fields,source)||validateImantraDocument(title,source,lookup)||validateProductionProgress(title,source,lookup)
+      ||validateConnectedRecord(title,source,lookup,rows,config.columns);
     if(error){alert(error);return}
     await persist(updated);
+  };
+  const rejectRecord=async index=>{
+    const row=rows[index];
+    if(saving||!row||!permitted('approve')||!canRejectProductionDocument(title,row[statusIndex]))return;
+    if(!await confirm(`Reject ${title} ${row[0]}?`))return;
+    await persist(rows.map((record,i)=>i===index
+      ?record.map((value,column)=>column===statusIndex?'Rejected':value)
+      :record));
   };
   const forwardRecord=async row=>{
     if(saving)return;
     if(!config.next)return;
     const statusIndexForFlow=config.columns.findIndex(c=>/status|stage|decision/i.test(c));
     const currentStatus=statusIndexForFlow>=0?row[statusIndexForFlow]:'';
-    const allowed=forwardRules[title];
+    const allowed=workflowOverride?.gate_statuses?.length?workflowOverride.gate_statuses:forwardRules[title];
     if(allowed&&!allowed.includes(currentStatus)){
       alert(`Cannot create ${config.next} while ${title} is "${currentStatus}". Allowed: ${allowed.join(', ')}.`);
       return;
     }
     const targetTitle=config.next;
+    if(!permitted('view')||!canAdminAccess(access,targetTitle,'create')){alert('Your role cannot create the next workflow document.');return}
     const linksKey='dfab-workflow-links-v1';const links=readStored(linksKey,[]);
     if(links.some(link=>link.from===title&&String(link.reference).trim().toLowerCase()===String(row[0]).trim().toLowerCase()&&link.to===targetTitle)){alert(`A linked ${targetTitle} was already created for ${row[0]}.`);return}
-    const source=resolveWorkflowContext(title,recordToObject(config.columns,row),lookup,links);
-    const sourceError=validateFields(config.fields,source)||validateConnectedRecord(title,source,lookup,rows);
+    const source=resolveWorkflowContext(title,describeDocument(title,config.columns,row).fields,lookup,links);
+    const sourceError=validateFields(config.fields,source)||validateProductionProgress(title,source,lookup)||validateConnectedRecord(title,source,lookup,rows,config.columns);
     if(sourceError){alert(sourceError);return}
     if(targetTitle==='Sales Invoice'){
       const targetRows=readStored('dfab-erp-sales-invoices-v2',salesInvoiceRows);let n=targetRows.length+827;while(targetRows.some(r=>r[1]===`SI/DRAFT/${n}`))n++;const number=`SI/DRAFT/${n}`;
-      const invoiceRows=[[String(targetRows.length+1),number,displayDate(todayISO()),source.Customer||'',source['SO No']||'-','-','DRAFT','0','NOT CONNECTED',''],...targetRows];
+      const invoiceRows=[[String(targetRows.length+1),number,displayDate(todayISO()),source.Customer||'',lookup('Sales Orders','SO No',source['SO No'])?.['Customer PO']||'-','-','DRAFT','0','NOT CONNECTED',''],...targetRows];
       setSaving(true);
       try {
         const invoiceDetails=readStored('dfab-invoice-details-v1',{});
         await writeCloudBatchConfirmed([
           {key:'dfab-erp-sales-invoices-v2',expected:targetRows,value:invoiceRows},
-          {key:'dfab-invoice-details-v1',expected:invoiceDetails,value:{...invoiceDetails,[number]:{form:{customer:source.Customer||'',dc:row[0],vehicle:source.Vehicle||'',date:todayISO()},lines:[{code:'',description:source.Product||'',quantity:source.Qty||'1',rate:'0'}]}}},
+          {key:'dfab-invoice-details-v1',expected:invoiceDetails,value:{...invoiceDetails,[number]:{form:{customer:source.Customer||'',sourceOrder:source['SO No']||'',dc:row[0],po:lookup('Sales Orders','SO No',source['SO No'])?.['Customer PO']||'',vehicle:source.Vehicle||'',date:todayISO()},lines:[{code:'',description:source.Product||'',quantity:source.Qty||'1',rate:'0'}]}}},
           {key:linksKey,expected:links,value:[...links,{from:title,reference:row[0],to:targetTitle,created:number,at:new Date().toISOString()}]}
         ]);
         goToPage(targetTitle);
@@ -1170,9 +1470,18 @@ function WorkflowPage({title,goToPage}){
     let n=targetRows.length+1;const prefix=targetTitle.split(' ').map(w=>w[0]).join('');while(targetRows.some(r=>r[0]===`${prefix}/${new Date().getFullYear()}/${String(n).padStart(5,'0')}`))n++;
     const sourceReferenceFields={'Sales Quotations':'Enquiry','Sales Orders':'Quotation No','Work Order':'SO No','GRN':'PO No','Inward QC':'GRN No','Route Cards':'WO No','Production Output':'WO No','Outward QC':'Output No','Delivery Challan':'Output No','Outsource Receipt':'Issue DC','Indent To Order':'Indent No','Material Issue':'Work Order','Material Request':'Work Order','Vendor Payments':'Invoice','Credit Note':'Invoice','Customer Payments':'Invoice','Job Work Return DC':'Inward No'};
     const sourceField=sourceReferenceFields[targetTitle];
+    const integratedPrefill=imantraForwardPrefill(title,targetTitle,source);
     const created=target.columns.map((column,index)=>{
       if(index===0)return `${prefix}/${new Date().getFullYear()}/${String(n).padStart(5,'0')}`;
       if(/status|stage|decision/i.test(column))return target.statuses?.[0]||'Draft';
+      // Output and rejection quantities must use the dedicated manufacturing rules;
+      // a configurable template must not bypass these safety defaults.
+      if(targetTitle==='Route Cards'&&column==='Completed Qty')return '0';
+      if(targetTitle==='Production Output'&&column==='Good Qty')return source['Completed Qty']||'0';
+      if(targetTitle==='Production Output'&&column==='Reject Qty')return '0';
+      const mappedValue=configuredSourceValue(source,column,workflowOverride?.field_map);
+      if(mappedValue!==undefined)return mappedValue;
+      if(title==='Work Order'&&targetTitle==='Material Request'&&['Item','Qty'].includes(column))return '';
       if(column===sourceField){
         if(targetTitle==='Material Request')return source['WO No']||row[0];
         if(targetTitle==='Material Issue')return source['Work Order']||row[0];
@@ -1181,10 +1490,8 @@ function WorkflowPage({title,goToPage}){
         if(targetTitle==='Credit Note'||targetTitle==='Customer Payments')return source.Invoice||row[0];
         return row[0];
       }
-      if(targetTitle==='Route Cards'&&column==='Completed Qty')return '0';
-      if(targetTitle==='Production Output'&&column==='Good Qty')return source['Completed Qty']||'0';
-      if(targetTitle==='Production Output'&&column==='Reject Qty')return '0';
-      if(source[column]!==undefined)return source[column];
+      if(Object.hasOwn(integratedPrefill,column))return integratedPrefill[column];
+      if(hasDocumentValue(source[column]))return source[column];
       if(column==='Invoice')return source['Invoice No']||source.Invoice||row[0];
       if(column==='Customer')return source.Customer||lookup('Sales Orders','SO No',source['SO No'])?.Customer||'';
       if(column==='Vendor')return source.Vendor||lookup('GRN','GRN No',source['GRN No'])?.Vendor||'';
@@ -1196,8 +1503,17 @@ function WorkflowPage({title,goToPage}){
       if(/item|product|material/i.test(column))return source.Item||source.Product||source.Material||lookup('Work Order','WO No',source['WO No']||source['Work Order'])?.Product||'';
       return '';
     });
+    const targetHeader=transactionHeader(targetTitle,target);
+    if(targetHeader.length){
+      const names=['Project Name','Project Name/Code','PO Number','Kind Attention','Scope Of Work','C Number','A Number'];
+      if(targetTitle==='Purchase Orders')names.push('Indent No','Item','Qty','UOM','Rate');
+      const inherited=Object.fromEntries(targetHeader.filter(field=>!field.inSummary&&names.includes(field.key))
+        .map(field=>[field.key,[source[field.key],field.key.startsWith('Project Name')?(source['Project Name/Code']||source['Project Name']):undefined,field.key==='PO Number'?source['Customer PO']:undefined].find(hasDocumentValue)])
+        .filter(([,value])=>hasDocumentValue(value)));
+      created.push({version:1,header:{Date:todayISO(),Series:referenceForms[targetTitle].series[0],...inherited},files:{}});
+    }
     const targetForm=recordToObject(target.columns,created);
-    const targetError=validateConnectedRecord(targetTitle,targetForm,lookup,targetRows);
+    const targetError=validateConnectedRecord(targetTitle,targetForm,lookup,targetRows,target.columns);
     if(targetError){alert(targetError);return}
     // Incomplete linked records remain in their first (draft/pending) status for review.
     setSaving(true);
@@ -1216,34 +1532,147 @@ function WorkflowPage({title,goToPage}){
     if(position<=0)return;
     const links=readStored('dfab-workflow-links-v1',[]);
     if(links.some(link=>link.from===title&&String(link.reference)===String(current[0]))){alert('This document has a linked next-stage record. It cannot move back until that connection is resolved.');return}
-    const previous=config.statuses[position-1];
-    if(!confirm(`Move ${current[0]} back from ${current[statusIndex]} to ${previous}?`))return;
+    const previous=title==='Customer Payments'?config.statuses[0]:
+      current[statusIndex]==='Rejected'?config.statuses.find(status=>canRejectProductionDocument(title,status)):config.statuses[position-1];
+    if(!previous)return;
+    if(!await confirm(`Move ${current[0]} back from ${current[statusIndex]} to ${previous}?`))return;
     const updated=rows.map((row,index)=>index===i?row.map((value,col)=>col===statusIndex?previous:value):row);
     await persist(updated);
   };
-  const openCreate=()=>{setEditing(-1);setForm(Object.fromEntries(config.fields.filter(f=>fieldType(f)==='date').map(f=>[f,todayISO()])));setModal(true)};
-  const openEdit=row=>{setEditing(rows.indexOf(row));const data={};config.columns.forEach((c,i)=>data[c]=fieldType(c)==='date'?isoDate(row[i]):row[i]??'');setForm(data);setModal(true)};
-  const updateFormField=(field,value)=>setForm(current=>{const fetched=referenceAutofill(field,value);const allowed=new Set(config.fields);const merged={...current,[field]:value};for(const [key,item] of Object.entries(fetched)){if(allowed.has(key)&&(!merged[key]||key===field))merged[key]=item}return merged});
-  const saveRecord=async()=>{if(saving)return;
-    const error=validateFields(config.fields,form)||validateConnectedRecord(title,form,lookup,rows);
-    if(error){alert(error);return}
-    if(rows.some((r,i)=>i!==editing&&String(r[0]).toLowerCase()===String(form[config.columns[0]]).trim().toLowerCase())){alert('Reference already exists.');return}
+  const openCreate=()=>{
+    const dates=Object.fromEntries(config.fields.filter(f=>fieldType(f)==='date'&&
+      !header.some(field=>field.key===f&&field.key!=='Date')).map(f=>[f,todayISO()]));
+    setEditing(-1);
+    setForm(reference?{...dates,...referenceDefaults[title],Date:todayISO(),Series:reference.series[0]}:dates);
+    setAttachments({});
+    setFetchedFrom(null);
+    setSection('Details');
+    setFormError('');
+    setEditor(true);
+  };
+  const openEdit=row=>{
+    const details=detailsFromRow(config.columns,row);
+    const data={...details?.header};
+    config.columns.forEach((key,index)=>data[key]=fieldType(key)==='date'?isoDate(row[index]):row[index]??'');
+    setEditing(rows.indexOf(row));
+    setForm(data);
+    setAttachments(details?.files||{});
+    setFetchedFrom(details?.fetchedFrom||null);
+    setSection('Details');
+    setFormError('');
+    setEditor(true);
+  };
+  const updateFormField=(field,value)=>setForm(current=>{const fetched=referenceAutofill(field==='Invoice'&&title==='Vendor Payments'?'Purchase Invoice':field,value);const allowed=new Set(config.fields);const merged={...current,[field]:value};for(const [key,item] of Object.entries(fetched)){if(allowed.has(key)&&!(title==='Customer Payments'&&key==='Amount')&&(!merged[key]||key===field))merged[key]=item}
+    if(imantraTransactions[title]){
+      const sourceTitle=imantraReferenceSource[field];
+      if(sourceTitle){const source=lookup(sourceTitle,field,value);if(source)for(const [key,item] of Object.entries(source)){if(allowed.has(key)&&key!==field&&!merged[key])merged[key]=item}}
+    }
+    return merged});
+  const saveRecord=async()=>{
+    if(saving||reading)return;
+    const extraError=header.find(field=>!field.inSummary&&form[field.key]&&(
+      (field.type==='date'&&!isoDate(form[field.key]))||
+      (field.type==='number'&&(!Number.isFinite(Number(form[field.key]))||Number(form[field.key])<0))
+    ));
+    const error=validateFields(config.fields,form)||validateImantraDocument(title,form,lookup)
+      ||validateConnectedRecord(title,form,lookup,rows,config.columns,rows[editing]?.[0])||(extraError?`Enter a valid ${extraError.label}.`:'');
+    if(error){
+      const index=extraError&&error===`Enter a valid ${extraError.label}.`
+        ? header.indexOf(extraError)
+        : header.findIndex(field=>error.startsWith(`${field.key} `)||error.startsWith(`Enter a valid ${field.key.toLowerCase()}.`));
+      setSection(index>=12?'Additional details':'Details');
+      setFormError(error);
+      return;
+    }
+    if(rows.some((r,i)=>i!==editing&&String(r[0]).toLowerCase()===String(form[config.columns[0]]).trim().toLowerCase())){setSection('Details');setFormError('Reference already exists.');return}
     const row=config.columns.map(c=>form[c]??((/status|stage|decision/i.test(c)&&config.statuses)?config.statuses[0]:'-'));
+    if(reference||fetchedFrom){
+      const extra=Object.fromEntries(header.filter(field=>!field.inSummary&&form[field.key]!==undefined).map(field=>[field.key,form[field.key]]));
+      const files=Object.fromEntries(Object.entries(attachments).filter(([,file])=>file));
+      const provenance=fetchedFrom&&(!fetchedFrom.field||String(form[fetchedFrom.field]??'').trim().toLowerCase()===String(fetchedFrom.number).trim().toLowerCase())
+        ?fetchedFrom:undefined;
+      row.push({version:1,header:extra,files,...(provenance?{fetchedFrom:provenance}:{})});
+    }
     const next=editing>=0?rows.map((r,i)=>i===editing?row:r):[row,...rows];
-    if(await persist(next)){setModal(false);setForm({});setEditing(-1)}
+    setFormError('');
+    if(await persist(next,setFormError)){setEditor(false);setForm({});setEditing(-1)}
   };
   const remove=async i=>{
-    if(saving||!confirm('Delete this record?'))return;
+    if(saving||!await confirm('Delete this record?'))return;
     const linked=readStored('dfab-workflow-links-v1',[]).some(link=>link.from===title&&String(link.reference)===String(rows[i]?.[0]));
     if(linked){alert('This record has linked downstream documents and cannot be deleted here.');return}
     await persist(rows.filter((_,idx)=>idx!==i));
   };
+  const recordField=(field)=>{
+    const type=fieldType(field);
+    const options=/status|stage|decision/i.test(field)?config.statuses:undefined;
+    return <label key={field}>
+      <span className="transaction-required">{field}</span>
+      {options?.length
+        ? <select required value={form[field]||options[0]} onChange={event=>updateFormField(field,event.target.value)}>
+            {options.map(status=><option key={status}>{status}</option>)}
+          </select>
+        : <DatabaseSuggestInput required label={field==='Invoice'&&title==='Vendor Payments'?'Purchase Invoice':field}
+            disableSuggestions={Boolean(imantraTransactions[title]&&field===config.fields[0])}
+            type={type} min={type==='number'&&field!=='Quantity Change'?0:undefined} step={type==='number'?'any':undefined}
+            value={form[field]??''} onChange={event=>type==='date'?setForm(current=>({...current,[field]:event.target.value})):updateFormField(field,event.target.value)}/>}
+    </label>;
+  };
+  const documentId=remainingFields.find(field=>field===config.columns[0]);
+  const sourceModules={
+    'Enquiry':'Sales Enquiries','Quotation No':'Sales Quotations','SO No':'Sales Orders','PO No':'Purchase Orders',
+    'WO No':'Work Order','GRN No':'GRN','Output No':'Production Output','BOM No':'Production BOM',
+    'Issue DC':'Outsource Issue DC','Inward No':'Job Work Inward','Work Order':'Work Order'
+  };
+  const linkedSources=editor?Object.entries(form).flatMap(([field,value])=>{
+    if(field===config.columns[0]||!value)return [];
+    const from=field==='Invoice'?(title==='Vendor Payments'?'Purchase':'Sales Invoice'):(imantraReferenceSource[field]||sourceModules[field]);
+    if(!from||!canAdminAccess(access,from,'view'))return [];
+    const sourceField=field==='Invoice'?'Invoice No':field==='Work Order'?'WO No':field==='Issue DC'?'DC No':field;
+    const found=lookup(from,sourceField,value);
+    return found?[{field,value,from,found}]:[];
+  }):[];
+  if(editor)return <TransactionEditor
+    title={`${editing>=0?'Edit':'Create'} ${shortLabel(title)}`}
+    reference={editing>=0?rows[editing]?.[0]:undefined}
+    busy={saving||reading} error={formError} onBack={()=>setEditor(false)}
+    sections={sections} active={section} onSectionChange={setSection}
+    fetch={<ReferenceFetch title={title} getRecords={module=>canAdminAccess(access,module,'view')?
+      getReferenceRecords(module).filter(record=>title!=='Customer Payments'||record.fields.Status==='APPROVED'):[]} onFetch={fetchIntoForm} disabled={saving}/>}
+    actions={<button type="button" className="action-pill blue" onClick={saveRecord} disabled={saving||reading||!permitted(editing>=0?'edit':'create')}><Save size={15}/> {saving?'Saving…':'Save'}</button>}>
+    <div className="erp-detailed-form">
+      <TransactionValues label="Workflow summary" values={[
+        ['Status',editing>=0?rows[editing]?.[statusIndex]:config.statuses?.[0]],
+        ['Next step',config.next],
+        ['Fetched from',fetchedFrom&&(!fetchedFrom.field||String(form[fetchedFrom.field]??'').trim().toLowerCase()===fetchedFrom.number.trim().toLowerCase())&&canAdminAccess(access,fetchedFrom.module,'view')?`${fetchedFrom.module} · ${fetchedFrom.number}`:undefined]
+      ]}/>
+      {sections.filter(name=>name!=='Attachments').map((name,index)=><section key={name} className="erp-field-section reference-panel" hidden={section!==name}>
+        <h2 className="transaction-section-heading">{name==='Details'?'Document details':name}</h2>
+        <div className="modal-grid erp-field-grid">
+          {name==='Details'&&documentId&&recordField(documentId)}
+          {header.slice(index*12,index===0?12:undefined).map(field=>
+            <ReferenceField key={field.label} field={field} value={form[field.key]} Suggest={DatabaseSuggestInput}
+              onChange={field.inSummary?updateFormField:(key,value)=>setForm(current=>({...current,[key]:value}))}/>
+          )}
+          {name==='Details'&&remainingFields.filter(field=>field!==documentId).map(recordField)}
+        </div>
+      </section>)}
+      {section==='Attachments'&&<ReferenceAttachments labels={reference.files} files={attachments}
+        onChange={updateAttachments} disabled={reading||saving} onReading={setReading}/>}
+      {linkedSources.length>0&&<section className="erp-form-source-section" aria-label="Connected source documents">
+        <div className="erp-form-source-header"><GitBranch size={16}/><b>Linked documents</b></div>
+        {linkedSources.map(({field,value,from,found})=><div className="erp-linked-document" key={field}>
+          <h3>{from} · {value}</h3>
+          <TransactionValues label={field} values={Object.entries(found).filter(([name])=>name!==field)}/>
+        </div>)}
+      </section>}
+    </div>
+  </TransactionEditor>;
   const isReport=!!config.readOnly;
-  return <main className="content master-page page-shell sap-object-page"><div className="page-title-row sap-object-header"><div><span className="sap-object-eyebrow">ENTERPRISE TRANSACTION</span><h1>{title}</h1>{config.description&&<div className="page-subtitle">{config.description}</div>}</div><div className="action-pills">{isReport&&<button className="action-pill green" onClick={()=>downloadCsv(`${title}.csv`,config.columns,filtered)}><FileSpreadsheet size={15}/> Export CSV</button>}{config.next&&<button className="action-pill green" onClick={()=>goToPage(config.next)}>Next: {config.next} <ArrowRight size={15}/></button>}{!isReport&&<button className="action-pill green" onClick={()=>downloadCsv(`${title}.csv`,config.columns,filtered)}><FileSpreadsheet size={15}/> Export CSV</button>}{!isReport&&<button className="primary-pill" onClick={openCreate} disabled={saving}><Plus size={17}/> Create {shortLabel(title)}</button>}</div></div><div className="divider"/>
+  return <main className="content master-page page-shell sap-object-page"><div className="page-title-row sap-object-header"><div><span className="sap-object-eyebrow">ENTERPRISE TRANSACTION</span><h1>{title}</h1>{config.description&&<div className="page-subtitle">{config.description}</div>}</div><div className="action-pills">{isReport&&<button className="action-pill green" onClick={()=>downloadCsv(`${title}.csv`,config.columns,filtered.map(row=>row.slice(0,config.columns.length)))}><FileSpreadsheet size={15}/> Export CSV</button>}{config.next&&<button className="action-pill green" onClick={()=>goToPage(config.next)}>Next: {config.next} <ArrowRight size={15}/></button>}{!isReport&&<button className="action-pill green" onClick={()=>downloadCsv(`${title}.csv`,config.columns,filtered.map(row=>row.slice(0,config.columns.length)))}><FileSpreadsheet size={15}/> Export CSV</button>}{!isReport&&<button className="primary-pill" onClick={openCreate} disabled={saving||!permitted('create')}><Plus size={17}/> Create {shortLabel(title)}</button>}</div></div><div className="divider"/>
     <section className="sap-lifecycle-strip"><div><small>Total records</small><b>{rows.length.toLocaleString('en-IN')}</b></div><div><small>Visible results</small><b>{filtered.length.toLocaleString('en-IN')}</b></div><div><small>Process status</small><b>{config.next?`Connected → ${config.next}`:isReport?'Reporting':'Standalone'}</b></div><div><small>Persistence</small><b>Supabase Cloud</b></div></section>
     {config.statuses&&<div className="mini-status-row">{config.statuses.slice(0,6).map((s,i)=><div className={`mini-status ${['tone-blue','tone-green','tone-yellow','tone-navy','tone-red','tone-teal'][i%6]}`} key={s}><span>{s}</span><b>{rows.filter(r=>r[statusIndex]===s).length}</b></div>)}</div>}
-    <section className="card master-card"><div className="master-toolbar"><div className="workflow-toolbar-left">{config.next&&<span className="workflow-hint">Connected flow → <b>{config.next}</b></span>}{isReport&&<span className="workflow-hint">Report preview · <b>{displayDate(todayISO())}</b></span>}</div><div className="master-search"><input aria-label={`Search ${title}`} placeholder={`Search ${title}...`} value={search} onChange={e=>setSearch(e.target.value)}/><button title="Search records" onClick={e=>e.currentTarget.previousElementSibling?.focus()}><Search size={18}/></button></div></div><div className="table-wrap"><table><thead><tr><th>#</th>{config.columns.map(c=><th key={c}>{c}</th>)}{!isReport&&<th>Action</th>}</tr></thead><tbody>{filtered.length?filtered.map((r,ri)=><tr key={`${r[0]}-${ri}`}><td>{ri+1}</td>{config.columns.map((c,ci)=><td key={c}>{ci===0?<button className="link-button" onClick={()=>openEdit(r)}>{r[ci]}</button>:(ci===statusIndex?<span className={`status-pill ${String(r[ci]).toLowerCase().includes('reject')||String(r[ci]).toLowerCase().includes('fail')?'rejected':'approved'}`}>{r[ci]}</span>:r[ci])}</td>)}{!isReport&&<td><div className="row-actions"><button title="Edit" onClick={()=>openEdit(r)}><PencilLine size={15}/></button>{statusIndex>=0&&config.statuses&&<><button type="button" title="Move status back" aria-label={`Move ${r[0]} status back`} disabled={saving||config.statuses.indexOf(r[statusIndex])<=0} onClick={()=>reverseStatus(rows.indexOf(r))}><ArrowLeft size={15}/></button><button title="Advance status" disabled={saving} onClick={()=>advance(rows.indexOf(r))}><ArrowRight size={15}/></button></>}{config.next&&<button title={`Create ${config.next}`} disabled={saving} onClick={()=>forwardRecord(r)}><Send size={15}/></button>}<button title="Delete" disabled={saving} onClick={()=>remove(rows.indexOf(r))}><Trash2 size={15}/></button></div></td>}</tr>):<tr><td colSpan={config.columns.length+2} className="empty-cell">No records available</td></tr>}</tbody></table></div></section>
-    {modal&&<FormDialogBackdrop className="modal-backdrop" onMouseDown={e=>{if(e.target===e.currentTarget)setModal(false)}}><div className="erp-modal erp-workflow-dialog"><div className="modal-head"><button type="button" className="erp-form-back" aria-label="Back to records" onClick={()=>setModal(false)}><ArrowLeft size={17}/> Back</button><div><h2>{editing>=0?'Edit':'Create'} {shortLabel(title)}</h2><p>{title}</p></div><button className="icon-btn dark" title="Close form" onClick={()=>setModal(false)}><X size={20}/></button></div><div className="modal-grid">{config.fields.map(f=><label key={f}><span>{f}</span>{/status|stage|decision/i.test(f)&&config.statuses?.length?<select value={form[f]||config.statuses[0]} onChange={e=>updateFormField(f,e.target.value)}>{config.statuses.map(status=><option key={status} value={status}>{status}</option>)}</select>:fieldType(f)==='date'?<input type="date" value={form[f]||''} onChange={e=>setForm({...form,[f]:e.target.value})}/>:<DatabaseSuggestInput label={f} type={fieldType(f)} min={fieldType(f)==='number'?0:undefined} step={fieldType(f)==='number'?'any':undefined} value={form[f]??''} onChange={e=>updateFormField(f,e.target.value)} placeholder={f}/>}</label>)}</div><div className="modal-actions"><button className="action-pill gray" onClick={()=>setModal(false)}>Cancel</button><button className="action-pill blue" onClick={saveRecord} disabled={saving}><Save size={15}/> {saving?'Saving...':'Save'}</button></div></div></FormDialogBackdrop>}
+    <section className="card master-card"><div className="master-toolbar"><div className="workflow-toolbar-left">{config.next&&<span className="workflow-hint">Connected flow → <b>{config.next}</b></span>}{isReport&&<span className="workflow-hint">Report preview · <b>{displayDate(todayISO())}</b></span>}</div><div className="master-search"><input aria-label={`Search ${title}`} placeholder={`Search ${title}...`} value={search} onChange={e=>setSearch(e.target.value)}/><button title="Search records" onClick={e=>e.currentTarget.previousElementSibling?.focus()}><Search size={18}/></button></div></div><div className="table-wrap"><table><thead><tr><th>#</th>{config.columns.map(c=><th key={c}>{c}</th>)}{!isReport&&<th>Action</th>}</tr></thead><tbody>{filtered.length?filtered.map((r,ri)=><tr key={`${r[0]}-${ri}`}><td>{ri+1}</td>{config.columns.map((c,ci)=><td key={c}>{ci===0?<button className="link-button" disabled={!permitted('edit')} onClick={()=>openEdit(r)}>{r[ci]}</button>:(ci===statusIndex?<span className={`status-pill ${String(r[ci]).toLowerCase().includes('reject')||String(r[ci]).toLowerCase().includes('fail')?'rejected':'approved'}`}>{r[ci]}</span>:r[ci])}</td>)}{!isReport&&<td><div className="row-actions"><button title="Edit" disabled={!permitted('edit')} onClick={()=>openEdit(r)}><PencilLine size={15}/></button>{statusIndex>=0&&config.statuses&&<><button type="button" title="Move status back" aria-label={`Move ${r[0]} status back`} disabled={saving||!permitted('approve')||config.statuses.indexOf(r[statusIndex])<=0} onClick={()=>reverseStatus(rows.indexOf(r))}><ArrowLeft size={15}/></button><button title="Advance status" disabled={saving||!permitted('approve')||!nextProductionStatus(config.statuses,r[statusIndex])||(title==='Customer Payments'&&r[statusIndex]!=='Pending')} onClick={()=>advance(rows.indexOf(r))}><ArrowRight size={15}/></button>{canRejectProductionDocument(title,r[statusIndex])&&<button type="button" title="Reject document" aria-label={`Reject ${r[0]}`} disabled={saving||!permitted('approve')} onClick={()=>rejectRecord(rows.indexOf(r))}><XCircle size={15}/></button>}</>}{config.next&&<button title={`Create ${config.next}`} disabled={saving||!canAdminAccess(access,config.next,'create')} onClick={()=>forwardRecord(r)}><Send size={15}/></button>}<button title="Delete" disabled={saving||!permitted('delete')} onClick={()=>remove(rows.indexOf(r))}><Trash2 size={15}/></button></div></td>}</tr>):<tr><td colSpan={config.columns.length+2} className="empty-cell">No records available</td></tr>}</tbody></table></div></section>
   </main>;
 }
 
@@ -1264,7 +1693,7 @@ function createDefaultRows(){return [];}
 function DatabaseBackupPage(){
   const [message,setMessage]=useState('');const [restoreFile,setRestoreFile]=useState(null);
   const generate=async()=>{try{await flushCloudWrites()}catch(error){setMessage(`Backup could not be verified: ${error.message}`);return}const records=exportCloudSnapshot();const data={schemaVersion:2,createdAt:new Date().toISOString(),company:'DFAB Stainless Systems Pvt Ltd',source:'supabase',records};const url=URL.createObjectURL(new Blob([JSON.stringify(data,null,2)],{type:'application/json'}));const a=document.createElement('a');a.href=url;a.download=`dfab-supabase-backup-${todayISO()}.json`;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);setMessage(`Backup exported: ${Object.keys(records).length} cloud data sections.`)};
-  const restore=async event=>{const file=event.target.files?.[0];if(!file)return;if(file.size>20*1024*1024){setMessage('Restore failed: backup exceeds 20 MB.');return}try{const parsed=JSON.parse(await file.text());const entries=validateBackup(parsed);if(!confirm(`Restore ${entries.length} data sections to Supabase? Matching sections will be replaced.`))return;setMessage('Saving backup to Supabase…');resetCloudWriteErrors();for(const [key,value] of entries)writeStored(key,value);await flushCloudWrites();setMessage(`${entries.length} data sections saved to Supabase successfully.`)}catch(error){setMessage(`Restore failed: ${error.message}`)}};
+  const restore=async event=>{const file=event.target.files?.[0];if(!file)return;if(file.size>20*1024*1024){setMessage('Restore failed: backup exceeds 20 MB.');return}try{const parsed=JSON.parse(await file.text());const entries=validateBackup(parsed);if(!await confirm(`Restore ${entries.length} data sections to Supabase? Matching sections will be replaced.`))return;setMessage('Saving backup to Supabase…');resetCloudWriteErrors();for(const [key,value] of entries)writeStored(key,value);await flushCloudWrites();setMessage(`${entries.length} data sections saved to Supabase successfully.`)}catch(error){setMessage(`Restore failed: ${error.message}`)}};
   return <main className="content page-shell"><h1>Database Backup</h1><div className="divider"/><p className="data-notice">Backups are generated from the Supabase-backed ERP workspace. Browser local storage is not used for ERP records.</p><div className="home-lower"><section className="card guide-card"><Database size={28}/><h2>Export cloud records</h2><p>Download the current ERP state as JSON. Authentication tokens are never included.</p><button className="action-pill blue" onClick={generate}><Database size={15}/> Generate Backup</button></section><section className="card guide-card"><Upload size={28}/><h2>Restore cloud records</h2><p>Import a valid DFAB backup into Supabase after confirmation.</p><PremiumUploadField label="Restore backup JSON" compact value={restoreFile} accept=".json" maxBytes={20*1024*1024} hint="JSON backup · Up to 20 MB · Confirmation required" onSelect={async file=>{setMessage('');setRestoreFile(file);if(file)await restore({target:{files:[file]}})}}/></section></div>{message&&<p className="data-notice" role="status">{message}</p>}</main>;
 }
 

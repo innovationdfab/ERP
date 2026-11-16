@@ -32,6 +32,10 @@ export function validateFields(fields, values) {
   for (const label of fields) {
     const value=String(values[label]??'').trim();
     if (!value || value==='-') return `${label} is required.`;
+    if (label==='Quantity Change') {
+      if (!Number.isFinite(Number(value)) || Number(value)===0) return 'Quantity Change must be a nonzero number.';
+      continue;
+    }
     if (fieldType(label)==='number' && (!Number.isFinite(Number(value)) || Number(value)<0 || (/qty|quantity/i.test(label)&&!/reject|completed|good/i.test(label)&&Number(value)===0))) return `${label} must be a valid ${/qty|quantity/i.test(label)?'positive':'non-negative'} number.`;
     if (fieldType(label)==='date' && !isoDate(value)) return `Enter a valid ${label.toLowerCase()}.`;
   }
