@@ -88,3 +88,38 @@ test('missing concurrency RPC fails closed without a legacy overwrite', async ()
   assert.equal(mock.calls.filter(call => call.name === 'erp_put_ui_state').length, 0);
   setCloudAccessToken('');
 });
+
+test('concurrent confirmed writes cannot overwrite records built from the same original snapshot', async () => {
+  const mock=createRpc({'dfab-erp-test':[0]});
+  await initializeCloudStore('test-jwt');
+  const first=cloudModule.writeCloudValueConfirmed('dfab-erp-test',[1],[0]);
+  const stale=cloudModule.writeCloudValueConfirmed('dfab-erp-test',[2],[0]);
+  await first;
+  await assert.rejects(stale,/changed while this save was waiting/);
+  assert.deepEqual(mock.saved.get('dfab-erp-test'),[1]);
+  await cloudModule.writeCloudValueConfirmed('dfab-erp-test',[3],[1]);
+  await flushCloudWrites();
+  setCloudAccessToken('');
+});
+
+test('a response from a signed-out session cannot populate the next user cache',async()=>{
+  createRpc({'dfab-erp-test':['old']});
+  await initializeCloudStore('old-token');
+  const original=globalThis.__erpProductionTestRpc;
+  let release,started;
+  const ready=new Promise(resolve=>{started=resolve;});
+  globalThis.__erpProductionTestRpc=(name,args)=>{
+    if(name==='erp_put_ui_state_if_unchanged')return new Promise(resolve=>{release=resolve;started();});
+    return original(name,args);
+  };
+  const pending=cloudModule.writeCloudValueConfirmed('dfab-erp-test',['pending'],['old']);
+  await ready;
+  setCloudAccessToken('');
+  createRpc({'dfab-erp-test':['new']});
+  await initializeCloudStore('new-token');
+  release();
+  await assert.rejects(pending,/session changed/);
+  assert.deepEqual(readCloudValue('dfab-erp-test'),['new']);
+  await flushCloudWrites();
+  setCloudAccessToken('');
+});

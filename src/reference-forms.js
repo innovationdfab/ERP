@@ -5,7 +5,7 @@ const shipping = 'DC Number|Buyer PO No.|Vehicle No.|Terms of payment|DC date|Bu
 const raw = {
  'Sales Enquiries':['Prospect','LOCAL','Enquiry Category|Enquiry Remarks|Next Task Assigned to|Enquiry Reference No|Enquiry Reference Date|Target Date|Managed By|Kind Attention|Scope Of Work|Priority'],
  'Sales Quotations':['Prospect','LOCAL','Quotation Category|Quotation Remarks|Enq Ref date.|Enq Ref. No.|Next Task Assigned to|Payment Terms|Mode of Enq.|PO Number|Work Order Number|Project Name|Ref Contact Person|Taxes|Inspection|Delivery Term|Quotation Validity|Lead Time|Managed By|Target Date|Scope Of Work|Priority|Currency Type','Excel Copy'],
- 'Sales Orders':['Customer','LOCAL','Order Remarks|Customer PO Dt.|Project Name/Code|PO Number|Expected Delivery Date.|Kind Attention|Managed By|Quotation No|Quotation Date|Next Task Assigned to|Target Date|Scope Of Work|C Number|A Number','Order Copy'],
+ 'Sales Orders':['Customer','LOCAL','Order Remarks|Customer PO Dt.|Project Name/Code|PO Number|Expected Delivery Date.|Kind Attention|Managed By|Quotation No|Quotation Date|Job Inward No|Next Task Assigned to|Target Date|Scope Of Work|C Number|A Number','Order Copy'],
  'Purchase Orders':['Vendor','PURCHASE ORDER|OTHER','Category|Department|Order Remarks|Invoice No.|Invoice Date|Delivery Need Date|Work Order Number|Project Name|Approved By|Purchased By|Signature Required|Requested By|Indent No|Item|Qty|UOM|Rate','Quotation Document'],
  'Purchase Indents':['Vendor','INDENT','Indent Remarks|Ref Tran No'],
  'GRN':['Vendor','GRN','Category|Department|MRN Remarks|Supplier Invoice No.|Supplier Invoice Dt.|PO Ref No|PO Ref. Dt.|Work Order No','Weighment Slip|Inspection Report'],
@@ -14,7 +14,7 @@ const raw = {
  'Material Issue':['Vendor','MATERIAL ISSUE|MATERIAL SCRAP','Departments|Remarks|Work Order No.|Project Name/Code|Sale Order No|PO Number'],
  'Production Output':['Customer','OUTPUT','Remarks|PO Number|Ref Work Order Number|Target Date|Next Task Assigned to'],
  'Outward QC':['Vendor','Outward QC',`${quality}|Stage|Weld Repair Drawing Number|Pipe Welding Drawing Number|Dispatch Date|MPT Test Date|Remarks`],
- 'Delivery Challan':['Vendor','DELIVERY CHALLAN','Consignee|Category|Approximate Goods Value|Tran Ref No|PO Number|MGP/Customer DC Number|Project Name|Eway Bill No|Vehicle No.|Transporter Name|Eway Bill Date|Valid Upto|Kind Attention|Remarks|Bill Of Loading/LR-RR No.|MGP/Customer Dc Date|PO Date|Managed By|Scope Of Work|C Number|A Number'],
+ 'Delivery Challan':['Vendor','DELIVERY CHALLAN','Consignee|Output No|Category|Approximate Goods Value|Tran Ref No|PO Number|MGP/Customer DC Number|Project Name|Eway Bill No|Vehicle No.|Transporter Name|Eway Bill Date|Valid Upto|Kind Attention|Remarks|Bill Of Loading/LR-RR No.|MGP/Customer Dc Date|PO Date|Managed By|Scope Of Work|C Number|A Number'],
  'Sales Invoice':['Customer','LOCAL|EXPORT',`Invoice Category|${shipping}`,'Documents Upload'],
  'Purchase':['Vendor','PURCHASE INVOICE','Order Remarks|Invoice No.|Invoice Date|Sale Order Number|Project Name|Approved By|Purchased By|Work Order Number'],
  'Job Work Inward':['Vendor','Job Work Inward','Remarks|PO Number|DC NO.|DC Date.|Approximate Goods Value.|Kind Attention|SUB Vendor|Project Name|C Number|A Number|Next Task Assigned to|Target Date','Attachment'],
@@ -88,7 +88,7 @@ export function transactionHeader(title, config) {
     const inSummary = proposedKey !== config.columns[0] && config.fields.includes(proposedKey);
     const key = inSummary ? proposedKey : label;
     return {
-      label, key, inSummary, required:inSummary,
+      label, key, inSummary, required:inSummary && !(title==='Inward QC'&&key==='GRN No'),
       type:referenceInputType(label),
       options:label==='Series' ? capture.series : referenceOptions(title,label)
     };
@@ -101,32 +101,99 @@ export const invoiceHeaderKeys = {
   'Invoice Category':'category','DC Number':'dc','Buyer PO No.':'po','Vehicle No.':'vehicle',
   'Project Name':'project','Terms of payment':'terms','Mode of Dispatch':'dispatch',
   'Country of Shipment/Destination':'country','Kind Attention':'attention','Scope Of Work':'scope',
-  'Currency Type':'currency','Sales Order Reference':'sourceOrder','Tax (%)':'taxRate'
+  'Currency Type':'currency','Sales Order Reference':'sourceOrder','Due Date':'dueDate','Tax (%)':'taxRate'
 };
 
-const source = (module, reference, fields = {}, relatedReference) => ({module,reference,fields,relatedReference});
+const source = (module, reference, fields={}, options={})=>({module,reference,fields,...options});
+const postedInvoice=['APPROVED'];
+const eligibleOrder=['Approved','Production Pending','Production Running','Ready to Dispatch','Completed'];
+const eligiblePO=['Approved','Sent','Partially Received','Received','Closed'];
+const readyWork=['Released','Running','QC Pending','Completed'];
+const purchaseReceipt=['Accepted'];
 export const referenceFetch = {
   'Sales Quotations': [
     source('Sales Orders','',{'PO Number':'Customer PO'}),
     source('Sales Enquiries','Enquiry',{'Enq Ref date.':'Date'})
   ],
-  'Sales Orders': [source('Sales Quotations','Quotation No',{'Quotation Date':'Date'}),source('Job Work Inward','')],
-  'Purchase Orders': [source('Purchase Indents','Indent No'),source('Outsource Issue DC','')],
-  'GRN': [source('Purchase Orders','PO No',{'PO Ref. Dt.':'PO Date'})],
-  'Purchase': [source('GRN','',{},'PO No')],
+  'Sales Orders': [
+    source('Sales Quotations','Quotation No',{'Quotation Date':'Date','Customer PO':'PO Number'}),
+    source('Job Work Inward','Job Inward No',{'Customer PO':'PO Number','Project Name/Code':'Project Name'},{statuses:['Accepted','Closed']}),
+    source('Inward QC','Job Inward No',{'Customer PO':'PO Number','Project Name/Code':'Project Name'},{statuses:['Passed'],referenceValue:'Job Inward No'})
+  ],
+  'Indent To Order':[source('Purchase Indents','Indent No',{}, {statuses:['Approved','Converted']})],
+  'Purchase Orders': [source('Purchase Indents','Indent No'),source('Outsource Issue DC','',{'Work Order Number':'Work Order'})],
+  'GRN': [source('Purchase Orders','PO No',{'PO Ref. Dt.':'PO Date','Work Order No':'Work Order Number'},{statuses:eligiblePO,omit:['Received Qty','Rate']})],
+  'Inward QC': [
+    source('GRN','GRN No',{'Qty':'Received Qty','Supplier Invoice No.':'Supplier Invoice No.','Supplier Invoice Dt.':'Supplier Invoice Dt.'}),
+    source('Job Work Inward','Job Inward No',{'Item':'Material','Supplier':'Vendor'},{omit:['GRN No']})
+  ],
+  'Purchase': [
+    source('GRN','',{'Invoice No.':'Supplier Invoice No.','Invoice Date':'Supplier Invoice Dt.','Work Order Number':'Work Order No'},
+      {statuses:purchaseReceipt,relatedReference:'PO No',omit:['Taxable Amount','Rate']}),
+    source('Inward QC','',{}, {statuses:['Passed'],relatedReference:'PO No',omit:['Taxable Amount','Rate']})
+  ],
   'Work Order': [source('Sales Orders','SO No',{'PO Number':'Customer PO','Project Name/Code':'Project Name/Code'}),source('Rejection Note','')],
-  'Production Output': [source('Work Order','WO No',{'PO Number':'PO Number'})],
-  'Outward QC': [source('Production Output','Output No',{'PO Number':'PO Number'})],
-  'Delivery Challan': [source('Sales Orders','SO No',{'PO Number':'Customer PO','Project Name':'Project Name/Code'})],
-  'Sales Invoice': [source('Sales Orders','',{'po':'Customer PO','project':'Project Name/Code'})],
+  'Material Request':[source('Work Order','Work Order',{}, {statuses:readyWork,omit:['Item','Qty','Rate']})],
+  'Material Issue':[source('Material Request','',{}, {relatedReference:'Work Order',statuses:['Approved','Issued']})],
+  'Route Cards':[
+    source('Work Order','WO No',{'Machine':'Machine'},{statuses:readyWork,omit:['Completed Qty']}),
+    source('Material Issue','',{'WO No':'Work Order'},{relatedReference:'WO No',statuses:['Issued'],omit:['Completed Qty']}),
+    source('Route Card','Master Route Card No',{'Revision':'Revision'},{statuses:['ACTIVE','Released'],omit:['Completed Qty','WO No']})
+  ],
+  'Production Output': [
+    source('Work Order','WO No',{'PO Number':'PO Number'},{statuses:readyWork,omit:['Good Qty','Reject Qty']}),
+    source('Route Cards','',{'Good Qty':'Completed Qty'},{relatedReference:'WO No',statuses:['Completed'],omit:['Reject Qty']})
+  ],
+  'Outward QC': [source('Production Output','Output No',{'PO Number':'PO Number','Qty':'Good Qty'},{statuses:['QC Pending','Accepted']})],
+  'Delivery Challan': [
+    source('Sales Orders','SO No',{'PO Number':'Customer PO','Project Name':'Project Name/Code'},{statuses:eligibleOrder}),
+    source('Outward QC','Output No',{'Output No':'Output No','Tran Ref No':'QC No'},{statuses:['Passed'],referenceValue:'Output No'})
+  ],
+  'Sales Invoice':[
+    source('Sales Orders','sourceOrder',{po:'Customer PO',project:'Project Name/Code'},{statuses:eligibleOrder}),
+    source('Delivery Challan','dc',{sourceOrder:'SO No',po:'PO Number',project:'Project Name',vehicle:'Vehicle','DC date':'Date'},{statuses:['Dispatched','Delivered']}),
+    source('Job Work Return DC','dc',{po:'PO Number',project:'Project Name',vehicle:'Vehicle No.','DC date':'Date'},{statuses:['Dispatched','Delivered']})
+  ],
   'Proforma Invoice': [source('Sales Orders','SO No',{'PO Number':'Customer PO'})],
-  'Sales Return': [source('Sales Invoice','Invoice')],
-  'Customer Payments': [source('Sales Invoice','Invoice')],
-  'Vendor Payments': [source('Purchase','Invoice')],
-  'Credit Note': [source('Sales Invoice','Invoice',{'DC Number':'dc','Buyer PO No.':'po'})],
-  'Outsource Receipt': [source('Outsource Issue DC','Issue DC')],
-  'Inward Quality': [source('Job Work Inward','',{'PO Number':'PO Number'})],
-  'Material Issue': [source('Material Request','',{},'Work Order')]
+  'Sales Return': [source('Sales Invoice','Invoice',{}, {statuses:postedInvoice,omit:['Qty','Rate']})],
+  'Customer Payments': [source('Sales Invoice','Invoice',{}, {statuses:postedInvoice,omit:['Amount']})],
+  'Vendor Payments': [
+    source('Purchase','Invoice',{}, {statuses:['Posted','Paid'],omit:['Amount']}),
+    source('Service Invoice','Invoice',{}, {statuses:['Posted'],omit:['Amount']})
+  ],
+  'Credit Note': [
+    source('Sales Invoice','Invoice',{'DC Number':'dc','Buyer PO No.':'po'}, {statuses:postedInvoice,omit:['Qty','Rate','Amount']}),
+    source('Sales Return','',{'Buyer PO No.':'Buyer PO No.'},{relatedReference:'Invoice',statuses:['Credit Note','Closed'],omit:['Amount']})
+  ],
+  'Outsource Issue DC':[source('Work Order','Work Order',{}, {statuses:readyWork,omit:['Qty','Rate']})],
+  'Outsource Receipt': [source('Outsource Issue DC','Issue DC',{}, {statuses:['Dispatched','Part Received'],omit:['Received Qty','Rate']})],
+  'Job Work Return DC':[source('Job Work Inward','Inward No',{'Product':'Material'},{statuses:['Accepted','Closed'],omit:['Qty','Rate']})],
+  'Inward Quality': [source('GRN','GRN No',{'PO Number':'PO No'},{omit:['Accepted Qty','Rejected Qty']})],
+  'Procurement Schedule':[source('Purchase Orders','PO No',{'Planned Date':'Delivery Date'},{statuses:eligiblePO})],
+  'Production Schedule':[source('Work Order','WO No',{'Planned Date':'Target Date'},{statuses:readyWork})],
+  'Dispatch Schedule':[source('Sales Orders','SO No',{'Scheduled Date':'Delivery'},{statuses:eligibleOrder})],
+  'Project Planning':[source('Sales Orders','SO No',{'Target Date':'Delivery'},{statuses:eligibleOrder})],
+  'Import Purchase':[source('Purchase Orders','PO No',{'Currency':'Currency Type'},{statuses:eligiblePO})],
+  'Job Order':[source('Work Order','Work Order',{}, {statuses:readyWork,omit:['Qty']})],
+  'Jobwork Material Issue':[source('Job Order','Job No',{}, {statuses:['Approved','Issued'],omit:['Qty']})],
+  'Jobwork Material Receipt':[source('Jobwork Material Issue','Issue No',{}, {statuses:['Issued','Closed'],omit:['Received Qty']})],
+  'Service Invoice':[source('Job Order','Job No',{'Service':'Process'}, {statuses:['Issued','Completed'],omit:['Amount']})],
+  'Job Work QC':[source('Jobwork Material Receipt','Receipt No',{'Qty':'Received Qty'},{statuses:['Received','QC Pending','Accepted']})],
+  'Input to Production':[source('Material Issue','Issue No',{'WO No':'Work Order'},{statuses:['Issued']})],
+  'Stage Consumption':[source('Input to Production','Input No',{}, {statuses:['Issued','Consumed'],omit:['Consumed Qty']})],
+  'Stage Receipt':[source('Work Order','WO No',{}, {statuses:readyWork,omit:['Good Qty','Reject Qty']})],
+  'In-process QC':[source('Stage Receipt','',{'Qty':'Good Qty'},{relatedReference:'WO No',statuses:['Recorded','Inspected','Completed']})],
+  'Excess Issue':[source('Work Order','WO No',{}, {statuses:readyWork,omit:['Item','Qty']})],
+  'Return to Store':[source('Material Issue','',{'WO No':'Work Order','Warehouse':'Store'},{relatedReference:'WO No',statuses:['Issued'],omit:['Qty']})],
+  'Dispatch Intimation':[source('Sales Orders','SO No',{'Planned Date':'Delivery'},{statuses:eligibleOrder})],
+  'BOM-Based Work Order':[source('Production BOM','BOM No',{}, {statuses:['ACTIVE','Approved'],omit:['Qty']})],
+  'Material Reserve':[source('Work Order','WO No',{}, {statuses:readyWork,omit:['Item','Qty']})],
+  'Material Unreserved':[source('Material Reserve','Reserve No',{}, {statuses:['Reserved'],omit:['Qty']})],
+  'Terminate Order':[source('Sales Orders','SO No',{}, {statuses:eligibleOrder.filter(value=>value!=='Completed')})],
+  'Project Order':[source('Project Planning','Project No',{'Due Date':'Target Date'},{statuses:['Approved','Active'],omit:['Value']})],
+  'Purchase Return':[source('GRN','GRN No',{}, {statuses:purchaseReceipt,omit:['Qty']})],
+  'Pick Slip':[source('Sales Orders','SO No',{}, {statuses:eligibleOrder})],
+  'Put Away':[source('GRN','GRN No',{'Qty':'Received Qty'},{statuses:purchaseReceipt})]
 };
 
 // A trailer shares the original row's atomic write and module permissions.

@@ -53,3 +53,6 @@ export const deleteDraftTemplate=(template)=>call('erp_admin_delete_template',{p
 export const deleteDepartment=(id)=>call('erp_admin_delete_department',{p_id:id});
 export const deleteRole=(id)=>call('erp_admin_delete_role',{p_id:id});
 export const unmapStorage=(key)=>call('erp_admin_unmap_storage',{p_key:key});
+
+export const loadWorkspaceActivity=()=>call('erp_workspace_activity');
+export const loadWorkspaceTransactions=day=>call('erp_workspace_transactions',{p_day:day});

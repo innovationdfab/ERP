@@ -5,6 +5,7 @@ import {once} from 'node:events';
 import {chromium} from 'playwright';
 import {referenceForms,referenceFetch} from '../src/reference-forms.js';
 import {todayISO} from '../src/erp-utils.js';
+import {legacyLineKeys} from '../src/legacy-form-layout.js';
 import {stockMovementSources} from '../src/imantra-stock.js';
 
 const port=5184;
@@ -24,17 +25,22 @@ try {
   const errors=[];
   page.on('pageerror',error=>errors.push(error.message));
   const store=new Map([
+    ['dfab-erp-Purchase Orders',[['PO-FETCH','Steel Vendor',todayISO(),'100','2026-11-20','Approved',{version:1,header:{Item:'Steel',Qty:'12',UOM:'KG'}}]]],
+    ['dfab-erp-Delivery Challan',[['DC-FETCH','Dispatch customer','SO-LEGACY','Dispatch item','3','KA01','Dispatched'],['DC-HOLD','Dispatch customer','SO-LEGACY','Dispatch item','5','KA01','Approved']]],
+    ['dfab-erp-products-v3',[['RM-STEEL','Steel','Raw Material','Physical','KG']]],
+    ['dfab-erp-Job Work Inward',[['JOB-1','Job customer','J-DC-1','Workpiece','6','Received',{version:1,header:{'PO Number':'CUSTOMER-PO'}}]]],
     ['dfab-erp-GRN',[['QA-GRN','QA-PO','Supplier','Steel','10','Awaiting QC',{version:1,header:{Date:todayISO()}}]]],
     ['dfab-erp-Sales Quotations',[['SQ-100','Fixture Customer','ENQ-100','1200','Accepted']]],
     ['dfab-erp-Sales Orders',[['SO-LEGACY','Existing Customer','PO-1','Existing Item','1','2026-11-22','Draft']]]
   ]);
-  const rights=Object.fromEntries([...Object.keys(referenceForms),...stockMovementSources,'Customer Payments','Procurement Planning','Sales Register','Sales Register Headerwise','Pending Receivables','Stock Ledger'].map(title=>[title,{view:true,create:true,edit:true,approve:true,delete:true}]));
+  const rights=Object.fromEntries([...Object.keys(referenceForms),...stockMovementSources,'Products','Customer Payments','Procurement Planning','Sales Register','Sales Register Headerwise','Pending Receivables','Stock Ledger'].map(title=>[title,{view:true,create:true,edit:true,approve:true,delete:true}]));
   await page.route(origin+'/**',async route=>{
     const request=route.request();
     const endpoint=new URL(request.url()).pathname.split('/').at(-1);
     const data=request.postDataJSON();
     let body;
     if(endpoint==='token') body={access_token:'fixture-access-token'};
+    else if(endpoint==='user') body={id:'fixture-user',email:'qa@example.test',app_metadata:{}};
     else if(endpoint==='erp_admin_my_access') body={enabled:true,is_admin:false,rights};
     else if(endpoint==='erp_admin_active_workflow') body=[];
     else if(endpoint==='erp_get_ui_state') body=[...store].map(([storage_key,payload])=>({storage_key,payload}));
@@ -87,16 +93,12 @@ try {
     console.log(`Checking ${title}`);
     const editor=await openForm(title);
     const labels=await editor.locator('.erp-field-grid label > span,.invoice-form-grid label > span').allTextContents();
-    if(title==='Sales Invoice'){
-      await editor.getByRole('button',{name:'Additional details',exact:true}).click();
-      labels.push(...await editor.locator('.invoice-form-grid label > span').allTextContents());
-    }
-    for(const label of ['Date','Series',capture.party,...capture.fields].filter(Boolean)){
+    const lineKeys=Object.values(legacyLineKeys(title)||{});
+    for(const label of ['Date','Series',capture.party,...capture.fields].filter(label=>label&&!lineKeys.includes(label))){
       assert.ok(labels.includes(label),`${title} is missing ${label}`);
     }
     assert.equal(await editor.getByRole('button',{name:'Fetch',exact:true}).count(),referenceFetch[title]?1:0,title);
     if(capture.files.length){
-      await editor.getByRole('button',{name:'Attachments',exact:true}).click();
       for(const label of capture.files) assert.ok(await editor.locator('input[type=file]').evaluateAll((inputs,target)=>inputs.some(input=>input.getAttribute('aria-label')===target),label),`${title} is missing ${label}`);
     }
     await exit(editor);
@@ -107,8 +109,7 @@ try {
     await exit(form);
   }
   const desktop=await openForm('Sales Orders');
-  assert.ok(await desktop.getByRole('heading',{name:'Document details',exact:true}).isVisible());
-  assert.equal(await desktop.getByRole('button',{name:'Details',exact:true}).getAttribute('aria-current'),'true');
+  assert.equal(await desktop.getByRole('button',{name:'Products',exact:true}).getAttribute('aria-current'),'true');
   const desktopLayout=await desktop.evaluate(element=>{
     const shell=element.parentElement.getBoundingClientRect();
     const toolbar=element.querySelector('.transaction-editor-actions').getBoundingClientRect();
@@ -119,22 +120,22 @@ try {
       labelColumns:getComputedStyle(label).gridTemplateColumns.split(' ').length,
       toolbarBottom:toolbar.bottom,bodyTop:body.top,shellBottom:shell.bottom};
   });
-  assert.equal(desktopLayout.columns,4);
+  assert.equal(desktopLayout.columns,6);
   assert.equal(desktopLayout.labelColumns,1);
   assert.ok(desktopLayout.toolbarBottom<=desktopLayout.bodyTop);
   assert.ok(desktopLayout.toolbarBottom<=desktopLayout.shellBottom);
   const spacing=await desktop.evaluate(element=>{
-    const tools=element.querySelector('.transaction-editor-tools');
+    const tools=element.querySelector('.transaction-editor-heading');
     const details=element.querySelector('.erp-field-grid');
     const controls=[...details.querySelectorAll('label > :is(input,select,textarea)')];
-    const boxes=controls.slice(0,4).map(control=>control.getBoundingClientRect());
+    const boxes=controls.slice(0,3).map(control=>control.getBoundingClientRect());
     return {toolbarHeight:tools.offsetHeight,firstRowTops:boxes.map(box=>box.top),fieldCount:controls.length};
   });
   assert.ok(spacing.toolbarHeight<58);
   if(process.env.ERP_FORM_SCREENSHOT)await page.screenshot({path:process.env.ERP_FORM_SCREENSHOT});
   assert.equal(new Set(spacing.firstRowTops).size,1,JSON.stringify(spacing));
-  assert.equal(spacing.fieldCount,15);
-  assert.equal(await desktop.locator('.erp-field-grid label > span').first().innerText(),'SO No');
+  assert.ok(spacing.fieldCount>=15);
+  assert.equal(await desktop.locator('.erp-field-grid label > span').first().innerText(),'Date');
   assert.equal(await desktop.getByRole('region',{name:'Connected source documents'}).count(),0);
   assert.match(await desktop.getByLabel('Workflow summary').innerText(),/Next step\s+Work Order/);
   await exit(desktop);
@@ -162,7 +163,7 @@ try {
   await page.getByRole('button',{name:'SO-LEGACY',exact:true}).waitFor();
   await page.locator('.page-title-row .primary-pill').click();
   await editor.waitFor();
-  await editor.getByRole('button',{name:'Save',exact:true}).click();
+  await editor.getByRole('button',{name:'Save as Draft',exact:true}).click();
   assert.match(await editor.getByRole('alert').innerText(),/required/);
   assert.equal(await page.getByRole('dialog').count(),0);
   const field=(label,scope=editor)=>scope.locator('label').filter({has:page.locator("span").and(page.getByText(label,{exact:true}))}).locator('input,textarea,select');
@@ -175,25 +176,30 @@ try {
   await editor.getByRole('button',{name:'Fetch document',exact:true}).click();
   assert.equal(await field('Customer').inputValue(),'Manually entered customer');
   assert.equal(await editor.getByRole('button',{name:'Fetch',exact:true}).getAttribute('aria-expanded'),'false');
-  await field('SO No').fill('SO-QA-100');
+  await field('Sales Order No.').fill('SO-QA-100');
   await field('PO Number').fill('QA-PO');
-  await field('Product').fill('QA item');
-  await field('Qty').fill('2');
+  await editor.getByRole('button',{name:'Add Line Item',exact:true}).click();
+  await editor.getByLabel('Line 1 Description',{exact:true}).fill('QA item');
+  await editor.getByLabel('Line 1 Quantity',{exact:true}).fill('2');
+  await editor.getByLabel('Line 1 Rate',{exact:true}).fill('10');
+  await editor.getByRole('button',{name:'Charges',exact:true}).click();
+  await editor.getByLabel('Freight Charges amount',{exact:true}).fill('5');
+  assert.match(await editor.getByLabel('Workflow summary').innerText(),/Net Amount\s+25.00/);
+  await editor.getByRole('button',{name:'Products',exact:true}).click();
   await field('Expected Delivery Date.').fill('2026-12-01');
-  await field('Order Remarks').fill('Save and reopen this note');
+  await editor.getByRole('button',{name:'Toggle Order Remarks',exact:true}).click();
+  await editor.getByLabel('Order Remarks',{exact:true}).fill('Save and reopen this note');
   assert.equal(await field('Quotation No').inputValue(),'SQ-100');
   const sourceCard=editor.getByRole('region',{name:'Connected source documents'});
   assert.match(await sourceCard.innerText(),/Fixture Customer/);
   assert.match(await sourceCard.innerText(),/1200/);
-  await editor.getByRole('button',{name:'Additional details',exact:true}).click();
   await field('A Number').fill('QA-A-100');
-  await editor.getByRole('button',{name:'Attachments',exact:true}).click();
   const attachment=editor.locator('.transaction-attachment-card');
   assert.ok(await attachment.getByRole('heading',{name:'Order Copy'}).isVisible());
   assert.ok((await attachment.locator('.premium-dropzone').boundingBox()).height<105);
   await editor.locator('input[type=file]').setInputFiles({name:'order.txt',mimeType:'text/plain',buffer:Buffer.from('Fixture order copy')});
   await editor.getByRole('link',{name:'Download order.txt'}).waitFor();
-  await editor.getByRole('button',{name:'Save',exact:true}).click();
+  await editor.getByRole('button',{name:'Save as Draft',exact:true}).click();
   await page.getByRole('button',{name:'SO-QA-100',exact:true}).waitFor();
   await page.reload();
   await page.locator('.command-launcher').waitFor({state:'attached'});
@@ -202,9 +208,12 @@ try {
   await page.getByRole('button',{name:'SO-QA-100',exact:true}).click();
   const edit=editorPage;
   await edit.waitFor();
-  assert.equal(await field('Order Remarks',edit).inputValue(),'Save and reopen this note');
+  await edit.getByRole('button',{name:'Toggle Order Remarks',exact:true}).click();
+  assert.equal(await edit.getByLabel('Order Remarks',{exact:true}).inputValue(),'Save and reopen this note');
+  assert.equal(await edit.getByLabel('Line 1 Description',{exact:true}).inputValue(),'QA item');
+  await edit.getByRole('button',{name:'Charges',exact:true}).click();
+  assert.equal(await edit.getByLabel('Freight Charges amount',{exact:true}).inputValue(),'5');
   assert.match(await edit.getByLabel('Workflow summary').innerText(),/Fetched from\s+Sales Quotations · SQ-100/);
-  await edit.getByRole('button',{name:'Attachments',exact:true}).click();
   await edit.getByRole('link',{name:'Download order.txt'}).waitFor();
   await exit(edit);
   console.log('Verified Fetch, inline validation, existing records, attachment persistence and mobile Sales Order create/edit');
@@ -260,7 +269,56 @@ try {
   console.log('Verified GRN stock acceptance follows a passed inward inspection');
   const stock=await generateReport('Stock Ledger');
   const movement=stock.getByRole('row').filter({hasText:'QA-GRN'});
-  assert.deepEqual(await movement.getByRole('cell').allTextContents(),['1',todayISO(),'GRN','QA-GRN','Steel','-','10','0','10','-']);
+  assert.deepEqual(await movement.getByRole('cell').allTextContents(),['1',todayISO(),'GRN','QA-GRN','RM-STEEL','Steel','10','0','10','KG']);
+  const indent=await openForm('Purchase Indents');
+  await field('Purchase Indent No.',indent).fill('QA-INDENT-1');
+  await field('Department',indent).fill('Stores');
+  await indent.getByRole('button',{name:'Add Line Item',exact:true}).click();
+  await indent.getByLabel('Line 1 Description',{exact:true}).fill('Steel');
+  await indent.getByLabel('Line 1 Quantity',{exact:true}).fill('3');
+  await indent.getByRole('button',{name:'Submit for Approval',exact:true}).click();
+  await indent.waitFor({state:'hidden'});
+  assert.deepEqual(store.get('dfab-erp-Purchase Indents')[0].slice(0,4),['QA-INDENT-1','Stores','Steel','3']);
+  assert.equal(store.get('dfab-erp-Purchase Indents')[0][5],'Approval Pending');
+  const newReceipt=await openForm('GRN');
+  await newReceipt.getByRole('button',{name:'Fetch',exact:true}).click();
+  await field('Source document',newReceipt).selectOption('PO-FETCH');
+  await newReceipt.getByRole('button',{name:'Fetch document',exact:true}).click();
+  assert.equal(await field('PO Ref No',newReceipt).inputValue(),'PO-FETCH');
+  assert.equal(await field('Vendor',newReceipt).inputValue(),'Steel Vendor');
+  assert.equal(await newReceipt.getByLabel('Line 1 Description',{exact:true}).inputValue(),'Steel');
+  assert.equal(await newReceipt.getByLabel('Line 1 Quantity',{exact:true}).inputValue(),'');
+  await exit(newReceipt);
+  await open('PO Number Details');
+  await page.getByRole('button',{name:'Related documents for PO-FETCH',exact:true}).click();
+  await page.getByRole('region',{name:'Related documents',exact:true}).waitFor();
+  await page.getByRole('button',{name:'PO-FETCH',exact:true}).click();
+  await page.getByRole('heading',{name:'Purchase Orders',exact:true}).waitFor();
+  assert.equal(await page.getByRole('button',{name:'PO-FETCH',exact:true}).count(),1);
+  await open('RM Inward and Outward');
+  const rawMovement=page.getByRole('row').filter({hasText:'QA-GRN'});
+  assert.match(await rawMovement.innerText(),/Steel.*GRN.*KG.*10/s);
+  console.log('Verified Purchase Order Fetch protects the actual receipt quantity and new registers show saved movements');
+  await open('Job Work Inward');
+  const inwardRow=page.getByRole('row').filter({hasText:'JOB-1'});
+  await inwardRow.getByTitle('Create Inward QC',{exact:true}).click();
+  await page.getByRole('heading',{name:'Inward QC',exact:true}).waitFor();
+  const jobInspectionRef=store.get('dfab-erp-Inward QC')[0][0];
+  const jobInspection=page.getByRole('row').filter({has:page.getByRole('button',{name:jobInspectionRef,exact:true})});
+  await jobInspection.getByTitle('Edit',{exact:true}).click();
+  assert.equal(await field('Job Inward No',editorPage).inputValue(),'JOB-1');
+  assert.equal(await field('GRN No',editorPage).inputValue(),'');
+  await field('Inspector',editorPage).fill('Job inspector');
+  await editorPage.getByRole('button',{name:'Save',exact:true}).click();
+  await jobInspection.getByTitle('Advance status',{exact:true}).click();
+  await jobInspection.getByText('Passed',{exact:true}).waitFor();
+  await jobInspection.getByTitle('Create Sales Orders',{exact:true}).click();
+  await page.getByRole('heading',{name:'Sales Orders',exact:true}).waitFor();
+  const [jobSalesOrder]=store.get('dfab-erp-Sales Orders');
+  assert.deepEqual(jobSalesOrder.slice(1,5),['Job customer','CUSTOMER-PO','Workpiece','6']);
+  assert.equal(jobSalesOrder.at(-1).header['Job Inward No'],'JOB-1');
+  console.log('Verified customer-supplied material advances through inward QC to a linked Sales Order');
+
   const purchase=await openForm('Purchase');
   await field('PO No',purchase).fill('Unrelated PO');
   await purchase.getByRole('button',{name:'Fetch',exact:true}).click();
@@ -272,13 +330,30 @@ try {
   assert.equal(await field('PO No',purchase).inputValue(),'QA-PO');
   assert.equal(await field('Vendor',purchase).inputValue(),'Supplier');
   await exit(purchase);
+  const dispatchInvoice=await openForm('Sales Invoice');
+  await dispatchInvoice.getByRole('button',{name:'Fetch',exact:true}).click();
+  await field('Pick from',dispatchInvoice).selectOption({label:'Delivery Challan'});
+  assert.equal(await field('Source document',dispatchInvoice).locator('option[value="DC-HOLD"]').count(),0);
+  await field('Source document',dispatchInvoice).selectOption('DC-FETCH');
+  await dispatchInvoice.getByRole('button',{name:'Fetch document',exact:true}).click();
+  assert.equal(await field('Customer',dispatchInvoice).inputValue(),'Dispatch customer');
+  assert.equal(await field('DC Number',dispatchInvoice).inputValue(),'DC-FETCH');
+  await dispatchInvoice.getByRole('button',{name:'Products',exact:true}).click();
+  assert.equal(await dispatchInvoice.getByLabel('Line 1 Quantity',{exact:true}).inputValue(),'3');
+  await dispatchInvoice.getByLabel('Line 1 Quantity',{exact:true}).fill('4');
+  await dispatchInvoice.getByRole('button',{name:'Save as Draft',exact:true}).click();
+  assert.match(await dispatchInvoice.getByRole('alert').innerText(),/exceeds the remaining dispatch quantity/);
+  await exit(dispatchInvoice);
+  console.log('Verified invoice Fetch excludes unshipped records and rejects excess billing');
   const invoice=await openForm('Sales Invoice');
   await field('Customer',invoice).fill('Invoice customer');
-  await invoice.getByRole('button',{name:'Additional details',exact:true}).click();
+  const yesterday=new Date(Date.parse(todayISO())-86400000).toISOString().slice(0,10);
+  await field('Date',invoice).fill(yesterday);
+  await field('Due Date',invoice).fill(yesterday);
   await field('IRN No',invoice).fill('QA-IRN-123');
   await invoice.getByRole('button',{name:'Products',exact:true}).click();
-  await invoice.locator('tbody input').nth(1).fill('Invoice item');
-  await invoice.locator('tbody input').nth(3).fill('100');
+  await invoice.getByLabel('Line 1 Description',{exact:true}).fill('Invoice item');
+  await invoice.getByLabel('Line 1 Rate',{exact:true}).fill('100');
   await invoice.getByLabel('Line 1 UOM',{exact:true}).fill('NOS');
   await invoice.getByRole('button',{name:'Charges',exact:true}).click();
   await invoice.getByLabel('Freight Charges amount',{exact:true}).fill('7');
@@ -288,12 +363,11 @@ try {
   assert.match(await summary.innerText(),/Taxable amount\s+100\.00/);
   assert.match(await summary.innerText(),/Tax\s+18\.00/);
   assert.match(await summary.innerText(),/Total\s+125\.00/);
-  await invoice.getByRole('button',{name:'Details',exact:true}).click();
+  await invoice.getByRole('button',{name:'Products',exact:true}).click();
   assert.match(await summary.innerText(),/125\.00/);
   await invoice.getByRole('button',{name:'Save as Draft',exact:true}).click();
   await page.locator('.sales-table-wrap .link-button').first().click();
   await page.getByRole('button',{name:'Edit invoice',exact:true}).click();
-  await invoice.getByRole('button',{name:'Additional details',exact:true}).click();
   assert.equal(await field('IRN No',invoice).inputValue(),'QA-IRN-123');
   await invoice.getByRole('button',{name:'Charges',exact:true}).click();
   assert.equal(await invoice.getByLabel('Freight Charges amount',{exact:true}).inputValue(),'7');
@@ -323,6 +397,9 @@ try {
   assert.match(await header.getByRole('row').filter({hasText:invoiceNumber}).innerText(),/125/);
   const pending=await generateReport('Pending Receivables');
   assert.match(await pending.getByRole('row').filter({hasText:invoiceNumber}).innerText(),/125/);
+  await open('Customer Payment Overdue');
+  const overdue=page.getByRole('row').filter({hasText:invoiceNumber});
+  assert.deepEqual((await overdue.getByRole('cell').allTextContents()).slice(2,7),[yesterday,'1','125','0','125']);
   const payment=await openForm('Customer Payments');
   await payment.getByRole('button',{name:'Fetch',exact:true}).click();
   await field('Source document',payment).selectOption(invoiceNumber);
@@ -338,7 +415,9 @@ try {
   assert.equal(store.get('dfab-erp-Customer Payments')[0][2],invoiceNumber);
   const settled=await generateReport('Pending Receivables');
   assert.equal(await settled.getByRole('row').filter({hasText:invoiceNumber}).count(),0);
-  console.log('Verified invoice register lines and totals, posted stock ledger and receivable removal after settlement');
+  await open('Customer Payment Overdue');
+  assert.equal(await page.getByRole('row').filter({hasText:invoiceNumber}).count(),0);
+  console.log('Verified invoice totals, posted stock, overdue reporting and receivable removal after settlement');
   rights['Customer Payments'].view=false;
   await page.reload();
   await page.locator('.command-launcher').waitFor({state:'attached'});

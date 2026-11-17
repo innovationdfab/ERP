@@ -1,0 +1,181 @@
+/* Transaction editor only. The rest of the ERP uses the existing shell and theme. */
+.page-transition-shell > .transaction-editor-page {
+  gap:0;
+  padding:0!important;
+}
+.transaction-editor-page .transaction-editor-heading {
+  gap:8px;
+  border-radius:0;
+}
+.transaction-editor-page .transaction-editor-heading h1 {
+  font-size:clamp(16px,2vw,23px);
+}
+.transaction-editor-page .transaction-editor-title > p { display:none; }
+.transaction-editor-page .transaction-editor-actions {
+  align-items:center;
+  justify-content:flex-end;
+  max-width:100%;
+}
+.transaction-editor-page .transaction-editor-actions .action-pill {
+  min-height:28px;
+  padding:4px 8px;
+  font-size:12px;
+}
+.transaction-editor-page .transaction-editor-actions .action-pill.yellow {
+  background:#f2c453;
+  color:#33250c;
+}
+.transaction-editor-page .transaction-editor-surface {
+  border:0;
+  border-radius:0;
+  background:#c5e1f3;
+}
+.transaction-editor-page .transaction-editor-body {
+  padding:10px;
+}
+.transaction-editor-page .legacy-header-grid {
+  grid-template-columns:repeat(6,minmax(0,1fr))!important;
+  gap:6px 14px!important;
+  padding:0!important;
+}
+.transaction-editor-page .legacy-header-grid > label {
+  align-content:start;
+  font-size:12px;
+  gap:2px!important;
+}
+.transaction-editor-page .transaction-editor-body .legacy-header-grid > label > :is(input,select,textarea) {
+  height:28px!important;
+  min-height:28px!important;
+  padding:3px 6px!important;
+  font-size:12px;
+  border-radius:3px;
+}
+.transaction-editor-page .transaction-editor-body .legacy-header-grid > label > textarea {
+  height:auto!important;
+  max-height:90px;
+}
+.transaction-editor-page .legacy-header-grid .legacy-date,
+.transaction-editor-page .legacy-header-grid .legacy-series { max-width:145px; }
+.transaction-editor-page .legacy-header-grid .legacy-party { grid-column:1/span 3; }
+.transaction-editor-page .legacy-header-grid .legacy-consignee { grid-column:4/span 3; }
+.transaction-editor-page .legacy-header-grid .legacy-new-row { grid-column-start:1; }
+.transaction-editor-page .reference-attachments {
+  display:flex;
+  flex-wrap:wrap;
+  gap:8px 16px;
+  padding:0;
+  margin:8px 0;
+}
+.transaction-editor-page .transaction-attachment-card {
+  flex:0 1 340px;
+  padding:0;
+  border:0;
+}
+.transaction-editor-page .transaction-attachment-card h3 { font-size:12px; }
+.transaction-editor-page .transaction-attachment-card .premium-dropzone {
+  padding:4px 7px;
+  border-radius:3px;
+  background:var(--v14-surface);
+}
+.transaction-editor-page .transaction-attachment-card .premium-dropzone > small {
+  position:absolute;
+  width:1px;
+  height:1px;
+  overflow:hidden;
+  clip-path:inset(50%);
+}
+.transaction-editor-page .reference-sections {
+  display:flex;
+  flex-wrap:wrap;
+  gap:0;
+  padding:0;
+  margin-top:10px;
+}
+.transaction-editor-page .transaction-section-tab {
+  padding:5px 10px;
+  border:1px solid transparent;
+  border-radius:4px 4px 0 0;
+  font-size:12px;
+}
+.transaction-editor-page .transaction-section-tab[aria-current=true] {
+  background:var(--v14-surface);
+  border-color:var(--v14-border);
+  border-bottom-color:var(--v14-surface);
+}
+.transaction-editor-page .legacy-form-tab-panel { min-width:0; }
+.transaction-editor-page .legacy-form-tab-panel:not(:empty) {
+  padding:7px 9px;
+  background:var(--v14-surface);
+  border:1px solid var(--v14-border);
+  border-radius:0 4px 4px 4px;
+}
+.transaction-editor-page .invoice-lines-head {
+  justify-content:flex-start;
+  padding:0 0 5px;
+}
+.transaction-editor-page .invoice-lines-head .transaction-section-heading {
+  position:absolute;
+  width:1px;
+  height:1px;
+  padding:0;
+  overflow:hidden;
+  clip-path:inset(50%);
+}
+.transaction-editor-page .invoice-product-grid { min-width:1110px; }
+.transaction-editor-page .invoice-product-grid :is(th,td) {
+  padding:4px 5px;
+  font-size:12px;
+  white-space:nowrap;
+}
+.transaction-editor-page .invoice-product-grid input {
+  height:27px;
+  min-width:57px!important;
+  padding:2px 4px;
+}
+.transaction-editor-page .invoice-product-grid :is(td,th):nth-child(4) input { min-width:140px!important; }
+.transaction-editor-page .transaction-editor-body > .transaction-values {
+  margin-top:8px;
+  background:var(--v14-surface);
+}
+.transaction-editor-page .transaction-fetch-panel {
+  padding:6px;
+  border:1px solid var(--v14-border);
+  border-radius:4px;
+  background:var(--v14-surface);
+}
+.transaction-editor-page .legacy-fetch-actions {
+  display:flex;
+  flex-wrap:wrap;
+  align-items:center;
+  gap:6px;
+}
+@container (max-width:850px) {
+  .transaction-editor-page .legacy-header-grid { grid-template-columns:repeat(3,minmax(0,1fr))!important; }
+  .transaction-editor-page .legacy-header-grid .legacy-party,
+  .transaction-editor-page .legacy-header-grid .legacy-consignee { grid-column:1/-1; }
+}
+@container (max-width:540px) {
+  .transaction-editor-page .legacy-header-grid { grid-template-columns:repeat(2,minmax(0,1fr))!important; }
+  .transaction-editor-page .legacy-header-grid .legacy-new-row { grid-column-start:auto; }
+}
+@media (max-width:760px) {
+  .transaction-editor-page .transaction-editor-actions { justify-content:flex-start; margin-inline-start:0; }
+  .transaction-editor-page .reference-fetch-grid { grid-template-columns:repeat(2,minmax(0,1fr))!important; }
+  .transaction-editor-page .transaction-editor-body { padding:7px; }
+}
+
+.transaction-editor-page .legacy-remarks-button {
+  justify-self:start;
+  background:var(--v14-primary);
+  color:#fff;
+  border:0;
+  border-radius:3px;
+  padding:4px 7px;
+  min-height:28px;
+  font:inherit;
+  cursor:pointer;
+}
+.transaction-editor-page .legacy-remarks-button:focus-visible {
+  outline:2px solid var(--v14-primary);
+  outline-offset:2px;
+}

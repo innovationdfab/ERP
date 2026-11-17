@@ -5,6 +5,7 @@ const cache = new Map();
 // compare-and-swap expectations for a later write.
 const committed = new Map();
 let accessToken = '';
+let sessionRevision = 0;
 let initialized = false;
 let writeQueue = Promise.resolve();
 let writeErrors = [];
@@ -17,8 +18,29 @@ function emit(name, detail) {
 }
 
 export function setCloudAccessToken(token = '') {
+  if (accessToken === token) return;
   accessToken = token;
-  if (!token) { initialized = false; cache.clear(); committed.clear(); emit('erp-cloud-change', { type: 'logout' }); }
+  sessionRevision++;
+  initialized = false;
+  cache.clear();
+  committed.clear();
+  writeQueue = Promise.resolve();
+  writeErrors = [];
+  emit('erp-cloud-change', { type: token ? 'session' : 'logout' });
+}
+
+function assertSession(revision) {
+  if (sessionRevision !== revision) throw new Error('ERP session changed before the operation completed.');
+}
+
+class QueuedChangeConflict extends Error {}
+const samePayload=(a,b)=>JSON.stringify(a)===JSON.stringify(b);
+const cachedPayload=key=>cache.has(key)?cache.get(key):null;
+const committedPayload=key=>committed.has(key)?committed.get(key):null;
+function checkQueuedSnapshot(key,expected) {
+  if(!samePayload(expected,committedPayload(key))) {
+    throw new QueuedChangeConflict(`The ${key} records changed while this save was waiting. Reopen the page and retry.`);
+  }
 }
 
 export function isCloudStoreReady() {
@@ -29,9 +51,12 @@ export async function initializeCloudStore(token) {
   if (!backendConfigured) {
     throw new Error('Supabase is not configured. Add VITE_SUPABASE_URL and VITE_SUPABASE_PUBLISHABLE_KEY to .env.');
   }
+  setCloudAccessToken(token || '');
+  const revision=sessionRevision;
   if (initialized) await flushCloudWrites();
-  accessToken = token || '';
+  assertSession(revision);
   const rows = await rpc('erp_get_ui_state', {}, { accessToken });
+  assertSession(revision);
   cache.clear();
   committed.clear();
   for (const row of rows || []) { cache.set(row.storage_key, row.payload); committed.set(row.storage_key, row.payload); }
@@ -67,16 +92,18 @@ function reportWriteFailure(key, error) {
 }
 
 function scheduleWrite(key, action) {
-  const token = accessToken;
+  const token = accessToken, revision = sessionRevision;
   writeQueue = writeQueue.catch(() => undefined).then(async () => {
     assertWriteAllowed();
     if (!initialized || accessToken !== token) throw new Error('ERP session changed before the pending save was completed.');
-    await action(token);
+    assertSession(revision);
+    await action(token,revision);
   }).catch(error => {
     // Preserve the first failure for flushCloudWrites and block subsequent writes.
-    if (!writeErrors.length) reportWriteFailure(key, error);
+    if (revision===sessionRevision&&!writeErrors.length) reportWriteFailure(key, error);
     throw error;
   });
+  void writeQueue.catch(()=>{});
 }
 
 // Existing synchronous caller contract is preserved for forms that use optimistic
@@ -84,17 +111,19 @@ function scheduleWrite(key, action) {
 export function writeCloudValue(key, value) {
   assertCloudKey(key);
   assertWriteAllowed();
+  const base=cachedPayload(key);
   cache.set(key, value);
   emit('erp-cloud-change', { type: 'write', key });
   if (!initialized || !accessToken) return true;
-  scheduleWrite(key, async token => {
-    const expected = committed.has(key) ? committed.get(key) : null;
+  scheduleWrite(key, async (token,revision) => {
+    checkQueuedSnapshot(key,base);
     try {
-      await rpc('erp_put_ui_state_if_unchanged', { p_storage_key: key, p_expected: expected, p_payload: value }, { accessToken: token });
+      await rpc('erp_put_ui_state_if_unchanged', { p_storage_key: key, p_expected: base, p_payload: value }, { accessToken: token });
     } catch (error) {
       if (!isMissingIntegrityRpc(error, 'erp_put_ui_state_if_unchanged')) throw error;
       throw new Error('Secure Supabase saving is not installed. Apply ERP_FLOW_INTEGRITY_UPGRADE.sql in staging first; no overwrite was attempted.');
     }
+    assertSession(revision);
     committed.set(key, value);
     emit('erp-storage-saved', { key });
   });
@@ -107,7 +136,7 @@ export function removeCloudValue(key) {
   cache.delete(key);
   emit('erp-cloud-change', { type: 'delete', key });
   if (!initialized || !accessToken) return false;
-  scheduleWrite(key, async token => {
+  scheduleWrite(key, async (token,revision) => {
     const expected = committed.has(key) ? committed.get(key) : null;
     try {
       await rpc('erp_delete_ui_state_if_unchanged', { p_storage_key: key, p_expected: expected }, { accessToken: token });
@@ -115,6 +144,7 @@ export function removeCloudValue(key) {
       if (!isMissingIntegrityRpc(error, 'erp_delete_ui_state_if_unchanged')) throw error;
       throw new Error('Secure Supabase deletion is not installed. Apply ERP_PRODUCTION_GUARDRAILS.sql in staging first.');
     }
+    assertSession(revision);
     committed.delete(key);
     emit('erp-storage-saved', { key });
   });
@@ -151,20 +181,24 @@ function isMissingIntegrityRpc(error, name) {
 export async function writeCloudValueConfirmed(key, value, visibleValue) {
   if (!initialized || !accessToken) throw new Error('Supabase session is not ready. Please log in again.');
   if (!key || typeof key !== 'string') throw new Error('A valid ERP storage key is required.');
-  const token=accessToken;
+  const token=accessToken, revision=sessionRevision;
   assertCloudKey(key);
   assertWriteAllowed();
-  if (visibleValue !== undefined && cache.has(key) && JSON.stringify(visibleValue)!==JSON.stringify(cache.get(key))) throw new Error('The ERP data changed since this page was opened. Reopen the page before saving.');
+  const expected=cachedPayload(key);
+  if(visibleValue!==undefined&&cache.has(key)&&!samePayload(visibleValue,expected)) {
+    throw new QueuedChangeConflict('The ERP data changed since this page was opened. Reopen the page before saving.');
+  }
   const operation=writeQueue.catch(() => undefined).then(async () => {
+    assertSession(revision);
     assertWriteAllowed();
-    const expected=committed.has(key)?committed.get(key):null;
-    if (accessToken !== token || !initialized) throw new Error('ERP session changed during save.');
+    checkQueuedSnapshot(key,expected);
     try {
       await rpc('erp_put_ui_state_if_unchanged', {p_storage_key:key,p_expected:expected,p_payload:value}, {accessToken:token});
     } catch (error) {
       if (!isMissingIntegrityRpc(error,'erp_put_ui_state_if_unchanged')) throw error;
       throw new Error('Secure Supabase saving is not installed. Apply ERP_FLOW_INTEGRITY_UPGRADE.sql in staging first.');
     }
+    assertSession(revision);
     cache.set(key,value);
     committed.set(key,value);
     emit('erp-cloud-change',{type:'confirmed-write',key});
@@ -173,8 +207,7 @@ export async function writeCloudValueConfirmed(key, value, visibleValue) {
   writeQueue=operation;
   try { await operation; }
   catch(error) {
-    writeErrors.push({key,error});
-    emit('erp-storage-error', `Database save failed for ${key}: ${error.message}`);
+    if(revision===sessionRevision&&!(error instanceof QueuedChangeConflict)&&!writeErrors.length)reportWriteFailure(key,error);
     throw error;
   }
 }
@@ -182,30 +215,45 @@ export async function writeCloudValueConfirmed(key, value, visibleValue) {
 /** Connected handoffs commit downstream record, link, and invoice detail atomically.
  * Missing SQL upgrade is a hard error: never partially write a transaction. */
 export async function writeCloudBatchConfirmed(changes) {
+  if(!Array.isArray(changes)||changes.length<2||changes.length>3)throw new Error('Two or three ERP sections required.');
+  return commitSections(changes,'erp_commit_ui_state_batch');
+}
+export async function restoreCloudSectionsConfirmed(entries) {
+  if(!Array.isArray(entries)||!entries.length||entries.length>500)throw new Error('Choose a backup with 1 to 500 data sections.');
+  return commitSections(entries.map(([key,value])=>({key,value})),'erp_restore_ui_state');
+}
+async function commitSections(changes,rpcName) {
   if (!initialized || !accessToken) throw new Error('Supabase session is not ready. Please log in again.');
-  if (!Array.isArray(changes) || changes.length < 2 || changes.length > 3) throw new Error('Two or three ERP sections required.');
   assertWriteAllowed();
   for (const {key} of changes) assertCloudKey(key);
   if (new Set(changes.map(item => item.key)).size !== changes.length) throw new Error('Duplicate ERP storage keys in one batch.');
-  const token=accessToken;
-  for(const {key,expected} of changes){
-    if(expected!==undefined && cache.has(key) && JSON.stringify(expected)!==JSON.stringify(cache.get(key))) throw new Error(`The ${key} records changed since this page was opened. Reload before saving.`);
-  }
+  const token=accessToken, revision=sessionRevision;
+  const expectedChanges=changes.map(({key,expected,value})=>{
+    const current=cachedPayload(key);
+    if(expected!==undefined&&cache.has(key)&&!samePayload(expected,current)) {
+      throw new QueuedChangeConflict(`The ${key} records changed since this page was opened. Reload before saving.`);
+    }
+    return {key,expected:current,payload:value};
+  });
   const operation=writeQueue.catch(() => undefined).then(async () => {
+    assertSession(revision);
     assertWriteAllowed();
-    const expectedChanges=changes.map(({key,value})=>({key,expected:committed.has(key)?committed.get(key):null,payload:value}));
-    if (accessToken !== token || !initialized) throw new Error('ERP session changed during save.');
+    for(const {key,expected} of expectedChanges)checkQueuedSnapshot(key,expected);
     try {
-      await rpc('erp_commit_ui_state_batch',{p_changes:expectedChanges},{accessToken:token});
+      await rpc(rpcName,{p_changes:expectedChanges},{accessToken:token});
     } catch(error) {
-      if (!isMissingIntegrityRpc(error,'erp_commit_ui_state_batch')) throw error;
+      if (!isMissingIntegrityRpc(error,rpcName)) throw error;
+      if(rpcName==='erp_restore_ui_state')throw new Error('Atomic restore is unavailable. Apply ERP_WORKSPACE_INTEGRITY.sql first.');
       // A partial multi-document save would corrupt transaction lineage. Fail
       // closed until the atomic SQL upgrade is installed in Supabase.
       throw new Error('Atomic workflow saving is unavailable. Apply supabase/ERP_FLOW_INTEGRITY_UPGRADE.sql and retry; no document was created.');
     }
+    assertSession(revision);
     for(const item of expectedChanges) {
       cache.set(item.key,item.payload);
       committed.set(item.key,item.payload);
+    }
+    for(const item of expectedChanges) {
       emit('erp-cloud-change',{type:'confirmed-write',key:item.key});
       emit('erp-storage-saved',{key:item.key});
     }
@@ -213,8 +261,7 @@ export async function writeCloudBatchConfirmed(changes) {
   writeQueue=operation;
   try {await operation;}
   catch(error) {
-    writeErrors.push({key:'workflow-batch',error});
-    emit('erp-storage-error',`Connected document save failed: ${error.message}`);
+    if(revision===sessionRevision&&!(error instanceof QueuedChangeConflict)&&!writeErrors.length)reportWriteFailure(rpcName,error);
     throw error;
   }
 }

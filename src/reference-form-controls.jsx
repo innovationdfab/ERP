@@ -22,15 +22,20 @@ function readReferenceAttachment(file) {
   });
 }
 
-export function ReferenceField({field,value,onChange,Suggest}) {
+export function ReferenceField({field,value,onChange,Suggest,className}) {
   const {label,key,type,options,required}=field;
-  return <label>
+  const [remarksOpen,setRemarksOpen]=useState(false);
+  return <label className={className}>
     <span className={required?'transaction-required':undefined}>{label}</span>
     {options ? <select value={value || ''} onChange={event=>onChange(key,event.target.value)} required={required}>
       <option value="">Select {label}</option>
       {value && !options.includes(value) && <option>{value}</option>}
       {options.map(option=><option key={option}>{option}</option>)}
-    </select> : type==='textarea' ? <textarea value={value ?? ''} onChange={event=>onChange(key,event.target.value)}/>
+    </select> : type==='textarea'&&/remarks/i.test(label) ? <>
+      <button type="button" className="legacy-remarks-button" aria-label={`Toggle ${label}`}
+        aria-expanded={remarksOpen} onClick={()=>setRemarksOpen(current=>!current)}>{label}</button>
+      {remarksOpen&&<textarea aria-label={label} value={value??''} onChange={event=>onChange(key,event.target.value)}/>}
+    </> : type==='textarea' ? <textarea value={value??''} onChange={event=>onChange(key,event.target.value)}/>
       : React.createElement(Suggest,{
         label:suggestionLabel[label]||label,type,required,
         value:type==='date'?isoDate(value):value ?? '',
@@ -68,10 +73,10 @@ export function ReferenceFetch({title,getRecords,onFetch,disabled=false}) {
   const trigger=useRef(null);
   if (!sources?.length) return null;
   const source=sources[sourceIndex];
-  const records=expanded?getRecords(source.module):[];
+  const records=expanded?getRecords(source):[];
   const terms=query.trim().toLowerCase().split(/\s+/);
   const matches=records.filter(record=>{
-    const text=`${record.number} ${record.party||''}`.toLowerCase();
+    const text=`${record.number} ${record.party||''} ${record.fields.Product||record.fields.Item||''}`.toLowerCase();
     return terms.every(term=>text.includes(term));
   });
   const selected=matches.find(record=>record.number===number);
@@ -90,10 +95,13 @@ export function ReferenceFetch({title,getRecords,onFetch,disabled=false}) {
       aria-controls={panelId} onClick={()=>{setFetchError('');setExpanded(!expanded);}}><RefreshCw size={15}/> Fetch</button>
     {applied && <span role="status">Fetched from {applied}</span>}
     </div>
-    <div className="transaction-fetch-panel" id={panelId} hidden={!expanded}>
+    <div className="transaction-fetch-panel" id={panelId} role="region" aria-label="Transaction Fetch" hidden={!expanded} onKeyDown={event=>{
+      if(event.key==='Escape'){setExpanded(false);trigger.current?.focus();}
+    }}>
       <div className="modal-grid reference-fetch-grid">
-        <label><span>Source type</span><select value={sourceIndex} onChange={event=>{
+        <label><span>Pick from</span><select value={sourceIndex} onChange={event=>{
           setSourceIndex(Number(event.target.value));
+          setQuery('');
           setNumber('');
           setFetchError('');
         }}>{sources.map(({module},index)=><option key={module} value={index}>{module}</option>)}</select></label>
@@ -104,10 +112,19 @@ export function ReferenceFetch({title,getRecords,onFetch,disabled=false}) {
         }}/></label>
         <label><span>Source document</span><select value={number} onChange={event=>{setNumber(event.target.value);setFetchError('');}}>
           <option value="">Select a document</option>
-          {matches.map(record=><option key={record.number} value={record.number}>{record.number}{record.party?` · ${record.party}`:''}</option>)}
+          {matches.slice(0,150).map(record=><option key={record.number} value={record.number}>{record.number}{record.party?` · ${record.party}`:''}{(record.fields.Status||record.fields['QC Status'])?` · ${record.fields.Status||record.fields['QC Status']}`:''}</option>)}
         </select></label>
-        <button type="button" className="action-pill blue" disabled={!selected || disabled} onClick={choose}>Fetch document</button>
+        <div className="legacy-fetch-actions">
+          <button type="button" className="action-pill gray" onClick={()=>{setExpanded(false);trigger.current?.focus();}}>Close</button>
+          <button type="button" className="action-pill blue" disabled={!selected || disabled} onClick={choose}>Fetch document</button>
+        </div>
       </div>
+      {selected&&<TransactionValues label="Source preview" values={[
+        ['Product',selected.fields.Product||selected.fields.Item||selected.fields.Material],
+        ['Quantity',selected.fields.Qty||selected.fields['Received Qty']||selected.fields['Good Qty']],['UOM',selected.fields.UOM],
+        ['Status',selected.fields.Status||selected.fields['QC Status']]
+      ]}/>}
+      {matches.length>150&&<p role="status">Showing the first 150 matches. Narrow the search by reference, party or item.</p>}
       {fetchError&&<p role="alert">{fetchError}</p>}
       {!matches.length && <p role="status">{records.length?'No documents match the search.':'No saved source documents available.'}</p>}
     </div>
@@ -122,11 +139,16 @@ export function ReferenceSections({sections,active,onChange}) {
   </nav>;
 }
 
-export function TransactionEditor({title,reference,busy,onBack,sections,active,onSectionChange,actions,error,fetch,children}) {
+export function TransactionEditor({title,reference,busy,onBack,sections,active,onSectionChange,actions,error,fetch,header,footer,children}) {
   const heading=useRef(null);
   const body=useRef(null);
   useEffect(()=>{heading.current?.focus({preventScroll:true});},[]);
-  useEffect(()=>{body.current?.scrollTo({top:0,behavior:'instant'});},[active]);
+  useEffect(()=>{
+    if(!error)return;
+    if(active==='Products'||active==='Charges'||active==='External Expenses'){
+      body.current?.querySelector('.legacy-form-tab-panel')?.scrollIntoView({block:'nearest'});
+    }else body.current?.scrollTo({top:0,behavior:'instant'});
+  },[active,error]);
   return <main className="content page-shell transaction-editor transaction-editor-page" aria-labelledby="transaction-editor-title">
     <header className="transaction-editor-heading">
       <button type="button" className="erp-form-back" onClick={onBack} disabled={busy} aria-label="Back to records"><ArrowLeft size={16}/> Back</button>
@@ -135,18 +157,18 @@ export function TransactionEditor({title,reference,busy,onBack,sections,active,o
         {reference&&<p>{reference}</p>}
       </div>
       <div className="transaction-editor-actions" aria-label="Document actions">
-        <button type="button" className="action-pill gray" onClick={onBack} disabled={busy}>Cancel</button>
+        {fetch}
         {actions}
+        <button type="button" className="action-pill gray" onClick={onBack} disabled={busy}>Cancel</button>
       </div>
     </header>
     <section className="transaction-editor-surface" aria-label="Transaction form" aria-busy={busy}>
-      <div className="transaction-editor-tools">
-        <ReferenceSections sections={sections} active={active} onChange={onSectionChange}/>
-        {fetch}
-      </div>
       {error&&<p className="transaction-editor-error" role="alert">{error}</p>}
-      <div className="transaction-editor-body" ref={body} role="region" aria-label={`${active} fields`} tabIndex={0}>
-        {children}
+      <div className="transaction-editor-body" ref={body} role="region" aria-label="Document fields" tabIndex={0}>
+        {header}
+        <ReferenceSections sections={sections} active={active} onChange={onSectionChange}/>
+        <div className="legacy-form-tab-panel" role="region" aria-label={`${active} fields`}>{children}</div>
+        {footer}
       </div>
     </section>
   </main>;

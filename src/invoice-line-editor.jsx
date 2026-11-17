@@ -2,19 +2,20 @@ import React from 'react';
 import { Plus, Trash2 } from 'lucide-react';
 import { invoiceChargeFields, invoiceExpenseFields, invoiceTaxFields } from './invoice-calculations.js';
 
-const fields=[['code','Product Code'],['description','Description'],['quantity','Quantity'],['rate','Rate'],['uom','UOM'],['discount','Disc %']];
+const fields=[['code','Product Code'],['description','Description'],['quantity','Quantity'],['uom','UOM'],['rate','Rate'],['discount','Disc %']];
 const amount=value=>value?.toFixed(2)??'—';
 
-export function InvoiceProducts({lines,totals,onAdd,onRemove,onChange,Suggest,disabled}) {
+export function InvoiceProducts({lines,totals,onAdd,onRemove,onChange,Suggest,disabled,legacy=false,hideAdd=false,addButton}) {
   return <section className="reference-panel invoice-form-card">
     <div className="invoice-lines-head"><h2 className="transaction-section-heading">Products</h2>
-      <button type="button" className="action-pill blue" onClick={onAdd} disabled={disabled}><Plus size={15}/> Add Line Item</button></div>
+      {!hideAdd&&(addButton||<button type="button" className="action-pill blue" onClick={onAdd} disabled={disabled}><Plus size={15}/> Add Line Item</button>)}</div>
     <div className="table-wrap" tabIndex={0} aria-label="Invoice line items">
       <table className="invoice-product-grid">
-        <thead><tr>{['#',...fields.map(([,label])=>label),'Disc Amt.','Taxable Amt.',...invoiceTaxFields.flatMap(([,label])=>[`${label} %`,`${label} Amt.`]),'Tax Amt.','Gross Amt.','Action'].map(label=><th scope="col" key={label}>{label}</th>)}</tr></thead>
+        <thead><tr>{['Actions','Sl.No.',...fields.map(([,label])=>label),'Disc Amt.','Taxable Amt.',...invoiceTaxFields.flatMap(([,label])=>[`${label} %`,`${label} Amt.`]),'Gross Amt.'].map(label=><th scope="col" key={label}>{label}</th>)}</tr></thead>
         <tbody>{lines.map((line,index)=>{
           const computed=totals?.details[index];
-          return <tr key={index}><td>{index+1}</td>
+          return <tr key={index}><td><button type="button" className="line-remove" aria-label={`Remove line ${index+1}`}
+              disabled={disabled||(!legacy&&lines.length===1)} onClick={()=>onRemove(index)}><Trash2 size={14}/></button></td><td>{index+1}</td>
             {fields.map(([key,label])=><td key={key}>{React.createElement(Suggest,{
               label:key==='code'?'Product Code':label,ariaLabel:`Line ${index+1} ${label}`,disabled,
               value:line[key]??'',type:['code','description','uom'].includes(key)?'text':'number',
@@ -25,14 +26,12 @@ export function InvoiceProducts({lines,totals,onAdd,onRemove,onChange,Suggest,di
               <input aria-label={`Line ${index+1} ${label} %`} type="number" min="0" max="100" step="any" disabled={disabled}
                 value={line[key]??''} onChange={event=>onChange(index,key,event.target.value)}/>
               </td><td>{amount(computed?.[key])}</td></React.Fragment>)}
-            <td>{amount(computed?.tax)}</td><td>{amount(computed?.gross)}</td>
-            <td><button type="button" className="line-remove" aria-label={`Remove line ${index+1}`}
-              disabled={disabled||lines.length===1} onClick={()=>onRemove(index)}><Trash2 size={14}/></button></td>
+            <td>{amount(computed?.gross)}</td>
           </tr>;
         })}</tbody>
       </table>
     </div>
-    <p className="invoice-editor-help">Blank line tax fields use the invoice Tax (%) setting.</p>
+    {!legacy&&<p className="invoice-editor-help">Blank line tax fields use the invoice Tax (%) setting.</p>}
   </section>;
 }
 
