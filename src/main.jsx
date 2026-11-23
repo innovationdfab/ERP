@@ -35,6 +35,7 @@ import { restorePreviousErpDataOnce, getRestoredDataStatus } from './restored-se
 import { initializeCloudStore, setCloudAccessToken, exportCloudSnapshot, flushCloudWrites, resetCloudWriteErrors, writeCloudValueConfirmed, writeCloudBatchConfirmed, restoreCloudSectionsConfirmed } from './backend/cloud-store.js';
 import { findRecord, recordToObject, validateConnectedRecord, resolveWorkflowContext, validateProductionProgress, receiptPostingStatus, canRejectProductionDocument, nextProductionStatus } from './workflow-integrity.js';
 import { describeDocument, documentReportRows, fetchConflict, hasDocumentValue, invoiceColumns } from './document-data.js';
+import { referenceFetchValues, dispatchInvoiceSource, referenceSelectionConflict, sourceProvenance, verifyDispatchInvoice, activeSource } from './document-fetch.js';
 import { calculateInvoice } from './invoice-calculations.js';
 import { InvoiceProducts, InvoiceCharges, InvoiceExpenses } from './invoice-line-editor.jsx';
 import { imantraTransactions, imantraForwardStatuses, imantraReportDefinitions, imantraReportRows, validateImantraDocument, imantraReferenceSource, imantraForwardPrefill } from './imantra-integration.js';
@@ -1058,14 +1059,18 @@ function SalesInvoicePage({access,navigationReference=''}){
     options:label==='Series'?invoiceReference.series:referenceOptions('Sales Invoice',label)
   }));
   const fetchInvoice=(source,record)=>{
-    const conflict=fetchConflict('sourceOrder',form,record);
-    if(conflict)return 'Clear the Sales Order Reference before fetching a different sales order.';
-    const values=referenceFetchValues(source,record,invoiceFields.filter(field=>!['Date','Series','Tax (%)'].includes(field.label)));
+    const conflict=referenceSelectionConflict(source,record,form,form.fetchedFrom);
+    if(conflict)return conflict;
+    const dispatch=dispatchInvoiceSource(source,record);
+    const values={...referenceFetchValues(source,record,invoiceFields.filter(field=>!['Date','Series','Tax (%)'].includes(field.label))),...dispatch.values};
+    const sourceLine=dispatch.line;
     const line=lines[0];
     const blankLine=lines.length===1&&!line.description&&!line.code&&line.quantity==='1'&&line.rate==='0';
-    const {Product,Qty,UOM}=record.fields;
-    if(blankLine&&hasDocumentValue(Product))setLines([{...newLine(),description:Product,quantity:hasDocumentValue(Qty)?String(Qty):'1',uom:UOM||''}]);
-    setForm(current=>({...applyReferenceFetch(current,values),sourceOrder:record.number}));
+    if(blankLine&&sourceLine)setLines([{...newLine(),...sourceLine}]);
+    setForm(current=>{
+      const next=applyReferenceFetch(current,values);
+      return {...next,fetchedFrom:sourceProvenance(source,record,next)};
+    });
     return '';
   };
   let invoicePreview=null;
@@ -1086,6 +1091,13 @@ function SalesInvoicePage({access,navigationReference=''}){
     if(savingInvoice||reading||!canAdminAccess(access,'Sales Invoice',editing?'edit':'create'))return;
     if(!form.customer.trim()||!isoDate(form.date)){setSection('Details');setFormError('A valid invoice date and customer are required.');return}
     if(form.dueDate&&(!isoDate(form.dueDate)||form.dueDate<isoDate(form.date))){setFormError('Due Date must be on or after the invoice date.');return;}
+    if(['Delivery Challan','Job Work Return DC'].includes(form.fetchedFrom?.module)){
+      if(!canAdminAccess(access,form.fetchedFrom.module,'view')){setFormError('Source dispatch access is required to verify billing.');return;}
+      const record=getReferenceRecords(form.fetchedFrom.module).find(record=>record.number===form.fetchedFrom.number);
+      if(!activeSource(form.fetchedFrom,form)||!record){setFormError('The fetched dispatch reference changed or is unavailable. Reopen and fetch the correct dispatch.');return;}
+      const error=verifyDispatchInvoice(form,lines,record,getReferenceRecords('Sales Invoice'),editing);
+      if(error){setFormError(error);return;}
+    }
     let totals;
     try {totals=calculateInvoice(lines,String(form.taxRate??''),charges,expenses)}
     catch(error){const errorSection=error.message.startsWith('Tax (%)')?'Additional details':
@@ -1101,7 +1113,7 @@ function SalesInvoicePage({access,navigationReference=''}){
     const number=editing||`${prefix}${String(serial).padStart(4,'0')}`;
     const row=[previous?.[0]||String(rows.length+1),number,displayDate(form.date),form.customer,form.po||'-',form.project||'-',status,totals.total.toFixed(2),previous?.[8]||'NOT CONNECTED',previous?.[9]||'',JSON.stringify(lines)];
     const updatedRows=editing?rows.map(r=>r[1]===editing?row:r):[row,...rows];
-    const updatedDetails={...details,[number]:{form:{...form},files:Object.fromEntries(Object.entries(attachments).filter(([,file])=>file)),lines:lines.map(line=>({...line})),charges,expenses,taxable:totals.taxable,tax:totals.tax,total:totals.total}};
+    const updatedDetails={...details,[number]:{form:{...form},fetchedFrom:form.fetchedFrom,files:Object.fromEntries(Object.entries(attachments).filter(([,file])=>file)),lines:lines.map(line=>({...line})),charges,expenses,taxable:totals.taxable,tax:totals.tax,total:totals.total}};
     setFormError('');
     setSavingInvoice(true);
     try {
@@ -1685,27 +1697,6 @@ function getReferenceRecords(module){
     const fields=resolveWorkflowContext(module,record.fields,lookup,links);
     return {...record,fields,party:fields.Customer||fields.Vendor||fields.Supplier};
   });
-}
-
-function referenceFetchValues(source,record,fields){
-  const result={};
-  const from=record.fields;
-  for(const {key,label,type} of fields){
-    const mapped=source.fields[key]||source.fields[label];
-    const alternates={
-        Customer:['Customer','Prospect'],Vendor:['Vendor','Supplier'],Supplier:['Vendor','Supplier'],
-        Product:['Product','Item','Material'],Item:['Item','Product','Material'],
-        Material:['Material','Item','Product'],Qty:['Qty','Good Qty','Received Qty'],
-        'Received Qty':['Qty'],'Taxable Amount':['Amount'],'Delivery Date':['Delivery','Required Date'],
-        Delivery:['Delivery','Expected Delivery'],'PO Date':['Date'],
-        'Work Order':['Work Order','WO No']
-      }[key]||[];
-    const value=[mapped,key,label,...alternates].filter(Boolean).map(name=>from[name])
-      .find(item=>String(item??'').trim()&&item!=='-');
-    result[key]=type==='date'?isoDate(value):value;
-  }
-  if(source.reference&&fields.some(field=>field.key===source.reference)) result[source.reference]=record.number;
-  return result;
 }
 
 function useSaveMasterDocument(rowsKey,rows,setRows,detailsKey,details,setDetails){

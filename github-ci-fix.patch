@@ -1,0 +1,1019 @@
+diff --git a/GITHUB-CI-FIX.md b/GITHUB-CI-FIX.md
+new file mode 100644
+index 0000000..c584ca6
+--- /dev/null
++++ b/GITHUB-CI-FIX.md
+@@ -0,0 +1,34 @@
++# GitHub Actions repair
++
++Based on innovationdfab/ERP main commit ad33f2e2b5b8fb1e47c35e4bc42848d38bd7d88e.
++
++## What failed and what changed
++
++- Restored the missing commitProcessChanges and nextProcessNumber exports used by the existing process modules. Saves use the existing atomic Supabase RPC, original edit snapshots, serialized writes, confirmed cache updates and session-change protection. Failed saves do not leave optimistic data displayed as saved.
++- Reconciled the Fetch configuration with the existing document-fetch helpers. GRN Fetch leaves actual received quantity and rate for staff confirmation. Invoice Fetch supports delivery and job-work return challans, preserves the sales-order reference, stores source lineage and checks quantities against existing dispatch billing. The shared form uses the tested Fetch implementation.
++- Preserved the current navigation. Transaction context now includes the Planning, Warehouse & QC and Additional Operations routes already in the menu. The menu test compares these existing routes; it no longer assumes an absent SOP Workflow screen.
++- Corrected the JSX component guard to recognize components passed through destructured props, with a regression test that still rejects missing component declarations.
++- Updated Vite from 8.3.0 to 8.3.8 and regenerated the lockfile, including source-map-js 1.2.4. The audit gate remains enabled.
++- Added cloud save and dispatch Fetch regression coverage. Existing theme and unrelated screens were retained.
++
++## Apply to GitHub
++
++Extract DFAB-OneERP-GitHub-CI-Fixed and copy its contents into your existing repository, replacing matching files. Include package.json, package-lock.json, src and tests. Preserve your local .env file. Do not upload node_modules or dist. A patch against the above commit is included as github-ci-fix.patch.
++
++From the project directory, using Node.js 24:
++
++```sh
++npm ci
++npm run verify
++npm audit --omit=dev --audit-level=high
++```
++
++Commit and push the updated files to main, or open a pull request targeting main. The existing ERP quality gates workflow then runs automatically. GitHub was not authenticated in the repair workspace, so these changes have not been pushed and a hosted Actions result has not been observed.
++
++## Database setup
++
++No SQL was changed for this repair. The restored process helpers require the existing supabase/DFAB_PROCESS_UPGRADE.sql migration after DFAB_ERP_PRODUCTION.sql. If those functions are already installed, no database update is necessary. Missing functions produce a clear setup error rather than a partial save. Keep the existing Supabase URL and publishable-key environment settings on Vercel.
++
++## Verification
++
++See QA-GITHUB-CI-FIX.md for the completed checks. Browser and database checks use isolated fixtures, not production customer data. Build output can retain non-failing warnings about bundle size and lucide-react directives.
+diff --git a/QA-GITHUB-CI-FIX.md b/QA-GITHUB-CI-FIX.md
+new file mode 100644
+index 0000000..09be4fa
+--- /dev/null
++++ b/QA-GITHUB-CI-FIX.md
+@@ -0,0 +1,28 @@
++# GitHub CI fix — verification
++
++Base: innovationdfab/ERP main, ad33f2e2b5b8fb1e47c35e4bc42848d38bd7d88e.
++Environment: Node.js v24.22.3; exact lockfile install; Vite 8.3.8.
++
++| Check | Result |
++| --- | --- |
++| npm ci | PASS: clean installation |
++| npm run verify | PASS: lint, configured TypeScript check, 151 tests, production build |
++| npm audit --omit=dev --audit-level=high | PASS: zero vulnerabilities |
++| npm run test:browser | PASS: complete seven-script suite |
++| Browser route and report coverage | PASS: 185 desktop routes, 77 generated reports |
++| Shared reference forms | PASS: 30 reference forms and two other inline transaction forms |
++| Create forms and accessible sections | PASS: 94 create forms across 185 menu pages, desktop and mobile |
++| Dispatch Fetch regression | PASS: source eligibility, product quantity, preserved sales order, saved lineage, duplicate billing prevention |
++| Extension UI and data flows | PASS: reorder policy, indent creation, follow-ups, ageing, statements, reload, six viewport widths, failed-save handling and source permissions |
++| Session recovery | PASS: one refresh on 401, rotated-token persistence, subsequent save, revoked-session return to login |
++| Workspace SQL suite | PASS: eight migrations, permissions, approvals, atomic handoff/rollback, activity scope, transactional restore, extensions and initial-password policy |
++| Process SQL suite | PASS: migration compilation, atomic writes, stale-snapshot rollback, unsupported-key and permission rejection, existing-number collision avoidance |
++| git diff --check | PASS |
++
++Cloud-store regressions additionally cover successful multi-section confirmation, subsequent saves using committed state, stale local snapshots, queued edits, failed atomic saves, logout during a pending commit, authenticated numbering and invalid number responses.
++
++Browser checks ran against isolated Supabase fixtures in headless Chromium. SQL checks ran in isolated PGlite databases. They did not modify production data. The SQL checks used the existing optional external PGlite test installation; no database dependency was added to the production bundle.
++
++The existing workflow was left enabled and unchanged. No failed check was skipped. The JSX guard was corrected to understand destructured component props; the menu assertion was reconciled with the actual existing navigation, with all existing routes retained. Build warnings about chunk size and third-party module directives remain non-failing.
++
++A hosted GitHub Actions run and a production Supabase deployment were not performed: GitHub was not authenticated in this workspace. Commit and push the provided changes to trigger the existing workflow. See GITHUB-CI-FIX.md for update and database setup instructions.
+diff --git a/package-lock.json b/package-lock.json
+index 6f8be7f..abe7e12 100644
+--- a/package-lock.json
++++ b/package-lock.json
+@@ -12,7 +12,7 @@
+         "lucide-react": "1.46.0",
+         "react": "19.3.0",
+         "react-dom": "19.3.0",
+-        "vite": "8.3.0"
++        "vite": "8.3.8"
+       },
+       "devDependencies": {
+         "@eslint/js": "9.39.5",
+@@ -26,6 +26,37 @@
+         "node": "24.x"
+       }
+     },
++    "node_modules/@emnapi/core": {
++      "version": "2.0.0-beta.2",
++      "resolved": "https://registry.npmjs.org/@emnapi/core/-/core-2.0.0-beta.2.tgz",
++      "integrity": "sha512-MzCVoWtcg4Pm2B3je5mMvYMvj3MmBKw+fU7vbsJc9/iT8ip6/eYIHo/Dsm/mr+wsHB6SEyJDuxB09Yy6r/8+4A==",
++      "license": "MIT",
++      "optional": true,
++      "dependencies": {
++        "@emnapi/wasi-threads": "2.2.0",
++        "tslib": "^2.4.0"
++      }
++    },
++    "node_modules/@emnapi/runtime": {
++      "version": "2.0.0-beta.2",
++      "resolved": "https://registry.npmjs.org/@emnapi/runtime/-/runtime-2.0.0-beta.2.tgz",
++      "integrity": "sha512-JcrSPzPvZuNZvJqPTF9Fw25LbOJ8avzFVlaf2grmH4Cku0oGP47tRgqPZadcfj3YoZMHkFVnCYFbQM8I+i5QEw==",
++      "license": "MIT",
++      "optional": true,
++      "dependencies": {
++        "tslib": "^2.4.0"
++      }
++    },
++    "node_modules/@emnapi/wasi-threads": {
++      "version": "2.2.0",
++      "resolved": "https://registry.npmjs.org/@emnapi/wasi-threads/-/wasi-threads-2.2.0.tgz",
++      "integrity": "sha512-JP7OYH38Q7+pyTAe14raZHLQIK7BDKbdwji+Xi3pcd/6QkJYQH3SX4wu6EplGrGJWRepoNzedfm0G3B9Z4e9Rw==",
++      "license": "MIT",
++      "optional": true,
++      "dependencies": {
++        "tslib": "^2.4.0"
++      }
++    },
+     "node_modules/@eslint-community/eslint-utils": {
+       "version": "4.10.1",
+       "resolved": "https://registry.npmjs.org/@eslint-community/eslint-utils/-/eslint-utils-4.10.1.tgz",
+@@ -249,19 +280,40 @@
+         "url": "https://github.com/sponsors/nzakas"
+       }
+     },
++    "node_modules/@napi-rs/wasm-runtime": {
++      "version": "1.2.6",
++      "resolved": "https://registry.npmjs.org/@napi-rs/wasm-runtime/-/wasm-runtime-1.2.6.tgz",
++      "integrity": "sha512-mRyDmEw9/fCDXCGfL1sbgIw/GUK0PVxRW4YwgPN61F3LQ+fSyoBFarJVzgGyhF6kRzEQZ0FejDqm4WLXSeqQmw==",
++      "license": "MIT",
++      "optional": true,
++      "dependencies": {
++        "@tybys/wasm-util": "^0.10.3"
++      },
++      "engines": {
++        "node": "^20.19.0 || ^22.13.0 || >=23.5.0"
++      },
++      "funding": {
++        "type": "github",
++        "url": "https://github.com/sponsors/Brooooooklyn"
++      },
++      "peerDependencies": {
++        "@emnapi/core": "^1.7.1 || 2.0.0-beta.2",
++        "@emnapi/runtime": "^1.7.1 || 2.0.0-beta.2"
++      }
++    },
+     "node_modules/@oxc-project/types": {
+-      "version": "0.150.0",
+-      "resolved": "https://registry.npmjs.org/@oxc-project/types/-/types-0.150.0.tgz",
+-      "integrity": "sha512-rDS5/31E9HfPl/CIzGrn0DOlvBbXFseQ5URJ9sYMfstbKLD/c6Gm9vmRzRGDdAXyOIL4zmO37lc9RIwYqVruZw==",
++      "version": "0.156.0",
++      "resolved": "https://registry.npmjs.org/@oxc-project/types/-/types-0.156.0.tgz",
++      "integrity": "sha512-1Duyg48TdJNdyhEB8Xn1L36bT9Pv6GUtlKjHxOys8xkaF/rQq3XJE+bAurSK/AgIz5mGFsb77cn9Pb20+WCScw==",
+       "license": "MIT",
+       "funding": {
+         "url": "https://github.com/sponsors/oxc-project"
+       }
+     },
+     "node_modules/@rolldown/binding-android-arm-eabi": {
+-      "version": "1.2.9",
+-      "resolved": "https://registry.npmjs.org/@rolldown/binding-android-arm-eabi/-/binding-android-arm-eabi-1.2.9.tgz",
+-      "integrity": "sha512-tNISae1QEf/vkb3xkRcjV5SEdzPE97We5IVaa2Z8jSszQPZ8U60B/YCYpw4QI7VidYsBtKavczXf+DyDs9WGxw==",
++      "version": "1.2.19",
++      "resolved": "https://registry.npmjs.org/@rolldown/binding-android-arm-eabi/-/binding-android-arm-eabi-1.2.19.tgz",
++      "integrity": "sha512-e+Ebe0WT+9tbXmNKPIiC8YrWAHYwug3m6i4p3rZGGulfZri1jtI4HslT+OZnFf/OIHowWF71DTlHwXBP2SiA7A==",
+       "cpu": [
+         "arm"
+       ],
+@@ -275,9 +327,9 @@
+       }
+     },
+     "node_modules/@rolldown/binding-android-arm64": {
+-      "version": "1.2.9",
+-      "resolved": "https://registry.npmjs.org/@rolldown/binding-android-arm64/-/binding-android-arm64-1.2.9.tgz",
+-      "integrity": "sha512-YC8YsI30o606GTZi0VyzYlsDKFP8W61i/QzayHDkLbNEz/IShqAmTa+hsJRj13xTHA0H+6fk4b2UmGn+Q/cMlg==",
++      "version": "1.2.19",
++      "resolved": "https://registry.npmjs.org/@rolldown/binding-android-arm64/-/binding-android-arm64-1.2.19.tgz",
++      "integrity": "sha512-hOombrTJ+szt2ciEzS7oCA78lMPBgF5UMQWCJIyNfnrI7GLl8HYoFqCnpL2gcPOaXMqryGCU5ExdQKyDDcC+yA==",
+       "cpu": [
+         "arm64"
+       ],
+@@ -291,9 +343,9 @@
+       }
+     },
+     "node_modules/@rolldown/binding-darwin-arm64": {
+-      "version": "1.2.9",
+-      "resolved": "https://registry.npmjs.org/@rolldown/binding-darwin-arm64/-/binding-darwin-arm64-1.2.9.tgz",
+-      "integrity": "sha512-IwhlH3qK5urrY8hZiEgGkHKEFN901p/p2bjxCxJlr4GyNnF7wYpUvK+Y43uaRYuC4hpfjzbR3SJC3arX1jGvmw==",
++      "version": "1.2.19",
++      "resolved": "https://registry.npmjs.org/@rolldown/binding-darwin-arm64/-/binding-darwin-arm64-1.2.19.tgz",
++      "integrity": "sha512-XoMA2pwCKGTQzUjPgtRwkedH4WmXhdIPKT6l6oOxd1PUbNodGI6DcBekgN7EC//+x3pfBYX/qL1gNmZAqivw5g==",
+       "cpu": [
+         "arm64"
+       ],
+@@ -307,9 +359,9 @@
+       }
+     },
+     "node_modules/@rolldown/binding-darwin-x64": {
+-      "version": "1.2.9",
+-      "resolved": "https://registry.npmjs.org/@rolldown/binding-darwin-x64/-/binding-darwin-x64-1.2.9.tgz",
+-      "integrity": "sha512-XxpJfVzFh+jilRxIXUqcfYAYcunIc/XEzIizsOL1fcJee5Sf7H3mH8WlLmfHfluz5amqR88QQo9izKtmMlavAw==",
++      "version": "1.2.19",
++      "resolved": "https://registry.npmjs.org/@rolldown/binding-darwin-x64/-/binding-darwin-x64-1.2.19.tgz",
++      "integrity": "sha512-zo8EsSSwMZCY/e+fRnGaX02YGgvJD0yvhNi/9hpGPA2MJ9ZF8dPCw75UGfpI6OpQ/myR/dIYmogRvqiZD0TrXg==",
+       "cpu": [
+         "x64"
+       ],
+@@ -323,9 +375,9 @@
+       }
+     },
+     "node_modules/@rolldown/binding-freebsd-x64": {
+-      "version": "1.2.9",
+-      "resolved": "https://registry.npmjs.org/@rolldown/binding-freebsd-x64/-/binding-freebsd-x64-1.2.9.tgz",
+-      "integrity": "sha512-kSfvhmgeWyfkbT3p/1s5vSgboogoah2zkm9fX2zjg2hHxSV7T4KhMWRUUaRk4OXNqoD3QAUeRqLcs1aZOK4U1g==",
++      "version": "1.2.19",
++      "resolved": "https://registry.npmjs.org/@rolldown/binding-freebsd-x64/-/binding-freebsd-x64-1.2.19.tgz",
++      "integrity": "sha512-O8ISAOfI1nj7AuBPd30FSF47z7f7lzlk5poQVGgiikvQuGEBFYvW8ki+UEnT+YJPnNGjQzn304klt4O9FUE7mA==",
+       "cpu": [
+         "x64"
+       ],
+@@ -339,9 +391,9 @@
+       }
+     },
+     "node_modules/@rolldown/binding-linux-arm-gnueabihf": {
+-      "version": "1.2.9",
+-      "resolved": "https://registry.npmjs.org/@rolldown/binding-linux-arm-gnueabihf/-/binding-linux-arm-gnueabihf-1.2.9.tgz",
+-      "integrity": "sha512-1RVzG17pxqbTfYLC352JlLt6kKLG+6Hr30n8DlIJqsnV5luUDd2Qdx9Ayw1Cabfyb1K9k0jXEZ7evxkRoT+uiw==",
++      "version": "1.2.19",
++      "resolved": "https://registry.npmjs.org/@rolldown/binding-linux-arm-gnueabihf/-/binding-linux-arm-gnueabihf-1.2.19.tgz",
++      "integrity": "sha512-/lYCba5NO0yq4S0jGMH8QTBtkvQxoXjoQWzF5BcWp9MjB9jxVRD1GQDNofkVjcOj30DWyhLIN/4Oe60JKzaONw==",
+       "cpu": [
+         "arm"
+       ],
+@@ -355,12 +407,15 @@
+       }
+     },
+     "node_modules/@rolldown/binding-linux-arm64-gnu": {
+-      "version": "1.2.9",
+-      "resolved": "https://registry.npmjs.org/@rolldown/binding-linux-arm64-gnu/-/binding-linux-arm64-gnu-1.2.9.tgz",
+-      "integrity": "sha512-BXqPvZ2drqVD+/Z8UpKwcs4Mp7grM+eGFku4CAEKrEtcbAsUpzREphK1sogCRZGreVPiMkiiBtw0n3TPteuqvw==",
++      "version": "1.2.19",
++      "resolved": "https://registry.npmjs.org/@rolldown/binding-linux-arm64-gnu/-/binding-linux-arm64-gnu-1.2.19.tgz",
++      "integrity": "sha512-pm/apFMBnSbFb3O6nG5pHO1iqHhZrjGDFEjSm+ot9J17XXPvH9L90y5h+jgfHCE+Qdlsvy8qKEcU4VKxgjD+vA==",
+       "cpu": [
+         "arm64"
+       ],
++      "libc": [
++        "glibc"
++      ],
+       "license": "MIT",
+       "optional": true,
+       "os": [
+@@ -371,12 +426,15 @@
+       }
+     },
+     "node_modules/@rolldown/binding-linux-arm64-musl": {
+-      "version": "1.2.9",
+-      "resolved": "https://registry.npmjs.org/@rolldown/binding-linux-arm64-musl/-/binding-linux-arm64-musl-1.2.9.tgz",
+-      "integrity": "sha512-11vWvo8YDwLzukt27J3aYDWU+gg2P7J+ZOmiJ0hkF5BXZDW7pVya7r40MXDy6ya0i9KamoENSVKIugvJNgFXIA==",
++      "version": "1.2.19",
++      "resolved": "https://registry.npmjs.org/@rolldown/binding-linux-arm64-musl/-/binding-linux-arm64-musl-1.2.19.tgz",
++      "integrity": "sha512-K1SmQp3FFichn8oqrNIwvFoZ5wcvjC7goBzpaMNvLf9FZc+QB/QvLmnpJZgAAGHiD980tP8FZZnXk2K94rvlxg==",
+       "cpu": [
+         "arm64"
+       ],
++      "libc": [
++        "musl"
++      ],
+       "license": "MIT",
+       "optional": true,
+       "os": [
+@@ -387,12 +445,15 @@
+       }
+     },
+     "node_modules/@rolldown/binding-linux-ppc64-gnu": {
+-      "version": "1.2.9",
+-      "resolved": "https://registry.npmjs.org/@rolldown/binding-linux-ppc64-gnu/-/binding-linux-ppc64-gnu-1.2.9.tgz",
+-      "integrity": "sha512-a1tijMkdwsIARtc0F39ApURROkf3NwqinI6TOiSSWCTR7dT96dffNvMUtDHnq64wKNTIZOIlzKrFvvFUznJiyw==",
++      "version": "1.2.19",
++      "resolved": "https://registry.npmjs.org/@rolldown/binding-linux-ppc64-gnu/-/binding-linux-ppc64-gnu-1.2.19.tgz",
++      "integrity": "sha512-I0xwD57jP/3A7+5UPZin2w8Y7XHEmEM5zqpYZOcQ45MlNW6tUJUziymV3yRr7rL4vwyfEcRsRksC4a7Kc08p5Q==",
+       "cpu": [
+         "ppc64"
+       ],
++      "libc": [
++        "glibc"
++      ],
+       "license": "MIT",
+       "optional": true,
+       "os": [
+@@ -403,12 +464,15 @@
+       }
+     },
+     "node_modules/@rolldown/binding-linux-s390x-gnu": {
+-      "version": "1.2.9",
+-      "resolved": "https://registry.npmjs.org/@rolldown/binding-linux-s390x-gnu/-/binding-linux-s390x-gnu-1.2.9.tgz",
+-      "integrity": "sha512-x6SQNdAvv4c3hWqTMaWuawzMX9myaCs/yEmlGsxJzkdClnHW7FbrjQuSiRDhuSYzEYoEMhsaJy9qHG/XNemJPQ==",
++      "version": "1.2.19",
++      "resolved": "https://registry.npmjs.org/@rolldown/binding-linux-s390x-gnu/-/binding-linux-s390x-gnu-1.2.19.tgz",
++      "integrity": "sha512-BrtEHT24SNXj9HiXqy+s/kXiSiQGt6EKCPUlRirAoIioVxKGnbXBUEkbZASAei7iZJB0/Ynm+0JP00Ipx7AnSw==",
+       "cpu": [
+         "s390x"
+       ],
++      "libc": [
++        "glibc"
++      ],
+       "license": "MIT",
+       "optional": true,
+       "os": [
+@@ -419,12 +483,15 @@
+       }
+     },
+     "node_modules/@rolldown/binding-linux-x64-gnu": {
+-      "version": "1.2.9",
+-      "resolved": "https://registry.npmjs.org/@rolldown/binding-linux-x64-gnu/-/binding-linux-x64-gnu-1.2.9.tgz",
+-      "integrity": "sha512-9s0AZ8BFK5/n7B/TBoa2yJE3gI3KURrbXcPBlsAsvjU4VeJKgE90y1YtNxyEUIcHPQkg6/yfF3qihUrcM/Kf0Q==",
++      "version": "1.2.19",
++      "resolved": "https://registry.npmjs.org/@rolldown/binding-linux-x64-gnu/-/binding-linux-x64-gnu-1.2.19.tgz",
++      "integrity": "sha512-rm75/9DkHKeU2WnA8w4X94WGYgLlDCFCfkQC+4bguVJmC/jvDRv2B+2wLOYhyE0fVuv7//Ckk39OoOufyCu76Q==",
+       "cpu": [
+         "x64"
+       ],
++      "libc": [
++        "glibc"
++      ],
+       "license": "MIT",
+       "optional": true,
+       "os": [
+@@ -435,12 +502,15 @@
+       }
+     },
+     "node_modules/@rolldown/binding-linux-x64-musl": {
+-      "version": "1.2.9",
+-      "resolved": "https://registry.npmjs.org/@rolldown/binding-linux-x64-musl/-/binding-linux-x64-musl-1.2.9.tgz",
+-      "integrity": "sha512-P7VWAmV+WdJluH7ovnRGoiv2i8To7GAZ+kGzfGup635cyL7SyYl3lSUaA3Gp5THf0n/Co5EyEqb2zbqq+nMOHQ==",
++      "version": "1.2.19",
++      "resolved": "https://registry.npmjs.org/@rolldown/binding-linux-x64-musl/-/binding-linux-x64-musl-1.2.19.tgz",
++      "integrity": "sha512-irh/4+iYFM4GAzpluDErgjz89bj6NDtqqMAG/6O1LG38Ed3NpyebzCpcVNkFW8uhy+/3/BocUvnXDR33CXWe9A==",
+       "cpu": [
+         "x64"
+       ],
++      "libc": [
++        "musl"
++      ],
+       "license": "MIT",
+       "optional": true,
+       "os": [
+@@ -451,9 +521,9 @@
+       }
+     },
+     "node_modules/@rolldown/binding-openharmony-arm64": {
+-      "version": "1.2.9",
+-      "resolved": "https://registry.npmjs.org/@rolldown/binding-openharmony-arm64/-/binding-openharmony-arm64-1.2.9.tgz",
+-      "integrity": "sha512-1qixtsE4BK8h+yS3BfmZ09UhA7O/N4IACva6YBr7EBvCJraByTuRcgOTaiA62Tm0vey3UcKXLOaoGHtYmNGEVg==",
++      "version": "1.2.19",
++      "resolved": "https://registry.npmjs.org/@rolldown/binding-openharmony-arm64/-/binding-openharmony-arm64-1.2.19.tgz",
++      "integrity": "sha512-+KWTWNoPt+CfSq94CiceWu3yPE+QzkaG+phPyz9G60tmZLwfQkcA4AeksafzvJAw4pvg1mcd5a1TkUqVv0s4JA==",
+       "cpu": [
+         "arm64"
+       ],
+@@ -466,10 +536,28 @@
+         "node": "^20.19.0 || >=22.12.0"
+       }
+     },
++    "node_modules/@rolldown/binding-wasm32-wasi": {
++      "version": "1.2.19",
++      "resolved": "https://registry.npmjs.org/@rolldown/binding-wasm32-wasi/-/binding-wasm32-wasi-1.2.19.tgz",
++      "integrity": "sha512-7EH+skOsl5qpWnK0vzamgJFhOv1cwxQpsxm8tI883K9fur5c27p8q87fzEO6BbBPabA2/+s/zR63/pLc137iOg==",
++      "cpu": [
++        "wasm32"
++      ],
++      "license": "MIT",
++      "optional": true,
++      "dependencies": {
++        "@emnapi/core": "2.0.0-beta.2",
++        "@emnapi/runtime": "2.0.0-beta.2",
++        "@napi-rs/wasm-runtime": "1.2.6"
++      },
++      "engines": {
++        "node": "^20.19.0 || ^22.13.0 || >=23.5.0"
++      }
++    },
+     "node_modules/@rolldown/binding-win32-arm64-msvc": {
+-      "version": "1.2.9",
+-      "resolved": "https://registry.npmjs.org/@rolldown/binding-win32-arm64-msvc/-/binding-win32-arm64-msvc-1.2.9.tgz",
+-      "integrity": "sha512-ok8IQjcEPs1AKZfuEUznVBrJw+gK4soq+bx8b1X2XoMqVClarc1q5JDmVtWXY1xfr6ZuHTAsPXHTgTrqKTZeww==",
++      "version": "1.2.19",
++      "resolved": "https://registry.npmjs.org/@rolldown/binding-win32-arm64-msvc/-/binding-win32-arm64-msvc-1.2.19.tgz",
++      "integrity": "sha512-3Q1Yg1Q7tEvBWoZf5rFvG/GKZQPgwfru+p4wBajDfJFBs0SHCpL++dfTjW9gyAKd1T7ZpIYvdaUax7Pa/IhFVQ==",
+       "cpu": [
+         "arm64"
+       ],
+@@ -483,9 +571,9 @@
+       }
+     },
+     "node_modules/@rolldown/binding-win32-x64-msvc": {
+-      "version": "1.2.9",
+-      "resolved": "https://registry.npmjs.org/@rolldown/binding-win32-x64-msvc/-/binding-win32-x64-msvc-1.2.9.tgz",
+-      "integrity": "sha512-Ip2mXoU0hM0boq3Rf+ekuT653OROSo6aSYcPT1VHE4q52KvyxgFkQgrgb/IEsxOuvQ2fZZbs8khJAyCEPM24/g==",
++      "version": "1.2.19",
++      "resolved": "https://registry.npmjs.org/@rolldown/binding-win32-x64-msvc/-/binding-win32-x64-msvc-1.2.19.tgz",
++      "integrity": "sha512-y/sqRRc6d7hECzOFc5n3LSeqctmIp9mMjY1Kq4s14uLPd/LZ4z7i1zrW6fMtp2mPeuQIC4e6ULMcwQzMomqQag==",
+       "cpu": [
+         "x64"
+       ],
+@@ -504,6 +592,16 @@
+       "integrity": "sha512-2j9bGt5Jh8hj+vPtgzPtl72j0yRxHAyumoo6TNfAjsLB04UtpSvPbPcDcBMxz7n+9CYB0c1GxQFxYRg2jimqGw==",
+       "license": "MIT"
+     },
++    "node_modules/@tybys/wasm-util": {
++      "version": "0.10.5",
++      "resolved": "https://registry.npmjs.org/@tybys/wasm-util/-/wasm-util-0.10.5.tgz",
++      "integrity": "sha512-dOGOPxlaNV+G046mZzN+9C0dAcQZeSKcXiVaM0TYy/LM4ttTmgSBDxYfovcYI8Em3+eAbiAYpvWLOv8+ZVRJKA==",
++      "license": "MIT",
++      "optional": true,
++      "dependencies": {
++        "tslib": "^2.4.0"
++      }
++    },
+     "node_modules/@types/estree": {
+       "version": "1.0.9",
+       "resolved": "https://registry.npmjs.org/@types/estree/-/estree-1.0.9.tgz",
+@@ -2741,9 +2839,9 @@
+       "license": "MIT"
+     },
+     "node_modules/nanoid": {
+-      "version": "3.3.19",
+-      "resolved": "https://registry.npmjs.org/nanoid/-/nanoid-3.3.19.tgz",
+-      "integrity": "sha512-Y2tUNy4ouw6tq5oDSKeQYGOyhkUBhNOcGV/02KC+6kd9eDGqdZd++mjMiIDilrBYvjEnCYvVtsuHCuP+okSfug==",
++      "version": "3.3.20",
++      "resolved": "https://registry.npmjs.org/nanoid/-/nanoid-3.3.20.tgz",
++      "integrity": "sha512-uKdg2G3GNCKQn9byYOpxbGqrT2fGO5KRt5J/8b3pok8rT6qxGWF6hxMyJiEYtAf+FVyYuD9hRaDqX5uPFYJ4ZQ==",
+       "funding": [
+         {
+           "type": "github",
+@@ -3077,9 +3175,9 @@
+       }
+     },
+     "node_modules/postcss": {
+-      "version": "8.5.28",
+-      "resolved": "https://registry.npmjs.org/postcss/-/postcss-8.5.28.tgz",
+-      "integrity": "sha512-RRuzqDtt5Y9h3quz5hWhK+TPnsmVs6WwSU6LkJMeY4HstUEDuYTG8UJSdawMRzmzAtV+KEoG8N3Qg2qLy5vM/A==",
++      "version": "8.5.33",
++      "resolved": "https://registry.npmjs.org/postcss/-/postcss-8.5.33.tgz",
++      "integrity": "sha512-RVHEU9/Pp1Fnjr/MpAJsZoADukCKhfIi15OunEYiGktIkYLkPVvC1sioWolGDS7XByMTx9m/IGbro0Js13zhnQ==",
+       "funding": [
+         {
+           "type": "opencollective",
+@@ -3096,9 +3194,9 @@
+       ],
+       "license": "MIT",
+       "dependencies": {
+-        "nanoid": "^3.3.18",
++        "nanoid": "^3.3.20",
+         "picocolors": "^1.1.1",
+-        "source-map-js": "^1.2.1"
++        "source-map-js": "^1.2.2"
+       },
+       "engines": {
+         "node": "^10 || ^12 || >=14"
+@@ -3243,12 +3341,12 @@
+       }
+     },
+     "node_modules/rolldown": {
+-      "version": "1.2.9",
+-      "resolved": "https://registry.npmjs.org/rolldown/-/rolldown-1.2.9.tgz",
+-      "integrity": "sha512-hx/Pv0N1haXRb11qkfnK5MXB/iqr7i0yjWQqmO9uHqZpBgQSqzc8UsSnEpalsh+j1I8qQ2CkXAkJC8Br3dKSlg==",
++      "version": "1.2.19",
++      "resolved": "https://registry.npmjs.org/rolldown/-/rolldown-1.2.19.tgz",
++      "integrity": "sha512-QIiV1J9d0pzN4jeeTH4sjPy0AZ6cAy2cG0ExeoE1+U8Rvj+hR3gYkokx0YbeUNGlZqiQJJ2utcETe0oKXwzsuA==",
+       "license": "MIT",
+       "dependencies": {
+-        "@oxc-project/types": "=0.150.0",
++        "@oxc-project/types": "=0.156.0",
+         "@rolldown/pluginutils": "^1.0.0"
+       },
+       "bin": {
+@@ -3258,21 +3356,22 @@
+         "node": "^20.19.0 || >=22.12.0"
+       },
+       "optionalDependencies": {
+-        "@rolldown/binding-android-arm-eabi": "1.2.9",
+-        "@rolldown/binding-android-arm64": "1.2.9",
+-        "@rolldown/binding-darwin-arm64": "1.2.9",
+-        "@rolldown/binding-darwin-x64": "1.2.9",
+-        "@rolldown/binding-freebsd-x64": "1.2.9",
+-        "@rolldown/binding-linux-arm-gnueabihf": "1.2.9",
+-        "@rolldown/binding-linux-arm64-gnu": "1.2.9",
+-        "@rolldown/binding-linux-arm64-musl": "1.2.9",
+-        "@rolldown/binding-linux-ppc64-gnu": "1.2.9",
+-        "@rolldown/binding-linux-s390x-gnu": "1.2.9",
+-        "@rolldown/binding-linux-x64-gnu": "1.2.9",
+-        "@rolldown/binding-linux-x64-musl": "1.2.9",
+-        "@rolldown/binding-openharmony-arm64": "1.2.9",
+-        "@rolldown/binding-win32-arm64-msvc": "1.2.9",
+-        "@rolldown/binding-win32-x64-msvc": "1.2.9"
++        "@rolldown/binding-android-arm-eabi": "1.2.19",
++        "@rolldown/binding-android-arm64": "1.2.19",
++        "@rolldown/binding-darwin-arm64": "1.2.19",
++        "@rolldown/binding-darwin-x64": "1.2.19",
++        "@rolldown/binding-freebsd-x64": "1.2.19",
++        "@rolldown/binding-linux-arm-gnueabihf": "1.2.19",
++        "@rolldown/binding-linux-arm64-gnu": "1.2.19",
++        "@rolldown/binding-linux-arm64-musl": "1.2.19",
++        "@rolldown/binding-linux-ppc64-gnu": "1.2.19",
++        "@rolldown/binding-linux-s390x-gnu": "1.2.19",
++        "@rolldown/binding-linux-x64-gnu": "1.2.19",
++        "@rolldown/binding-linux-x64-musl": "1.2.19",
++        "@rolldown/binding-openharmony-arm64": "1.2.19",
++        "@rolldown/binding-wasm32-wasi": "1.2.19",
++        "@rolldown/binding-win32-arm64-msvc": "1.2.19",
++        "@rolldown/binding-win32-x64-msvc": "1.2.19"
+       }
+     },
+     "node_modules/safe-array-concat": {
+@@ -3495,12 +3594,12 @@
+       }
+     },
+     "node_modules/source-map-js": {
+-      "version": "1.2.1",
+-      "resolved": "https://registry.npmjs.org/source-map-js/-/source-map-js-1.2.1.tgz",
+-      "integrity": "sha512-UXWMKhLOwVKb728IUtQPXxfYU+usdybtUrK/8uGE8CQMvrhOpwvzDBwj0QhSL7MQc7vIsISBG8VQ8+IDQxpfQA==",
++      "version": "1.2.4",
++      "resolved": "https://registry.npmjs.org/source-map-js/-/source-map-js-1.2.4.tgz",
++      "integrity": "sha512-J7ZjMvHd9O1fcT/5V09QWaaSl2BbWx3F6O08spde82Namf9UB0GxRVIPiNbVsdKkoizHiSpTodo3vp2bAy91MA==",
+       "license": "BSD-3-Clause",
+       "engines": {
+-        "node": ">=0.10.0"
++        "node": ">=6.0.0"
+       }
+     },
+     "node_modules/stop-iteration-iterator": {
+@@ -3671,6 +3770,13 @@
+         "url": "https://github.com/sponsors/SuperchupuDev"
+       }
+     },
++    "node_modules/tslib": {
++      "version": "2.9.1",
++      "resolved": "https://registry.npmjs.org/tslib/-/tslib-2.9.1.tgz",
++      "integrity": "sha512-a4Ux9VKuIMHsOS7ENbEq6hK2ZGYIT27Rtl0E4eD9KqwxhKiQeMZE/9xb3IdYwWaSOyIBQLExhQgXDTYoiCxnWA==",
++      "license": "0BSD",
++      "optional": true
++    },
+     "node_modules/type-check": {
+       "version": "0.4.0",
+       "resolved": "https://registry.npmjs.org/type-check/-/type-check-0.4.0.tgz",
+@@ -3805,15 +3911,15 @@
+       }
+     },
+     "node_modules/vite": {
+-      "version": "8.3.0",
+-      "resolved": "https://registry.npmjs.org/vite/-/vite-8.3.0.tgz",
+-      "integrity": "sha512-lhZBVvEHefgE+HQZC9O7EBJgCU/nVzFNl7vkS4RE0APtWLP02/8QVIkQtzBxPquh7lq5/78NHipTj7ODQ6XuyQ==",
++      "version": "8.3.8",
++      "resolved": "https://registry.npmjs.org/vite/-/vite-8.3.8.tgz",
++      "integrity": "sha512-LzOn3h9rG/0vhLdXrV4yJ4QFA9eEoqCl+Yx+kGJd7aB9w6nfNgVHKSYwLPZUHrz4ZGa+t+kXjV9itvcHDLQouA==",
+       "license": "MIT",
+       "dependencies": {
+         "lightningcss": "^1.33.0",
+         "picomatch": "^4.0.7",
+-        "postcss": "^8.5.28",
+-        "rolldown": "~1.2.6",
++        "postcss": "^8.5.32",
++        "rolldown": "~1.2.18",
+         "tinyglobby": "^0.2.17"
+       },
+       "bin": {
+@@ -3830,7 +3936,7 @@
+       },
+       "peerDependencies": {
+         "@types/node": "^20.19.0 || >=22.12.0",
+-        "@vitejs/devtools": "^0.7.1",
++        "@vitejs/devtools": "^0.7.1 || ^0.8.0",
+         "esbuild": "^0.27.0 || ^0.28.0",
+         "jiti": ">=1.21.0",
+         "less": "^4.0.0",
+diff --git a/package.json b/package.json
+index a5a34b1..a82309d 100644
+--- a/package.json
++++ b/package.json
+@@ -11,7 +11,7 @@
+     "typecheck": "tsc --noEmit --allowJs --checkJs --target es2022 --module esnext --lib es2022,dom src/erp-utils.js",
+     "test": "node --test tests/*.test.js",
+     "verify": "npm run lint && npm run typecheck && npm test && npm run build",
+-    "test:browser": "node tests/browser-workspace.mjs && node tests/browser-reference-forms.mjs && node tests/browser-form-actions.mjs && node tests/browser-premium.mjs && node tests/browser-extensions.mjs && node tests/browser-session.mjs",
++    "test:browser": "node tests/browser-workspace.mjs && node tests/browser-reference-forms.mjs && node tests/browser-form-actions.mjs && node tests/browser-premium.mjs && node tests/browser-extensions.mjs && node tests/browser-session.mjs && node tests/browser-dispatch-fetch.mjs",
+     "test:premium": "node tests/browser-premium.mjs",
+     "test:sql": "node tests/workspace-sql.mjs"
+   },
+@@ -20,7 +20,7 @@
+     "lucide-react": "1.46.0",
+     "react": "19.3.0",
+     "react-dom": "19.3.0",
+-    "vite": "8.3.0"
++    "vite": "8.3.8"
+   },
+   "devDependencies": {
+     "@eslint/js": "9.39.5",
+diff --git a/src/backend/cloud-store.js b/src/backend/cloud-store.js
+index d3c77b1..8703661 100644
+--- a/src/backend/cloud-store.js
++++ b/src/backend/cloud-store.js
+@@ -265,3 +265,62 @@ async function commitSections(changes,rpcName) {
+     throw error;
+   }
+ }
++
++/** Save process headers, lines and lineage together, using the edit snapshot. */
++export async function commitProcessChanges(changes, expected, action = 'save') {
++  if (!initialized || !accessToken) throw new Error('Supabase session is not ready. Please log in again.');
++  assertWriteAllowed();
++  if (!changes || Array.isArray(changes) || typeof changes !== 'object' ||
++      !expected || Array.isArray(expected) || typeof expected !== 'object') throw new Error('Invalid process snapshot.');
++  const keys = Object.keys(changes);
++  if (!keys.length || keys.length > 500 || keys.length !== Object.keys(expected).length ||
++      keys.some(key => !Object.hasOwn(expected, key))) throw new Error('Every process section requires its original snapshot.');
++  if (!['save','approve','reject','handoff','payment','close','delete'].includes(action)) throw new Error('Invalid process action.');
++  // Detach caller objects before waiting behind any earlier saves.
++  const payload = structuredClone(changes), base = structuredClone(expected);
++  for (const key of keys) {
++    assertCloudKey(key);
++    if (!samePayload(base[key], cachedPayload(key))) throw new QueuedChangeConflict('The ERP data changed since this page was opened. Reopen the page before saving.');
++  }
++  const token = accessToken, revision = sessionRevision;
++  const operation = writeQueue.catch(() => undefined).then(async () => {
++    assertSession(revision);
++    assertWriteAllowed();
++    for (const key of keys) checkQueuedSnapshot(key, base[key]);
++    try {
++      await rpc('erp_commit_process', {p_changes:payload,p_expected:base,p_action:action}, {accessToken:token});
++    } catch (error) {
++      if (!isMissingIntegrityRpc(error,'erp_commit_process')) throw error;
++      throw new Error('Atomic process saving is unavailable. Apply supabase/DFAB_PROCESS_UPGRADE.sql before saving.');
++    }
++    assertSession(revision);
++    for (const key of keys) { cache.set(key,payload[key]); committed.set(key,payload[key]); }
++    emit('erp-cloud-change',{type:'process-commit'});
++    emit('erp-storage-saved',{key:keys.join(', ')});
++  });
++  writeQueue = operation;
++  try { await operation; }
++  catch (error) {
++    if (revision === sessionRevision && !(error instanceof QueuedChangeConflict) && !writeErrors.length) reportWriteFailure('erp_commit_process',error);
++    throw error;
++  }
++}
++
++export async function nextProcessNumber(type, prefix, year) {
++  if (!initialized || !accessToken) throw new Error('Supabase session is not ready. Please log in again.');
++  assertWriteAllowed();
++  if ([type,prefix,year].some(value => typeof value !== 'string' || !value.trim())) throw new Error('Document type, prefix and financial year are required.');
++  const token = accessToken, revision = sessionRevision;
++  await flushCloudWrites();
++  assertSession(revision);
++  let number;
++  try {
++    number = await rpc('erp_next_process_no', {p_document_type:type,p_prefix:prefix,p_financial_year:year}, {accessToken:token});
++  } catch (error) {
++    if (!isMissingIntegrityRpc(error,'erp_next_process_no')) throw error;
++    throw new Error('Process numbering is unavailable. Apply supabase/DFAB_PROCESS_UPGRADE.sql first.');
++  }
++  assertSession(revision);
++  if (typeof number !== 'string' || !number.trim()) throw new Error('Supabase did not return a valid document number.');
++  return number;
++}
+diff --git a/src/main.jsx b/src/main.jsx
+index 1a77bc7..8bb4188 100644
+--- a/src/main.jsx
++++ b/src/main.jsx
+@@ -35,6 +35,7 @@ import { restorePreviousErpDataOnce, getRestoredDataStatus } from './restored-se
+ import { initializeCloudStore, setCloudAccessToken, exportCloudSnapshot, flushCloudWrites, resetCloudWriteErrors, writeCloudValueConfirmed, writeCloudBatchConfirmed, restoreCloudSectionsConfirmed } from './backend/cloud-store.js';
+ import { findRecord, recordToObject, validateConnectedRecord, resolveWorkflowContext, validateProductionProgress, receiptPostingStatus, canRejectProductionDocument, nextProductionStatus } from './workflow-integrity.js';
+ import { describeDocument, documentReportRows, fetchConflict, hasDocumentValue, invoiceColumns } from './document-data.js';
++import { referenceFetchValues, dispatchInvoiceSource, referenceSelectionConflict, sourceProvenance, verifyDispatchInvoice, activeSource } from './document-fetch.js';
+ import { calculateInvoice } from './invoice-calculations.js';
+ import { InvoiceProducts, InvoiceCharges, InvoiceExpenses } from './invoice-line-editor.jsx';
+ import { imantraTransactions, imantraForwardStatuses, imantraReportDefinitions, imantraReportRows, validateImantraDocument, imantraReferenceSource, imantraForwardPrefill } from './imantra-integration.js';
+@@ -1058,14 +1059,18 @@ function SalesInvoicePage({access,navigationReference=''}){
+     options:label==='Series'?invoiceReference.series:referenceOptions('Sales Invoice',label)
+   }));
+   const fetchInvoice=(source,record)=>{
+-    const conflict=fetchConflict('sourceOrder',form,record);
+-    if(conflict)return 'Clear the Sales Order Reference before fetching a different sales order.';
+-    const values=referenceFetchValues(source,record,invoiceFields.filter(field=>!['Date','Series','Tax (%)'].includes(field.label)));
++    const conflict=referenceSelectionConflict(source,record,form,form.fetchedFrom);
++    if(conflict)return conflict;
++    const dispatch=dispatchInvoiceSource(source,record);
++    const values={...referenceFetchValues(source,record,invoiceFields.filter(field=>!['Date','Series','Tax (%)'].includes(field.label))),...dispatch.values};
++    const sourceLine=dispatch.line;
+     const line=lines[0];
+     const blankLine=lines.length===1&&!line.description&&!line.code&&line.quantity==='1'&&line.rate==='0';
+-    const {Product,Qty,UOM}=record.fields;
+-    if(blankLine&&hasDocumentValue(Product))setLines([{...newLine(),description:Product,quantity:hasDocumentValue(Qty)?String(Qty):'1',uom:UOM||''}]);
+-    setForm(current=>({...applyReferenceFetch(current,values),sourceOrder:record.number}));
++    if(blankLine&&sourceLine)setLines([{...newLine(),...sourceLine}]);
++    setForm(current=>{
++      const next=applyReferenceFetch(current,values);
++      return {...next,fetchedFrom:sourceProvenance(source,record,next)};
++    });
+     return '';
+   };
+   let invoicePreview=null;
+@@ -1086,6 +1091,13 @@ function SalesInvoicePage({access,navigationReference=''}){
+     if(savingInvoice||reading||!canAdminAccess(access,'Sales Invoice',editing?'edit':'create'))return;
+     if(!form.customer.trim()||!isoDate(form.date)){setSection('Details');setFormError('A valid invoice date and customer are required.');return}
+     if(form.dueDate&&(!isoDate(form.dueDate)||form.dueDate<isoDate(form.date))){setFormError('Due Date must be on or after the invoice date.');return;}
++    if(['Delivery Challan','Job Work Return DC'].includes(form.fetchedFrom?.module)){
++      if(!canAdminAccess(access,form.fetchedFrom.module,'view')){setFormError('Source dispatch access is required to verify billing.');return;}
++      const record=getReferenceRecords(form.fetchedFrom.module).find(record=>record.number===form.fetchedFrom.number);
++      if(!activeSource(form.fetchedFrom,form)||!record){setFormError('The fetched dispatch reference changed or is unavailable. Reopen and fetch the correct dispatch.');return;}
++      const error=verifyDispatchInvoice(form,lines,record,getReferenceRecords('Sales Invoice'),editing);
++      if(error){setFormError(error);return;}
++    }
+     let totals;
+     try {totals=calculateInvoice(lines,String(form.taxRate??''),charges,expenses)}
+     catch(error){const errorSection=error.message.startsWith('Tax (%)')?'Additional details':
+@@ -1101,7 +1113,7 @@ function SalesInvoicePage({access,navigationReference=''}){
+     const number=editing||`${prefix}${String(serial).padStart(4,'0')}`;
+     const row=[previous?.[0]||String(rows.length+1),number,displayDate(form.date),form.customer,form.po||'-',form.project||'-',status,totals.total.toFixed(2),previous?.[8]||'NOT CONNECTED',previous?.[9]||'',JSON.stringify(lines)];
+     const updatedRows=editing?rows.map(r=>r[1]===editing?row:r):[row,...rows];
+-    const updatedDetails={...details,[number]:{form:{...form},files:Object.fromEntries(Object.entries(attachments).filter(([,file])=>file)),lines:lines.map(line=>({...line})),charges,expenses,taxable:totals.taxable,tax:totals.tax,total:totals.total}};
++    const updatedDetails={...details,[number]:{form:{...form},fetchedFrom:form.fetchedFrom,files:Object.fromEntries(Object.entries(attachments).filter(([,file])=>file)),lines:lines.map(line=>({...line})),charges,expenses,taxable:totals.taxable,tax:totals.tax,total:totals.total}};
+     setFormError('');
+     setSavingInvoice(true);
+     try {
+@@ -1687,27 +1699,6 @@ function getReferenceRecords(module){
+   });
+ }
+ 
+-function referenceFetchValues(source,record,fields){
+-  const result={};
+-  const from=record.fields;
+-  for(const {key,label,type} of fields){
+-    const mapped=source.fields[key]||source.fields[label];
+-    const alternates={
+-        Customer:['Customer','Prospect'],Vendor:['Vendor','Supplier'],Supplier:['Vendor','Supplier'],
+-        Product:['Product','Item','Material'],Item:['Item','Product','Material'],
+-        Material:['Material','Item','Product'],Qty:['Qty','Good Qty','Received Qty'],
+-        'Received Qty':['Qty'],'Taxable Amount':['Amount'],'Delivery Date':['Delivery','Required Date'],
+-        Delivery:['Delivery','Expected Delivery'],'PO Date':['Date'],
+-        'Work Order':['Work Order','WO No']
+-      }[key]||[];
+-    const value=[mapped,key,label,...alternates].filter(Boolean).map(name=>from[name])
+-      .find(item=>String(item??'').trim()&&item!=='-');
+-    result[key]=type==='date'?isoDate(value):value;
+-  }
+-  if(source.reference&&fields.some(field=>field.key===source.reference)) result[source.reference]=record.number;
+-  return result;
+-}
+-
+ function useSaveMasterDocument(rowsKey,rows,setRows,detailsKey,details,setDetails){
+   const pending=useRef(false);
+   const [saving,setSaving]=useState(false);
+diff --git a/src/reference-form-controls.jsx b/src/reference-form-controls.jsx
+index 49cea0f..2a3e2f6 100644
+--- a/src/reference-form-controls.jsx
++++ b/src/reference-form-controls.jsx
+@@ -3,6 +3,7 @@ import { ArrowLeft, RefreshCw } from 'lucide-react';
+ import { PremiumUploadField } from './premium-forms.jsx';
+ import { isoDate } from './erp-utils.js';
+ import { referenceFetch } from './reference-forms.js';
++import { allowedFetchRecord } from './document-fetch.js';
+ 
+ const documentExtensions='.png,.jpg,.jpeg,.webp,.gif,.pdf,.txt,.csv,.xlsx,.xls,.docx,.doc';
+ const suggestionLabel={
+@@ -68,7 +69,7 @@ export function ReferenceFetch({title,getRecords,onFetch,disabled=false}) {
+   const trigger=useRef(null);
+   if (!sources?.length) return null;
+   const source=sources[sourceIndex];
+-  const records=expanded?getRecords(source.module):[];
++  const records=expanded?getRecords(source.module).filter(record=>allowedFetchRecord(source,record)):[];
+   const terms=query.trim().toLowerCase().split(/\s+/);
+   const matches=records.filter(record=>{
+     const text=`${record.number} ${record.party||''}`.toLowerCase();
+diff --git a/src/reference-forms.js b/src/reference-forms.js
+index 110fba4..28843a6 100644
+--- a/src/reference-forms.js
++++ b/src/reference-forms.js
+@@ -112,7 +112,7 @@ export const actualEntryFields={
+   'Customer Payments':['Amount'],
+   'Vendor Payments':['Amount']
+ };
+-const source = (module, reference, fields = {}, relatedReference) => ({module,reference,fields,relatedReference});
++const source = (module, reference, fields = {}, relatedReference, options = {}) => ({module,reference,fields,relatedReference,...options});
+ export const referenceFetch = {
+   'Sales Quotations': [
+     source('Sales Orders','',{'PO Number':'Customer PO'}),
+@@ -120,13 +120,17 @@ export const referenceFetch = {
+   ],
+   'Sales Orders': [source('Sales Quotations','Quotation No',{'Quotation Date':'Date'}),source('Job Work Inward','')],
+   'Purchase Orders': [source('Purchase Indents','Indent No'),source('Outsource Issue DC','')],
+-  'GRN': [source('Purchase Orders','PO No',{'PO Ref. Dt.':'PO Date'})],
++  'GRN': [source('Purchase Orders','PO No',{'PO Ref. Dt.':'PO Date'},undefined,{omit:actualEntryFields.GRN,statuses:['Approved','Sent','Partially Received']})],
+   'Purchase': [source('GRN','',{},'PO No')],
+   'Work Order': [source('Sales Orders','SO No',{'PO Number':'Customer PO','Project Name/Code':'Project Name/Code'}),source('Rejection Note','')],
+   'Production Output': [source('Work Order','WO No',{'PO Number':'PO Number'})],
+   'Outward QC': [source('Production Output','Output No',{'PO Number':'PO Number'})],
+   'Delivery Challan': [source('Sales Orders','SO No',{'PO Number':'Customer PO','Project Name':'Project Name/Code'})],
+-  'Sales Invoice': [source('Sales Orders','',{'po':'Customer PO','project':'Project Name/Code'})],
++  'Sales Invoice': [
++    source('Sales Orders','sourceOrder',{'po':'Customer PO','project':'Project Name/Code','customer':'Customer'}),
++    source('Delivery Challan','dc',{'customer':'Customer','sourceOrder':'SO No','po':'PO Number','project':'Project Name','vehicle':'Vehicle No.','DC date':'Date'},undefined,{statuses:['Dispatched','Delivered','Closed']}),
++    source('Job Work Return DC','dc',{'customer':'Customer','sourceOrder':'SO No','po':'PO Number','project':'Project Name','vehicle':'Vehicle No.','DC date':'Date'},undefined,{statuses:['Dispatched','Delivered','Closed']})
++  ],
+   'Proforma Invoice': [source('Sales Orders','SO No',{'PO Number':'Customer PO'})],
+   'Sales Return': [source('Sales Invoice','Invoice')],
+   'Customer Payments': [source('Sales Invoice','Invoice')],
+diff --git a/src/transaction-context.js b/src/transaction-context.js
+index 5e7db48..b731f68 100644
+--- a/src/transaction-context.js
++++ b/src/transaction-context.js
+@@ -9,7 +9,10 @@ export const TRANSACTION_SECTIONS={
+  Stores:['Material Issue','Scrap Entry','Opening Stock','Excess Stock','Shortage Stock','Production Output'],
+  'Quality Control':['Inward QC','Outward QC','Inward Quality Rejection','Inward Quality'],
+  Production:['Work Order','Outsource Issue DC','Job Work Inward','Job Work Return DC','Outsource Receipt','Material Request','Route Cards','Rejection Note'],
+- Approvals:['Pending Approvals'],Payments:['Vendor Payments','Customer Payments']
++ Approvals:['Pending Approvals'],Payments:['Vendor Payments','Customer Payments'],
++ Planning:['Procurement Planning','Procurement Schedule','Production Schedule','Dispatch Schedule','Project Planning'],
++ 'Warehouse & QC':['Pick Slip','Put Away','In-process QC','Job Work QC'],
++ 'Additional Operations':['Import Purchase','BOM-Based Work Order','Input to Production','Stage Consumption','Stage Receipt','Excess Issue','Return to Store','Dispatch Intimation','Material Reserve','Material Unreserved','Stock Adjustment','Job Order','Jobwork Material Issue','Jobwork Material Receipt','Service Invoice','Terminate Order','Project Order','Delivery Channel','Purchase Return']
+ };
+ export function transactionSection(title){return Object.keys(TRANSACTION_SECTIONS).find(section=>TRANSACTION_SECTIONS[section].includes(title))||'';}
+ export function transactionPath(title){return ['Transactions',transactionSection(title),title].filter(Boolean);}
+diff --git a/tests/browser-dispatch-fetch.mjs b/tests/browser-dispatch-fetch.mjs
+new file mode 100644
+index 0000000..8e8bc6c
+--- /dev/null
++++ b/tests/browser-dispatch-fetch.mjs
+@@ -0,0 +1,40 @@
++// Real invoice Fetch UI against an isolated Supabase fixture.
++import assert from 'node:assert/strict';
++import {launchFixture} from './browser-fixture.mjs';
++const fixture=await launchFixture(5198);
++const {page,store,open,errors}=fixture;
++try {
++  store.set('dfab-erp-Delivery Challan',[
++    ['DC-QA','Fixture Customer','SO-QA','Fixture product','5','KA01','Delivered',{version:1,header:{'Product Code':'QA-P1',UOM:'NOS'}}],
++    ['DC-DRAFT','Fixture Customer','SO-QA','Fixture product','5','KA01','Draft']
++  ]);
++  await page.evaluate(async()=>{const cloud=await import('/src/backend/cloud-store.js');await cloud.initializeCloudStore('fixture');});
++  const create=async()=>{
++    await open('Sales Invoice');
++    await page.getByRole('button',{name:'Create new',exact:true}).click();
++    await page.getByRole('button',{name:'Fetch',exact:true}).click();
++    await page.locator('.reference-fetch-grid select').nth(0).selectOption({label:'Delivery Challan'});
++    assert.equal(await page.locator('.reference-fetch-grid select').nth(1).locator('option').filter({hasText:'DC-DRAFT'}).count(),0);
++    await page.locator('.reference-fetch-grid select').nth(1).selectOption('DC-QA');
++    await page.getByRole('button',{name:'Fetch document',exact:true}).click();
++    await page.getByLabel('Form sections').getByRole('button',{name:'Products',exact:true}).click();
++  };
++  await create();
++  assert.equal(await page.getByLabel('Line 1 Description',{exact:true}).inputValue(),'Fixture product');
++  assert.equal(await page.getByLabel('Line 1 Quantity',{exact:true}).inputValue(),'5');
++  await page.getByLabel('Line 1 Rate',{exact:true}).fill('100');
++  await page.getByRole('button',{name:'Save as Draft',exact:true}).click();
++  await page.locator('.transaction-editor-page').waitFor({state:'hidden'});
++  const invoices=store.get('dfab-erp-sales-invoices-v2');
++  assert.equal(invoices.length,1);
++  const saved=store.get('dfab-invoice-details-v1')[invoices[0][1]];
++  assert.equal(saved.form.dc,'DC-QA');assert.equal(saved.form.sourceOrder,'SO-QA');
++  assert.equal(saved.fetchedFrom.module,'Delivery Challan');
++  await create();
++  await page.getByLabel('Line 1 Rate',{exact:true}).fill('100');
++  await page.getByRole('button',{name:'Save as Draft',exact:true}).click();
++  await page.getByRole('alert').filter({hasText:'remaining dispatch quantity'}).waitFor();
++  assert.equal(store.get('dfab-erp-sales-invoices-v2').length,1);
++  assert.deepEqual(errors,[]);
++  console.log('PASS: dispatch Fetch, eligible source filtering, order reference, saved lineage and duplicate billing protection.');
++} finally {await fixture.close();}
+diff --git a/tests/cloud-store.production.test.js b/tests/cloud-store.production.test.js
+index a9e3dd1..2565a71 100644
+--- a/tests/cloud-store.production.test.js
++++ b/tests/cloud-store.production.test.js
+@@ -8,7 +8,7 @@ const source = readFileSync(new URL('../src/backend/cloud-store.js', import.meta
+   .replace("import { backendConfigured, rpc } from './supabase-rest.js';", 'const backendConfigured = true; const rpc = (...args) => globalThis.__erpProductionTestRpc(...args);');
+ const cloudModule = await import(`data:text/javascript;base64,${Buffer.from(source).toString('base64')}`);
+ const { initializeCloudStore, writeCloudValue, readCloudValue, flushCloudWrites,
+-  writeCloudBatchConfirmed, setCloudAccessToken, resetCloudWriteErrors } = cloudModule;
++  writeCloudBatchConfirmed, commitProcessChanges, nextProcessNumber, setCloudAccessToken, resetCloudWriteErrors } = cloudModule;
+ 
+ function createRpc(initial = {}) {
+   const saved = new Map(Object.entries(initial));
+@@ -25,6 +25,14 @@ function createRpc(initial = {}) {
+       saved.set(params.p_storage_key, params.p_payload);
+       return null;
+     }
++    if (name === 'erp_next_process_no') return 'SO/LOCAL/26-27/00001';
++    if (name === 'erp_commit_process') {
++      for (const key of Object.keys(params.p_changes)) {
++        if (denyWrites || JSON.stringify(saved.get(key) ?? null) !== JSON.stringify(params.p_expected[key])) throw Error('ERP records changed');
++      }
++      for (const [key,value] of Object.entries(params.p_changes)) saved.set(key,value);
++      return null;
++    }
+     if (name === 'erp_commit_ui_state_batch') {
+       if (missingBatch) throw Error('function erp_commit_ui_state_batch not found');
+       for (const change of params.p_changes) {
+@@ -88,3 +96,73 @@ test('missing concurrency RPC fails closed without a legacy overwrite', async ()
+   assert.equal(mock.calls.filter(call => call.name === 'erp_put_ui_state').length, 0);
+   setCloudAccessToken('');
+ });
++
++
++test('process commit confirms all sections and supplies the next save with committed state', async () => {
++  const mock=createRpc({'dfab-process-a':[0]});
++  await initializeCloudStore('process-token');
++  await commitProcessChanges({'dfab-process-a':[1],'dfab-process-b':{source:'SO1'}},{'dfab-process-a':[0],'dfab-process-b':null},'handoff');
++  assert.deepEqual(mock.saved.get('dfab-process-b'),{source:'SO1'});
++  assert.deepEqual(readCloudValue('dfab-process-a'),[1]);
++  writeCloudValue('dfab-process-a',[2]);
++  await flushCloudWrites();
++  assert.deepEqual(mock.saved.get('dfab-process-a'),[2]);
++  assert.deepEqual(mock.calls.find(call=>call.name==='erp_commit_process').params.p_action,'handoff');
++  setCloudAccessToken('');
++});
++
++test('stale process snapshots reject before writing and do not block a fresh edit', async () => {
++  const mock=createRpc({'dfab-process-a':[1]});
++  await initializeCloudStore('process-token');
++  await assert.rejects(commitProcessChanges({'dfab-process-a':[3]},{'dfab-process-a':[0]}),/changed/);
++  assert.equal(mock.calls.filter(call=>call.name==='erp_commit_process').length,0);
++  await commitProcessChanges({'dfab-process-a':[2]},{'dfab-process-a':[1]});
++  assert.deepEqual(mock.saved.get('dfab-process-a'),[2]);
++  setCloudAccessToken('');
++});
++
++test('process commits wait for queued edits and reject invalid section snapshots', async () => {
++  const mock=createRpc({'dfab-process-a':[0]});
++  await initializeCloudStore('process-token');
++  writeCloudValue('dfab-process-a',[1]);
++  await commitProcessChanges({'dfab-process-a':[2]},{'dfab-process-a':[1]});
++  assert.deepEqual(mock.saved.get('dfab-process-a'),[2]);
++  await assert.rejects(commitProcessChanges({'dfab-process-a':[3]},{}),/snapshot/);
++  await assert.rejects(commitProcessChanges({'dfab-process-a':[3]},{'dfab-process-a':[2]},'unknown'),/action/);
++  setCloudAccessToken('');
++});
++
++test('failed atomic process write preserves every confirmed section and blocks further saves', async () => {
++  const mock=createRpc({'dfab-process-a':[0],'dfab-process-b':[0]});
++  await initializeCloudStore('process-token');
++  mock.setDenyWrites(true);
++  await assert.rejects(commitProcessChanges({'dfab-process-a':[1],'dfab-process-b':[1]},{'dfab-process-a':[0],'dfab-process-b':[0]}),/changed/);
++  assert.deepEqual(readCloudValue('dfab-process-a'),[0]);
++  assert.deepEqual(mock.saved.get('dfab-process-b'),[0]);
++  await assert.rejects(flushCloudWrites(),/database write/);
++  setCloudAccessToken('');
++});
++
++test('an in-flight process commit cannot hydrate a logged-out session', async () => {
++  createRpc();
++  await initializeCloudStore('process-token');
++  let entered,release;
++  const started=new Promise(resolve=>{entered=resolve;});
++  globalThis.__erpProductionTestRpc=async()=>{entered();await new Promise(resolve=>{release=resolve;});};
++  const operation=commitProcessChanges({'dfab-process-a':[1]},{'dfab-process-a':null});
++  await started;
++  setCloudAccessToken('');release();
++  await assert.rejects(operation,/session changed/);
++  assert.equal(readCloudValue('dfab-process-a'),undefined);
++});
++
++test('process numbers require an active session and use the authenticated numbering RPC', async () => {
++  await assert.rejects(nextProcessNumber('Sales Orders','SO/LOCAL','26-27'),/session/);
++  const mock=createRpc();
++  await initializeCloudStore('number-token');
++  assert.equal(await nextProcessNumber('Sales Orders','SO/LOCAL','26-27'),'SO/LOCAL/26-27/00001');
++  assert.deepEqual(mock.calls.at(-1).params,{p_document_type:'Sales Orders',p_prefix:'SO/LOCAL',p_financial_year:'26-27'});
++  globalThis.__erpProductionTestRpc=async()=>'';
++  await assert.rejects(nextProcessNumber('Sales Orders','SO/LOCAL','26-27'),/valid document number/);
++  setCloudAccessToken('');
++});
+diff --git a/tests/form-jsx-import-safety.test.js b/tests/form-jsx-import-safety.test.js
+index f9c749b..f3a6d04 100644
+--- a/tests/form-jsx-import-safety.test.js
++++ b/tests/form-jsx-import-safety.test.js
+@@ -24,6 +24,13 @@ function declaredJsxNames(source) {
+   for (const match of source.matchAll(/\b(?:function|class|const|let)\s+([A-Z][A-Za-z0-9_]*)\b/g)) {
+     declared.add(match[1]);
+   }
++  // Components may also be passed as destructured function props.
++  for (const match of source.matchAll(/function\s+\w+\s*\(\s*\{([^}]+)\}/g)) {
++    for (const prop of match[1].split(',')) {
++      const local = prop.trim().split(':').at(-1).split('=')[0].trim();
++      if (/^[A-Z][A-Za-z0-9_]*$/.test(local)) declared.add(local);
++    }
++  }
+   // <Icon /> is a dynamic prop or destructured item from a map of UI descriptors.
+   declared.add('Icon');
+   return declared;
+@@ -45,3 +52,12 @@ test('shared transaction form uses a declared linked-document icon', () => {
+   const lucideImports = main.match(/import\s*\{([\s\S]*?)\}\s*from\s*['"]lucide-react['"]/)?.[1] || '';
+   assert.match(lucideImports, /\bGitBranch\b/, 'GitBranch must be imported for every Create/Edit transaction form');
+ });
++
++
++test('JSX guard accepts component props but still catches undeclared components', () => {
++  const source = 'function Field({Suggest, Renderer: Cell = Default}) { return <Suggest><Cell/><MissingIcon/></Suggest>; }';
++  const names = declaredJsxNames(source);
++  assert.ok(names.has('Suggest'));
++  assert.ok(names.has('Cell'));
++  assert.equal(names.has('MissingIcon'),false);
++});
+diff --git a/tests/transaction-context.test.js b/tests/transaction-context.test.js
+index 3b35036..aefbb16 100644
+--- a/tests/transaction-context.test.js
++++ b/tests/transaction-context.test.js
+@@ -9,7 +9,7 @@ test('transaction subsections cover the existing menu without adding routes',()=
+  const text=fs.readFileSync(new URL('../src/main.jsx',import.meta.url),'utf8');
+  const start=text.indexOf("{ label:'Transactions', icon:FileText, children:["),end=text.indexOf("{ label:'Reports', icon:FileText, children:[",start);
+  const menu=[...text.slice(start,end).matchAll(/\['([^']+)',[A-Za-z0-9]+\]/g)].map(m=>m[1]);
+- assert.deepEqual(['SOP Workflow',...Object.values(TRANSACTION_SECTIONS).flat()],menu);
++ assert.deepEqual(Object.values(TRANSACTION_SECTIONS).flat(),menu);
+  for(const module of Object.keys(schemas))assert.ok(transactionSection(module),module);
+  assert.deepEqual(transactionPath('Sales Orders'),['Transactions','Marketing','Sales Orders']);
+  assert.deepEqual(transactionPath('Customer Payments'),['Transactions','Payments','Customer Payments']);

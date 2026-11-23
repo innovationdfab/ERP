@@ -24,6 +24,13 @@ function declaredJsxNames(source) {
   for (const match of source.matchAll(/\b(?:function|class|const|let)\s+([A-Z][A-Za-z0-9_]*)\b/g)) {
     declared.add(match[1]);
   }
+  // Components may also be passed as destructured function props.
+  for (const match of source.matchAll(/function\s+\w+\s*\(\s*\{([^}]+)\}/g)) {
+    for (const prop of match[1].split(',')) {
+      const local = prop.trim().split(':').at(-1).split('=')[0].trim();
+      if (/^[A-Z][A-Za-z0-9_]*$/.test(local)) declared.add(local);
+    }
+  }
   // <Icon /> is a dynamic prop or destructured item from a map of UI descriptors.
   declared.add('Icon');
   return declared;
@@ -44,4 +51,13 @@ test('shared transaction form uses a declared linked-document icon', () => {
   assert.match(main, /className="erp-form-source-header"><GitBranch\s+size=/);
   const lucideImports = main.match(/import\s*\{([\s\S]*?)\}\s*from\s*['"]lucide-react['"]/)?.[1] || '';
   assert.match(lucideImports, /\bGitBranch\b/, 'GitBranch must be imported for every Create/Edit transaction form');
+});
+
+
+test('JSX guard accepts component props but still catches undeclared components', () => {
+  const source = 'function Field({Suggest, Renderer: Cell = Default}) { return <Suggest><Cell/><MissingIcon/></Suggest>; }';
+  const names = declaredJsxNames(source);
+  assert.ok(names.has('Suggest'));
+  assert.ok(names.has('Cell'));
+  assert.equal(names.has('MissingIcon'),false);
 });

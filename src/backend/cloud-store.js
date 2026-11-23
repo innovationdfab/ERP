@@ -265,3 +265,62 @@ async function commitSections(changes,rpcName) {
     throw error;
   }
 }
+
+/** Save process headers, lines and lineage together, using the edit snapshot. */
+export async function commitProcessChanges(changes, expected, action = 'save') {
+  if (!initialized || !accessToken) throw new Error('Supabase session is not ready. Please log in again.');
+  assertWriteAllowed();
+  if (!changes || Array.isArray(changes) || typeof changes !== 'object' ||
+      !expected || Array.isArray(expected) || typeof expected !== 'object') throw new Error('Invalid process snapshot.');
+  const keys = Object.keys(changes);
+  if (!keys.length || keys.length > 500 || keys.length !== Object.keys(expected).length ||
+      keys.some(key => !Object.hasOwn(expected, key))) throw new Error('Every process section requires its original snapshot.');
+  if (!['save','approve','reject','handoff','payment','close','delete'].includes(action)) throw new Error('Invalid process action.');
+  // Detach caller objects before waiting behind any earlier saves.
+  const payload = structuredClone(changes), base = structuredClone(expected);
+  for (const key of keys) {
+    assertCloudKey(key);
+    if (!samePayload(base[key], cachedPayload(key))) throw new QueuedChangeConflict('The ERP data changed since this page was opened. Reopen the page before saving.');
+  }
+  const token = accessToken, revision = sessionRevision;
+  const operation = writeQueue.catch(() => undefined).then(async () => {
+    assertSession(revision);
+    assertWriteAllowed();
+    for (const key of keys) checkQueuedSnapshot(key, base[key]);
+    try {
+      await rpc('erp_commit_process', {p_changes:payload,p_expected:base,p_action:action}, {accessToken:token});
+    } catch (error) {
+      if (!isMissingIntegrityRpc(error,'erp_commit_process')) throw error;
+      throw new Error('Atomic process saving is unavailable. Apply supabase/DFAB_PROCESS_UPGRADE.sql before saving.');
+    }
+    assertSession(revision);
+    for (const key of keys) { cache.set(key,payload[key]); committed.set(key,payload[key]); }
+    emit('erp-cloud-change',{type:'process-commit'});
+    emit('erp-storage-saved',{key:keys.join(', ')});
+  });
+  writeQueue = operation;
+  try { await operation; }
+  catch (error) {
+    if (revision === sessionRevision && !(error instanceof QueuedChangeConflict) && !writeErrors.length) reportWriteFailure('erp_commit_process',error);
+    throw error;
+  }
+}
+
+export async function nextProcessNumber(type, prefix, year) {
+  if (!initialized || !accessToken) throw new Error('Supabase session is not ready. Please log in again.');
+  assertWriteAllowed();
+  if ([type,prefix,year].some(value => typeof value !== 'string' || !value.trim())) throw new Error('Document type, prefix and financial year are required.');
+  const token = accessToken, revision = sessionRevision;
+  await flushCloudWrites();
+  assertSession(revision);
+  let number;
+  try {
+    number = await rpc('erp_next_process_no', {p_document_type:type,p_prefix:prefix,p_financial_year:year}, {accessToken:token});
+  } catch (error) {
+    if (!isMissingIntegrityRpc(error,'erp_next_process_no')) throw error;
+    throw new Error('Process numbering is unavailable. Apply supabase/DFAB_PROCESS_UPGRADE.sql first.');
+  }
+  assertSession(revision);
+  if (typeof number !== 'string' || !number.trim()) throw new Error('Supabase did not return a valid document number.');
+  return number;
+}

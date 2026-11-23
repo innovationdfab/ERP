@@ -3,6 +3,7 @@ import { ArrowLeft, RefreshCw } from 'lucide-react';
 import { PremiumUploadField } from './premium-forms.jsx';
 import { isoDate } from './erp-utils.js';
 import { referenceFetch } from './reference-forms.js';
+import { allowedFetchRecord } from './document-fetch.js';
 
 const documentExtensions='.png,.jpg,.jpeg,.webp,.gif,.pdf,.txt,.csv,.xlsx,.xls,.docx,.doc';
 const suggestionLabel={
@@ -68,7 +69,7 @@ export function ReferenceFetch({title,getRecords,onFetch,disabled=false}) {
   const trigger=useRef(null);
   if (!sources?.length) return null;
   const source=sources[sourceIndex];
-  const records=expanded?getRecords(source.module):[];
+  const records=expanded?getRecords(source.module).filter(record=>allowedFetchRecord(source,record)):[];
   const terms=query.trim().toLowerCase().split(/\s+/);
   const matches=records.filter(record=>{
     const text=`${record.number} ${record.party||''}`.toLowerCase();

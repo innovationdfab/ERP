@@ -9,7 +9,10 @@ export const TRANSACTION_SECTIONS={
  Stores:['Material Issue','Scrap Entry','Opening Stock','Excess Stock','Shortage Stock','Production Output'],
  'Quality Control':['Inward QC','Outward QC','Inward Quality Rejection','Inward Quality'],
  Production:['Work Order','Outsource Issue DC','Job Work Inward','Job Work Return DC','Outsource Receipt','Material Request','Route Cards','Rejection Note'],
- Approvals:['Pending Approvals'],Payments:['Vendor Payments','Customer Payments']
+ Approvals:['Pending Approvals'],Payments:['Vendor Payments','Customer Payments'],
+ Planning:['Procurement Planning','Procurement Schedule','Production Schedule','Dispatch Schedule','Project Planning'],
+ 'Warehouse & QC':['Pick Slip','Put Away','In-process QC','Job Work QC'],
+ 'Additional Operations':['Import Purchase','BOM-Based Work Order','Input to Production','Stage Consumption','Stage Receipt','Excess Issue','Return to Store','Dispatch Intimation','Material Reserve','Material Unreserved','Stock Adjustment','Job Order','Jobwork Material Issue','Jobwork Material Receipt','Service Invoice','Terminate Order','Project Order','Delivery Channel','Purchase Return']
 };
 export function transactionSection(title){return Object.keys(TRANSACTION_SECTIONS).find(section=>TRANSACTION_SECTIONS[section].includes(title))||'';}
 export function transactionPath(title){return ['Transactions',transactionSection(title),title].filter(Boolean);}

@@ -112,7 +112,7 @@ export const actualEntryFields={
   'Customer Payments':['Amount'],
   'Vendor Payments':['Amount']
 };
-const source = (module, reference, fields = {}, relatedReference) => ({module,reference,fields,relatedReference});
+const source = (module, reference, fields = {}, relatedReference, options = {}) => ({module,reference,fields,relatedReference,...options});
 export const referenceFetch = {
   'Sales Quotations': [
     source('Sales Orders','',{'PO Number':'Customer PO'}),
@@ -120,13 +120,17 @@ export const referenceFetch = {
   ],
   'Sales Orders': [source('Sales Quotations','Quotation No',{'Quotation Date':'Date'}),source('Job Work Inward','')],
   'Purchase Orders': [source('Purchase Indents','Indent No'),source('Outsource Issue DC','')],
-  'GRN': [source('Purchase Orders','PO No',{'PO Ref. Dt.':'PO Date'})],
+  'GRN': [source('Purchase Orders','PO No',{'PO Ref. Dt.':'PO Date'},undefined,{omit:actualEntryFields.GRN,statuses:['Approved','Sent','Partially Received']})],
   'Purchase': [source('GRN','',{},'PO No')],
   'Work Order': [source('Sales Orders','SO No',{'PO Number':'Customer PO','Project Name/Code':'Project Name/Code'}),source('Rejection Note','')],
   'Production Output': [source('Work Order','WO No',{'PO Number':'PO Number'})],
   'Outward QC': [source('Production Output','Output No',{'PO Number':'PO Number'})],
   'Delivery Challan': [source('Sales Orders','SO No',{'PO Number':'Customer PO','Project Name':'Project Name/Code'})],
-  'Sales Invoice': [source('Sales Orders','',{'po':'Customer PO','project':'Project Name/Code'})],
+  'Sales Invoice': [
+    source('Sales Orders','sourceOrder',{'po':'Customer PO','project':'Project Name/Code','customer':'Customer'}),
+    source('Delivery Challan','dc',{'customer':'Customer','sourceOrder':'SO No','po':'PO Number','project':'Project Name','vehicle':'Vehicle No.','DC date':'Date'},undefined,{statuses:['Dispatched','Delivered','Closed']}),
+    source('Job Work Return DC','dc',{'customer':'Customer','sourceOrder':'SO No','po':'PO Number','project':'Project Name','vehicle':'Vehicle No.','DC date':'Date'},undefined,{statuses:['Dispatched','Delivered','Closed']})
+  ],
   'Proforma Invoice': [source('Sales Orders','SO No',{'PO Number':'Customer PO'})],
   'Sales Return': [source('Sales Invoice','Invoice')],
   'Customer Payments': [source('Sales Invoice','Invoice')],

@@ -9,7 +9,7 @@ test('transaction subsections cover the existing menu without adding routes',()=
  const text=fs.readFileSync(new URL('../src/main.jsx',import.meta.url),'utf8');
  const start=text.indexOf("{ label:'Transactions', icon:FileText, children:["),end=text.indexOf("{ label:'Reports', icon:FileText, children:[",start);
  const menu=[...text.slice(start,end).matchAll(/\['([^']+)',[A-Za-z0-9]+\]/g)].map(m=>m[1]);
- assert.deepEqual(['SOP Workflow',...Object.values(TRANSACTION_SECTIONS).flat()],menu);
+ assert.deepEqual(Object.values(TRANSACTION_SECTIONS).flat(),menu);
  for(const module of Object.keys(schemas))assert.ok(transactionSection(module),module);
  assert.deepEqual(transactionPath('Sales Orders'),['Transactions','Marketing','Sales Orders']);
  assert.deepEqual(transactionPath('Customer Payments'),['Transactions','Payments','Customer Payments']);
