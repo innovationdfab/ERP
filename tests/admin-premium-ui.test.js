@@ -18,9 +18,9 @@ test('Admin data inspector is read-only; published templates use the original au
  assert.match(control,/Current catalog/);
 });
 test('Generic ERP editor includes remaining fields and preserves record column persistence',()=>{
- assert.match(main,/remainingFields\.filter\(field=>field!==documentId\)\.map\(field=>recordField\(field\)\)/);
- assert.match(main,/config\.columns\.map\(c=>values\[c\]/);
- assert.match(main,/legacy-header-grid/);
+ assert.match(main,/remainingFields\.filter\(field=>field!==documentId\)\.map\(recordField\)/);
+ assert.match(main,/config\.columns\.map\(c=>form\[c\]/);
+ assert.match(main,/erp-field-section/);
  assert.match(main,/erp-form-source-section/);
 });
 test('vendor invoice references read purchase invoices and manufacturing safety values stay first',()=>{

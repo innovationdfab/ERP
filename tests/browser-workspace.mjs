@@ -9,7 +9,7 @@ import {imantraReportDefinitions,imantraTransactions} from '../src/imantra-integ
 const port=5187;
 const origin='https://dfab-workspace-fixture.supabase.co';
 const routes=[...new Set([
-  'Home','Admin Control','PO Number Details','SO Number Details','RM Inward and Outward','Route Card Monitoring','Customer Payment Overdue',...JSON.parse(readFileSync(new URL('./browser-routes.json',import.meta.url))),
+  'Home','Admin Control','Reorder Planning','Receivables Ageing','Collection Follow-ups','Customer Statements',...JSON.parse(readFileSync(new URL('./browser-routes.json',import.meta.url))),
   ...Object.keys(imantraReportDefinitions),...Object.keys(imantraTransactions)
 ])];
 const catalog=JSON.parse(readFileSync(new URL('../src/admin-catalog.json',import.meta.url)));

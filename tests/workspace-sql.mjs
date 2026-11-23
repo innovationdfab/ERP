@@ -19,12 +19,11 @@ try{
   insert into auth.users(id,email) values('${admin}','qa-admin@example.test');`);
   for(const migration of [
     'DFAB_ERP_PRODUCTION','ERP_FLOW_INTEGRITY_UPGRADE','ERP_PRODUCTION_GUARDRAILS','ERP_ADMIN_CONTROL',
-    'ERP_ADMIN_OPERATIONS_V2','ERP_INITIAL_LOGIN_PASSWORD_POLICY','ERP_WORKSPACE_INTEGRITY'
+    'ERP_ADMIN_OPERATIONS_V2','ERP_INITIAL_LOGIN_PASSWORD_POLICY','ERP_WORKSPACE_INTEGRITY','ERP_EXTENSIONS'
   ]){
     await db.exec(readFileSync(new URL(`../supabase/${migration}.sql`,import.meta.url),'utf8'));
     console.log('Applied',migration);
   }
-  await db.exec(readFileSync(new URL('../supabase/ERP_WORKSPACE_INTEGRITY.sql',import.meta.url),'utf8'));
   await db.exec(`insert into auth.users(id,email) values('${staff}','qa-staff@example.test');`);
   const asUser=async id=>{
     await db.exec('reset role;');
@@ -41,22 +40,12 @@ try{
       {page:'Sales Enquiries',view:true,edit:true},
       {page:'Sales Quotations',view:true,create:true,edit:true},
       {page:'Products',view:true,create:true},
-      {page:'Job Work Inward',view:true},
-      {page:'Inward QC',view:true,create:true,edit:true,approve:true},
-      {page:'Sales Orders',view:true,create:true},
-      {page:'Job Work Return DC',view:true},
-      {page:'Sales Invoice',view:true,create:true},
       {page:'Department Master',view:true,create:true,edit:true},
       {page:'Activity Log',view:true},{page:'User Wise Transactions List',view:true}
     ])])).rows[0].id;
   await db.query('select erp_admin_save_user($1,null,$2,true,$3::uuid[])',[staff,'QA Staff',[role]]);
   const enquiries=[['ENQ-1','QA Customer','Steel','2','2026-11-17','New']];
   await save('dfab-erp-Sales Enquiries',null,enquiries);
-  await save('dfab-erp-Job Work Inward',null,[['JOB-1','QA Customer','DC-1','Steel','2','Received']]);
-  await save('dfab-erp-Job Work Return DC',null,[
-    ['JOB-RETURN-READY','QA Customer','JOB-1','Steel','2','Dispatched'],
-    ['JOB-RETURN-DRAFT','QA Customer','JOB-1','Steel','2','Draft']
-  ]);
   await save('dfab-erp-vendors-v2',null,[['SECRET-VENDOR','Restricted vendor']]);
   await asUser(staff);
   assert.equal((await snapshot()).has('dfab-erp-vendors-v2'),false);
@@ -75,30 +64,6 @@ try{
     {key:'dfab-erp-Sales Quotations',expected:null,payload:quotations},
     {key:'dfab-workflow-links-v1',expected:null,payload:[link]}
   ]);
-  const jobInspectionKey='dfab-erp-Inward QC';
-  const jobInspection=[['QC-1','','Steel','2','Inspector','Pending',{version:1,header:{'Job Inward No':'JOB-1'}}]];
-  const jobLink={from:'Job Work Inward',to:'Inward QC',reference:'JOB-1',created:'QC-1'};
-  const orderLink={from:'Inward QC',to:'Sales Orders',reference:'QC-1',created:'SO-JOB-1'};
-  const linkKey='dfab-workflow-links-v1';
-  await batch([{key:jobInspectionKey,expected:null,payload:jobInspection},{key:linkKey,expected:[link],payload:[link,jobLink]}]);
-  const jobOrder=[
-    {key:'dfab-erp-Sales Orders',expected:null,payload:[['SO-JOB-1','QA Customer','PO-1','Steel','2','2026-11-17','Draft']]},
-    {key:linkKey,expected:[link,jobLink],payload:[link,jobLink,orderLink]}
-  ];
-  await assert.rejects(batch(jobOrder),/approval gate/);
-  const passedInspection=jobInspection.map(row=>row.map((value,index)=>index===5?'Passed':value));
-  await save(jobInspectionKey,jobInspection,passedInspection);
-  await batch(jobOrder);
-  assert.deepEqual((await snapshot()).get(linkKey),[link,jobLink,orderLink]);
-  const returnInvoice=reference=>[
-    {key:'dfab-erp-sales-invoices-v2',expected:null,payload:[['1','SI-JOB-1','17-Nov-2026','QA Customer','PO-1','-','DRAFT','0']]},
-    {key:linkKey,expected:[link,jobLink,orderLink],payload:[link,jobLink,orderLink,
-      {from:'Job Work Return DC',to:'Sales Invoice',reference,created:'SI-JOB-1'}]}
-  ];
-  await assert.rejects(batch(returnInvoice('JOB-RETURN-DRAFT')),/approval gate/);
-  await batch(returnInvoice('JOB-RETURN-READY'));
-  assert.equal((await snapshot()).get('dfab-erp-sales-invoices-v2')[0][1],'SI-JOB-1');
-
   const submitted=[['SQ-2','QA Updated','ENQ-1','100','Approval Pending'],...quotations];
   await save('dfab-erp-Sales Quotations',quotations,submitted);
   const pendingBoth=[submitted[0],[...quotations[0].slice(0,4),'Approval Pending']];
@@ -134,10 +99,34 @@ try{
   assert.equal((await snapshot()).has(settings.key),false);
   await restore([settings]);
   assert.deepEqual((await snapshot()).get(settings.key),settings.payload);
+  await db.exec('reset role;');
+  await db.exec(readFileSync(new URL('../supabase/ERP_QA_EXTENSIONS_UPDATE.sql',import.meta.url),'utf8'));
+  await asUser(admin);
+  const extraProduct=[...product,['XP1','Extension product','RAW MATERIAL','METAL','KG','R1','ACTIVE']];
+  await save('dfab-erp-products-v3',product,extraProduct);
+  const oldVendors=(await snapshot()).get('dfab-erp-vendors-v2');
+  await save('dfab-erp-vendors-v2',oldVendors,[...oldVendors,['XV1','Extension vendor','','','','','','','ACTIVE']]);
+  const policyKey='dfab-erp-reorder-policies-v1';
+  const policy=[{id:'XP1',minimum:5,target:20,vendor:'XV1',leadDays:2,enabled:true}];
+  await save(policyKey,null,policy);
+  await assert.rejects(save(policyKey,policy,[{...policy[0],target:4}]),/threshold/);
+  await assert.rejects(save(policyKey,policy,[policy[0],policy[0]]),/unique/);
+  await assert.rejects(save(policyKey,policy,[{...policy[0],minimum:'five'}]),/types/);
+  assert.deepEqual((await snapshot()).get(policyKey),policy);
+  await save('dfab-erp-sales-invoices-v2',null,[['1','XS1','2026-11-20','Customer A','','','APPROVED','100','']]);
+  const followKey='dfab-erp-collection-followups-v1';
+  const follow=[{id:'XF1',invoice:'XS1',nextDate:'2026-11-24',owner:'Accounts',channel:'Phone',status:'Open',note:'Call customer'}];
+  await save(followKey,null,follow);
+  await assert.rejects(save(followKey,follow,[{...follow[0],invoice:'MISSING'}]),/approved invoice/);
+  await assert.rejects(save(followKey,follow,[{...follow[0],nextDate:'2026-02-30'}]),/date/);
+  await assert.rejects(save(followKey,follow,[{...follow[0],owner:''}]),/Complete the follow-up/);
   await asUser(staff);
+  assert.equal((await snapshot()).has(policyKey),false);
+  assert.equal((await snapshot()).has(followKey),false);
+  await assert.rejects(save(policyKey,policy,[{...policy[0],target:30}]),error=>error.code==='42501');
   await db.query("select set_config('request.jwt.claims',$1,false)",[JSON.stringify({app_metadata:{erp_initial_password_pending:true}})]);
   assert.equal((await snapshot()).size,0);
-  console.log('Verified staff edit and create rights, approvals, atomic handoff and rollback, job-work branching, hidden data, activity scope, transactional restore and initial-password enforcement.');
+  console.log('Verified staff edit and create rights, approvals, atomic handoff and rollback, hidden data, activity scope, transactional restore, extension validation and permissions, and initial-password enforcement.');
 }finally{
   await db.close();
 }

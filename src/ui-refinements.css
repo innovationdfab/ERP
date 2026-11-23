@@ -498,3 +498,20 @@ input[type="file"]{white-space:normal;min-width:0}
   .page-transition-shell,.home-command-tile,.erp-home .home-metric,.sidebar-status-dot{animation:none!important}
   *{scroll-behavior:auto!important}
 }
+
+/* Text actions keep their label width alongside the compact icon actions. */
+.row-actions > :is(.action-pill,.primary-pill) {
+  display: inline-flex !important;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: auto !important;
+  min-width: max-content;
+  min-height: 32px;
+  height: auto !important;
+  flex: 0 0 auto;
+  padding: 7px 10px !important;
+  white-space: nowrap;
+  overflow-wrap: normal;
+  word-break: normal;
+}

@@ -50,9 +50,6 @@ update public.erp_admin_storage_map set status_index=8 where (storage_key,page) 
 update public.erp_admin_page_catalog set statuses='["DRAFT","APPROVAL PENDING","ACTIVE","DEACTIVATED","REJECTED"]'::jsonb
  where page in ('Products','Customers','Vendors','Prospects','Production BOM','Route Card');
 update public.erp_admin_page_catalog set statuses='["DRAFT","APPROVAL PENDING","APPROVED","REJECTED"]'::jsonb where page='Sales Invoice';
-update public.erp_admin_page_catalog set default_gate_statuses=array['Dispatched','Delivered'] where page='Delivery Challan';
-update public.erp_admin_page_catalog set default_next='Sales Invoice',default_gate_statuses=array['Dispatched','Delivered']
- where page='Job Work Return DC';
 
 create or replace function public.erp_admin_can_key(p_storage_key text,p_action text default 'view')
 returns boolean language plpgsql stable security definer set search_path=public as $$
@@ -212,7 +209,7 @@ declare v_org uuid:=public.erp_current_org_id();v_item jsonb;v_key text;v_old js
  v_expected jsonb;v_new jsonb;v_links_old jsonb;v_links_new jsonb;v_link jsonb;
  v_from text;v_to text;v_reference text;v_created text;v_target_key text;v_target_payload jsonb;
  v_target_old jsonb;v_source_key text;v_source_doc jsonb;v_source_rows jsonb;
- v_source_status text;v_status_idx integer;v_gates text[];v_active_target text;v_published_target boolean;
+ v_source_status text;v_status_idx integer;v_gates text[];v_active_target text;
 begin
  if auth.uid() is null or v_org is null or not public.erp_has_permission('ERP.EDIT') then
    raise exception 'ERP session or edit permission is missing' using errcode='42501';end if;
@@ -254,11 +251,11 @@ begin
    select e.target_page,e.gate_statuses into v_active_target,v_gates
    from public.erp_admin_flow_templates t join public.erp_admin_flow_edges e on e.template_id=t.id
    where t.organization_id=v_org and t.status='published' and e.source_page=v_from limit 1;
-   v_published_target:=v_active_target is not null;
-   if not v_published_target then
+   if v_active_target is null then
      select default_next into v_active_target from public.erp_admin_page_catalog where page=v_from;
      select default_gate_statuses into v_gates from public.erp_admin_page_catalog where page=v_from;
    end if;
+   if v_active_target is distinct from v_to then raise exception 'Workflow link is not allowed by the active process template';end if;
    if coalesce(array_length(v_gates,1),0)=0 then
      select default_gate_statuses into v_gates from public.erp_admin_page_catalog where page=v_from;
    end if;
@@ -269,17 +266,6 @@ begin
    select source_row.value into v_source_doc from jsonb_array_elements(v_source_rows) as source_row(value)
    where source_row.value->>(case when v_from='Sales Invoice' then 1 else 0 end)=v_reference limit 1;
    if v_source_doc is null then raise exception 'Source reference does not exist in Supabase';end if;
-   v_source_status:=v_source_doc->>v_status_idx;
-   if not v_published_target then
-     if v_from='Job Work Inward' and v_source_status in ('Received','QC Pending') then
-       v_active_target:='Inward QC';
-       v_gates:=array['Received','QC Pending'];
-     elsif v_from='Inward QC' and coalesce(btrim(v_source_doc->6->'header'->>'Job Inward No'),'') not in ('','-') then
-       v_active_target:='Sales Orders';
-       v_gates:=array['Passed'];
-     end if;
-   end if;
-   if v_active_target is distinct from v_to then raise exception 'Workflow link is not allowed by the active process template';end if;
    if coalesce(array_length(v_gates,1),0)>0 and (v_status_idx is null or v_status_idx<0 or
      not (v_source_doc->>v_status_idx = any(v_gates))) then
        raise exception 'Source status does not satisfy the published workflow approval gate';end if;

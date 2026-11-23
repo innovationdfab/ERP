@@ -3372,5 +3372,37 @@
       "Maintenance"
     ],
     "next": null
+  },
+  {
+    "name": "Reorder Planning",
+    "group": "ERP Extensions",
+    "columns": [],
+    "fields": [],
+    "statuses": [],
+    "next": null
+  },
+  {
+    "name": "Receivables Ageing",
+    "group": "ERP Extensions",
+    "columns": [],
+    "fields": [],
+    "statuses": [],
+    "next": null
+  },
+  {
+    "name": "Collection Follow-ups",
+    "group": "ERP Extensions",
+    "columns": [],
+    "fields": [],
+    "statuses": [],
+    "next": null
+  },
+  {
+    "name": "Customer Statements",
+    "group": "ERP Extensions",
+    "columns": [],
+    "fields": [],
+    "statuses": [],
+    "next": null
   }
 ]

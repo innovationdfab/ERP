@@ -61,18 +61,3 @@ test('stock periods derive opening, movement and closing from confirmed records'
   sources['dfab-erp-GRN'].push(['GRN-3','PO-1','Supplier','ST-1','8','Accepted']);
   assert.deepEqual(stockReportRows('Stock Report',cols,readRows,{},params),[['ST-1','-',5,2,'-','KG','-']]);
 });
-
-test('vendor payment history uses posted payment amounts and the linked invoice date',()=>{
-  const documents={
-    'Vendor Payments':[
-      {fields:{'Payment No':'PAY1',Vendor:'Vendor A',Invoice:'PI1',Date:'2026-11-17',Amount:'50',Status:'Paid'}},
-      {fields:{'Payment No':'PAY2',Vendor:'Vendor A',Invoice:'PI1',Date:'2026-11-18',Amount:'20',Status:'Approved'}}
-    ],
-    Purchase:[{number:'PI1',fields:{'Invoice Date':'2026-11-10'}}]
-  };
-  const columns=['Payment No','Payment Date','Vendor','Invoice No','Invoice Date','Paid Amount','Mode','Reference'];
-  const rows=documentReportRows('Vendor Payment History',columns,source=>documents[source]);
-  assert.deepEqual(rows,[['PAY1','2026-11-17','Vendor A','PI1','2026-11-10','50','-','-']]);
-  const limited=documentReportRows('Vendor Payment History',columns,source=>documents[source],undefined,source=>source!=='Purchase');
-  assert.equal(limited[0][4],'-');
-});

@@ -1,19 +1,19 @@
 # DFAB OneERP
 
-Manufacturing ERP for DFAB Stainless Systems. The React frontend uses Supabase Auth and PostgreSQL. The release keeps the OneERP theme and the legacy-style transaction forms.
+Manufacturing ERP with the existing DFAB UI, Supabase Auth and PostgreSQL persistence. This release uses the uploaded Employee Passwords Login project as its base.
 
-## Update an existing workspace
+## Update an existing installation
 
-1. Apply `supabase/ERP_WORKSPACE_INTEGRITY.sql` to a staging project with the existing OneERP migrations already installed. It adds the storage mappings and RPCs used by this release, and updates the permission checks for record saves and handoffs.
-2. Keep the project’s existing `VITE_SUPABASE_URL` and `VITE_SUPABASE_PUBLISHABLE_KEY`. See `.env.example` for the variable names.
-3. Run `npm ci` and `npm run verify` from this directory. Use `npm run dev` for local development and `npm run build` for a deployment build.
-4. Verify sign-in, account provisioning, and a sample transaction in staging with your actual employee roles before promoting the release.
+1. Back up the existing Supabase project.
+2. With the baseline migrations below already installed, run `supabase/ERP_QA_EXTENSIONS_UPDATE.sql` in the Supabase SQL Editor. This combines the workspace fixes and extension migration in execution order.
+3. Keep your existing `VITE_SUPABASE_URL` and `VITE_SUPABASE_PUBLISHABLE_KEY` values. The variable names are listed in `.env.example`.
+4. Run `npm ci`, `npm run verify`, and `npm run build`. Use `npm run dev` for local development.
+5. In Admin Control, assign staff view/create/edit/export rights for the new ERP Extensions pages and the source modules listed in `QA-AND-EXTENSIONS.md`.
+6. Check employee sign-in and a sample transaction on your staging Supabase project before deploying to production.
 
-The original production SQL is a fresh-database bootstrap. It grants Admin access to pre-existing Auth accounts at bootstrap and should not be rerun on a populated project. This release does not reassign employees or rewrite existing transaction rows.
+## Fresh database
 
-## Fresh staging database
-
-Use the following order on an isolated, fresh project where the only pre-existing Auth identities are the intended bootstrap administrators.
+Apply these scripts in order on a fresh staging database. The production bootstrap grants initial access to existing Auth identities, so create only the intended initial administrator before bootstrapping.
 
 1. `supabase/DFAB_ERP_PRODUCTION.sql`
 2. `supabase/ERP_FLOW_INTEGRITY_UPGRADE.sql`
@@ -21,30 +21,22 @@ Use the following order on an isolated, fresh project where the only pre-existin
 4. `supabase/ERP_ADMIN_CONTROL.sql`
 5. `supabase/ERP_ADMIN_OPERATIONS_V2.sql`
 6. `supabase/ERP_INITIAL_LOGIN_PASSWORD_POLICY.sql`
-7. `supabase/ERP_WORKSPACE_INTEGRITY.sql`
+7. `supabase/ERP_QA_EXTENSIONS_UPDATE.sql`
 
-The optional recovery and staging-check scripts are separate. Employee provisioning requires the existing `erp-admin-invite` Edge Function and server-only configuration described in [Employee password and Supabase setup](EMPLOYEE-PASSWORD-SUPABASE-RELEASE.md).
+Employee provisioning uses the existing `erp-admin-invite` Edge Function. Its deployment requirements are in `EMPLOYEE-PASSWORD-SUPABASE-RELEASE.md`.
 
-## Connected business flows
+## ERP Extensions
 
-- Order to cash follows enquiry, quotation, sales order, production, quality, dispatch, invoice and customer receipt.
-- Procure to pay follows indent, purchase order, GRN, inward quality, invoice and vendor payment.
-- Work orders, route cards, material movements and subcontract receipts retain their existing references and approval gates.
+The separate navigation section contains Reorder Planning, Receivables Ageing, Collection Follow-ups and Customer Statements. It follows documented Zoho inventory and finance patterns using the saved OneERP records. Collection follow-ups store internal notes and next-contact dates.
 
-Pending Approvals shows waiting documents with links to the source screens. Activity Log and the user-wise transaction report read the scoped database audit records. Product-wise and vendor-wise price lists use the same saved rates. The older price sections remain readable when their product or party code identifies how they were stored.
-
-**Transaction lookups.** PO Number Details, SO Number Details, RM Inward and Outward, Route Card Monitoring, and Customer Payment Overdue use saved OneERP transactions and the source-module view permissions. The overdue register uses the saved invoice due date and recorded payments.
-
-**Fetch.** Use Fetch in the transaction form to select an eligible saved document. It fills supported blank fields and keeps the source reference with the record. Enter actual received quantities and payment amounts on their respective transactions. When billing a fetched dispatch, the invoice checks the customer, item, and available dispatched quantity.
-
-Reapply the included `supabase/ERP_WORKSPACE_INTEGRITY.sql` when upgrading. It updates the server-side handoff gates for job work and dispatch billing using the existing tables.
+See `QA-AND-EXTENSIONS.md` for supported behaviour, SQL prerequisites, role requirements and verification coverage.
 
 ## Verification
 
-`npm run verify` runs lint, the configured JavaScript type check, unit tests, and the Vite production build.
+- `npm run verify` runs ESLint, the configured JavaScript type check, unit tests and a production build.
+- `npx playwright install chromium` installs the browser needed for `npm run test:browser`.
+- `npm run test:browser` runs the authenticated fixture page/report audit, transaction flows, create-form sweep, upload/import tests and ERP extension tests.
+- `npm run test:premium` runs the upload and master-form suite independently.
+- `npm run test:sql` requires `@electric-sql/pglite`, or `ERP_PGLITE_DIR` pointing to its `dist` directory, and verifies migrations, permissions, transaction rollback and extension validation in temporary PostgreSQL.
 
-Run `npx playwright install chromium` once and then run `npm run test:browser` for the desktop navigation sweep, report and master workflows, mobile checks, and transaction regression suite. Both browser suites use isolated Supabase response fixtures.
-
-The SQL acceptance test uses a temporary local PostgreSQL database through PGlite. To run it, make `@electric-sql/pglite` available to Node or set `ERP_PGLITE_DIR` to its `dist` directory, then run `node tests/workspace-sql.mjs`. It applies the migrations, runs staff and administrator permission checks, and verifies conflict handling, handoff rollback, and backup rollback. It never connects to a live Supabase project.
-
-Live Auth, the invitation Edge Function, real production data, Tally, GST e-invoicing and outbound email require separate staging verification with your integrations. Sales Invoice supports multiple product lines. The other legacy transaction editors keep the existing single operational line model.
+The browser suites use isolated Supabase fixtures. Live Auth, employee invitations, production data and external Tally, GST e-invoicing, email and Zoho OAuth connections require verification with the deployed services.

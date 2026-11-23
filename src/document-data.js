@@ -18,7 +18,6 @@ export function describeDocument(module,columns,row,invoiceDetail) {
   for(const [key,value] of Object.entries(recordToObject(columns,row))) {
     if(hasDocumentValue(value)||!Object.hasOwn(fields,key))fields[key]=value;
   }
-  if(!invoice&&hasDocumentValue(extra?.line?.code))fields['Product Code']=extra.line.code;
   let lines=extra?.lines;
   if(invoice&&!Array.isArray(lines)&&typeof row?.[10]==='string') {
     try {lines=JSON.parse(row[10]);}catch { /* Legacy summary without line data. */ }
@@ -27,11 +26,10 @@ export function describeDocument(module,columns,row,invoiceDetail) {
   if(lines.length===1) {
     const [line]=lines;
     fields.Product=line.description||line.code;
-    if(hasDocumentValue(line.code))fields['Product Code']=line.code;
     fields.Qty=line.quantity;
     fields.UOM=line.uom;
   }
-  return {number:String(row?.[invoice?1:0]??''),fields,lines,fetchedFrom:invoice?extra?.form?.fetchedFrom:extra?.fetchedFrom};
+  return {number:String(row?.[invoice?1:0]??''),fields,lines,fetchedFrom:extra?.fetchedFrom};
 }
 
 export function fetchConflict(reference,form,record) {
@@ -143,66 +141,6 @@ export function documentReportRows(name,columns,readDocuments,readRows,canRead=(
         'Pending Qty':ordered-qtyReceived,Product:fields.Item})];
     });
   }
-  if(name==='Vendor Payment History'){
-    const invoices=canRead('Purchase')?new Map(readDocuments('Purchase').map(doc=>[normalizeReference(doc.number),doc.fields])):new Map();
-    return readDocuments('Vendor Payments').filter(({fields})=>fields.Status==='Paid').map(({fields})=>project({
-      ...fields,'Payment Date':fields.Date,'Invoice No':fields.Invoice,'Paid Amount':fields.Amount,
-      'Invoice Date':invoices.get(normalizeReference(fields.Invoice))?.['Invoice Date']
-    }));
-  }
-  if(name==='Pending Enquiry For QUotation'){
-    const quoted=new Set(readDocuments('Sales Quotations').filter(({fields})=>!['Draft','Rejected'].includes(fields.Status))
-      .map(({fields})=>normalizeReference(fields.Enquiry)));
-    return readDocuments('Sales Enquiries').filter(({number,fields})=>
-      ['New','Under Review'].includes(fields.Status)&&!quoted.has(normalizeReference(number)))
-      .map(({fields})=>project({...fields,'Enquiry Date':fields.Date,'Expected Date':fields['Expected Delivery'],Owner:fields['Managed By']}));
-  }
-  if(name==='Pending Purchase Indent for order'){
-    const ordered=sumLinkedQuantities(readDocuments('Purchase Orders'),'Indent No','Qty',
-      ['Approved','Sent','Partially Received','Received','Closed']);
-    return readDocuments('Purchase Indents').flatMap(({number,fields})=>{
-      const qty=numberValue(fields.Qty);
-      const committed=ordered.get(normalizeReference(number))??0;
-      if(fields.Status!=='Approved'||qty===null||committed>=qty)return [];
-      return [project({...fields,'Indent Date':fields.Date,Product:fields.Item,
-        'Indent Qty':qty,'Ordered Qty':committed,'Balance Qty':qty-committed})];
-    });
-  }
-  if(['Pending Outsource DC to Receipt','Outsource DC Register','Outsource DC Register Headerwise','Outsource DC Register Created to Closed'].includes(name)){
-    const canSeeReceipts=canRead('Outsource Receipt');
-    const received=canSeeReceipts?sumLinkedQuantities(readDocuments('Outsource Receipt'),'Issue DC','Received Qty',['Accepted','Closed']):new Map();
-    return readDocuments('Outsource Issue DC').flatMap(({number,fields})=>{
-      const issued=numberValue(fields.Qty);
-      const accepted=canSeeReceipts?(received.get(normalizeReference(number))??0):undefined;
-      const remaining=issued===null||accepted===undefined?undefined:Math.max(0,issued-accepted);
-      if(name.startsWith('Pending')&&(!remaining||!['Dispatched','Part Received'].includes(fields.Status)))return [];
-      return [project({...fields,'Outsource DC No':number,'Work Order No':fields['Work Order'],'DC Date':fields.Date,
-        'Created Date':fields.Date,'Issued Qty':issued,'Received Qty':accepted,'Pending Qty':remaining,
-        'Receipt Status':remaining===undefined?undefined:remaining===0?'Received':accepted?'Part received':'Awaiting receipt'})];
-    });
-  }
-  if(name==='Pending Jobwork Inward for Quality'){
-    const inspected=sumLinkedQuantities(readDocuments('Inward QC'),'Job Inward No','Qty',['Passed','Rejected']);
-    return readDocuments('Job Work Inward').flatMap(({number,fields})=>{
-      const qty=numberValue(fields.Qty);
-      const checked=inspected.get(normalizeReference(number))??0;
-      if(!['Received','QC Pending'].includes(fields.Status)||qty===null||checked>=qty)return [];
-      return [project({...fields,'Jobwork Inward No':number,'Customer DC No':fields['DC No'],Product:fields.Material,
-        'Received Qty':qty,'Inspected Qty':checked,'Pending Qty':qty-checked})];
-    });
-  }
-  if(name==='Sales Order Created & Closed'||name==='Sales Order Created & Closed Headerwise'){
-    const delivered=canRead('Delivery Challan')?sumLinkedQuantities(readDocuments('Delivery Challan'),'SO No','Qty',['Delivered']):null;
-    return readDocuments('Sales Orders').map(({number,fields})=>project({...fields,
-      'Sales Order No':number,'Created Date':fields.Date,'Order Qty':fields.Qty,
-      'Delivered Qty':delivered?(delivered.get(normalizeReference(number))??0):undefined}));
-  }
-  if(name==='Purchase Invoice Itemwise Register'){
-    return readDocuments('Purchase').filter(({fields})=>fields.Item||fields['Product Code']).map(({number,fields})=>project({
-      ...fields,'Purchase Invoice No':number,Date:fields['Invoice Date']||fields.Date,Description:fields.Item,
-      'Net Amount':fields.Amount
-    }));
-  }
   const mappings={
     'Enquiry Register':['Sales Enquiries',{'Enquiry Date':'Date','Expected Date':'Expected Delivery',Owner:'Managed By'}],
     'Sales Quotation Register':['Sales Quotations',{'Enquiry No':'Enquiry',Value:'Amount','Valid Until':'Quotation Validity'}],
@@ -215,6 +153,7 @@ export function documentReportRows(name,columns,readDocuments,readRows,canRead=(
     'Purchase Invoice Register':['Purchase',{'Purchase Invoice No':'Invoice No','Vendor Invoice No':'Invoice No.','Tax Amount':'Tax','Net Amount':'Amount'}],
     'Credit Note Register':['Credit Note',{'Invoice No':'Invoice','Net Amount':'Amount'}],
     'Proforma Invoice Register':['Proforma Invoice',{'Sales Order No':'SO No','Net Amount':'Amount'}],
+    'Outsource DC Register Headerwise':['Outsource Issue DC',{'Outsource DC No':'DC No','Work Order No':'Work Order','Vehicle No':'Vehicle No'}],
     'Outsource Receipt Register':['Outsource Receipt',{'Receipt Date':'Date','Outsource DC No':'Issue DC'}],
     'Rejection Note Register':['Rejection Note',{'Rejection Note No':'Rejection No','Work Order No':'Work Order','Rejected Qty':'Qty'}],
     'Jobwork Inward Register':['Job Work Inward',{'Jobwork Inward No':'Inward No','Customer DC No':'DC No',Product:'Material'}]

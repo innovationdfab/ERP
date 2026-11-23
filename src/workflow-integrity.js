@@ -97,12 +97,6 @@ export function receiptPostingStatus(form,invoice,rows) {
   return total>=invoiceTotal-0.009?'Settled':'Part Paid';
 }
 
-export function vendorInvoice(lookup,number){
-  const purchase=lookup('Purchase','Invoice No',number);
-  const service=lookup('Service Invoice','Invoice No',number);
-  return purchase&&service?null:purchase||service;
-}
-
 export function validateProductionProgress(title, form, lookup) {
   if(title==='GRN'&&form['QC Status']==='Accepted'){
     const inspection=lookup('Inward QC','GRN No',form['GRN No']);
@@ -110,17 +104,6 @@ export function validateProductionProgress(title, form, lookup) {
     if(numberValue(inspection.Qty)!==numberValue(form['Received Qty'])){
       return 'The passed Inward QC quantity must match the GRN received quantity before accepting stock.';
     }
-  }
-  if(title==='Job Work Inward'&&form.Status==='Accepted'){
-    const inspection=lookup('Inward QC','Job Inward No',form['Inward No']);
-    if(inspection?.Status!=='Passed'||numberValue(inspection.Qty)!==numberValue(form.Qty)){
-      return 'Pass Inward QC for the full job inward quantity before acceptance.';
-    }
-  }
-  if(title==='Vendor Payments'){
-    const invoice=vendorInvoice(lookup,form.Invoice);
-    if(!invoice||!['Posted','Paid'].includes(invoice.Status))return 'Select a posted supplier or service invoice before advancing payment.';
-    if(!(numberValue(form.Amount)>0))return 'Payment Amount must be greater than zero.';
   }
   if(title==='Customer Payments') {
     const invoice=lookup('Sales Invoice','Invoice No',form.Invoice);
@@ -150,16 +133,6 @@ export function validateConnectedRecord(title, form, lookup, otherRows=[], colum
     const value = numberValue(form[key]);
     if (value === null || value < 0) return `${key} must be a non-negative number.`;
   }
-  if(title==='Inward QC'){
-    const job=normalizeReference(form['Job Inward No']);
-    const grn=normalizeReference(form['GRN No']);
-    if(job&&job!=='-'){
-      if(grn&&grn!=='-')return 'Choose either a GRN or a Job Inward No for the inspection.';
-      const inward=lookup('Job Work Inward','Inward No',job);
-      if(!inward)return 'Choose a saved Job Work Inward for inspection.';
-      if(numberValue(form.Qty)>numberValue(inward.Qty))return 'Inspection quantity exceeds Job Work Inward quantity.';
-    }
-  }
   const quantityError=validateLinkedQuantity(title,form,lookup,otherRows,columns,originalReference);
   if(quantityError)return quantityError;
   if (title === 'Customer Payments' || title === 'Vendor Payments') {
@@ -167,7 +140,7 @@ export function validateConnectedRecord(title, form, lookup, otherRows=[], colum
     if (invoice && invoice!=='-') {
       const sourceTitle=title==='Vendor Payments'?'Purchase':'Sales Invoice';
       const sourceField=title==='Vendor Payments'?'Invoice No':'Invoice No';
-      const document=title==='Vendor Payments'?vendorInvoice(lookup,invoice):lookup(sourceTitle,sourceField,invoice);
+      const document=lookup(sourceTitle,sourceField,invoice);
       const invoiceAmount=numberValue(document?.Amount??document?.['Taxable Amount']);
       const amount=numberValue(form.Amount);
       if (invoiceAmount!==null && amount!==null) {
@@ -213,43 +186,6 @@ export function resolveWorkflowContext(title, source, lookup, links=[]) {
   if(title==='Inward QC' && source['GRN No']){
     const grn=lookup('GRN','GRN No',source['GRN No']);
     if(grn){data.Vendor ??= grn.Vendor;data['PO No'] ??= grn['PO No'];data.Item ??= grn.Item;}
-  }
-  const inherit=(parent,fields)=>{
-    for(const field of fields){
-      if((data[field]===undefined||data[field]===''||data[field]==='-')&&parent?.[field]!==undefined&&parent[field]!=='-')data[field]=parent[field];
-    }
-  };
-  const orderFields=['Customer','Customer PO','Project Name/Code','PO Number','UOM','Product Code'];
-  if(['Work Order','Delivery Challan'].includes(title)&&source['SO No']){
-    const order=lookup('Sales Orders','SO No',source['SO No']);
-    inherit(order,orderFields);
-    if(title==='Delivery Challan'&&order){
-      if(order['Customer PO'])data['PO Number']||=order['Customer PO'];
-      if(order['Project Name/Code'])data['Project Name']||=order['Project Name/Code'];
-    }
-  }
-  if(['Route Cards','Production Output','Material Request','Material Issue'].includes(title)){
-    const work=lookup('Work Order','WO No',source['WO No']||source['Work Order']);
-    inherit(work,['SO No','Customer','Product','Product Code','UOM','PO Number']);
-    if(work)inherit(lookup('Sales Orders','SO No',work['SO No']),orderFields);
-  }
-  if(title==='Outward QC'){
-    const output=lookup('Production Output','Output No',source['Output No']);
-    inherit(output,['Product Code','UOM','PO Number']);
-    const work=lookup('Work Order','WO No',output?.['WO No']);
-    if(work)inherit(lookup('Sales Orders','SO No',work['SO No']),orderFields);
-  }
-  if(title==='Job Work Return DC'){
-    const inward=lookup('Job Work Inward','Inward No',source['Inward No']);
-    inherit(inward,['Customer','PO Number','Project Name','UOM','Product Code']);
-  }
-  if(title==='Inward QC'){
-    const receipt=lookup('GRN','GRN No',source['GRN No']);
-    inherit(receipt,['Product Code','UOM','Supplier Invoice No.','Supplier Invoice Dt.','PO No','Vendor']);
-    if(source['Job Inward No']){
-      const inward=lookup('Job Work Inward','Inward No',source['Job Inward No']);
-      inherit(inward,['Customer','PO Number','UOM','Product Code','Project Name','Material']);
-    }
   }
   return data;
 }
