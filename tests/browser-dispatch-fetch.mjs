@@ -1,40 +1,14 @@
-// Real invoice Fetch UI against an isolated Supabase fixture.
-import assert from 'node:assert/strict';
-import {launchFixture} from './browser-fixture.mjs';
-const fixture=await launchFixture(5198);
-const {page,store,open,errors}=fixture;
-try {
-  store.set('dfab-erp-Delivery Challan',[
-    ['DC-QA','Fixture Customer','SO-QA','Fixture product','5','KA01','Delivered',{version:1,header:{'Product Code':'QA-P1',UOM:'NOS'}}],
-    ['DC-DRAFT','Fixture Customer','SO-QA','Fixture product','5','KA01','Draft']
-  ]);
-  await page.evaluate(async()=>{const cloud=await import('/src/backend/cloud-store.js');await cloud.initializeCloudStore('fixture');});
-  const create=async()=>{
-    await open('Sales Invoice');
-    await page.getByRole('button',{name:'Create new',exact:true}).click();
-    await page.getByRole('button',{name:'Fetch',exact:true}).click();
-    await page.locator('.reference-fetch-grid select').nth(0).selectOption({label:'Delivery Challan'});
-    assert.equal(await page.locator('.reference-fetch-grid select').nth(1).locator('option').filter({hasText:'DC-DRAFT'}).count(),0);
-    await page.locator('.reference-fetch-grid select').nth(1).selectOption('DC-QA');
-    await page.getByRole('button',{name:'Fetch document',exact:true}).click();
-    await page.getByLabel('Form sections').getByRole('button',{name:'Products',exact:true}).click();
-  };
-  await create();
-  assert.equal(await page.getByLabel('Line 1 Description',{exact:true}).inputValue(),'Fixture product');
-  assert.equal(await page.getByLabel('Line 1 Quantity',{exact:true}).inputValue(),'5');
-  await page.getByLabel('Line 1 Rate',{exact:true}).fill('100');
-  await page.getByRole('button',{name:'Save as Draft',exact:true}).click();
-  await page.locator('.transaction-editor-page').waitFor({state:'hidden'});
-  const invoices=store.get('dfab-erp-sales-invoices-v2');
-  assert.equal(invoices.length,1);
-  const saved=store.get('dfab-invoice-details-v1')[invoices[0][1]];
-  assert.equal(saved.form.dc,'DC-QA');assert.equal(saved.form.sourceOrder,'SO-QA');
-  assert.equal(saved.fetchedFrom.module,'Delivery Challan');
-  await create();
-  await page.getByLabel('Line 1 Rate',{exact:true}).fill('100');
-  await page.getByRole('button',{name:'Save as Draft',exact:true}).click();
-  await page.getByRole('alert').filter({hasText:'remaining dispatch quantity'}).waitFor();
-  assert.equal(store.get('dfab-erp-sales-invoices-v2').length,1);
-  assert.deepEqual(errors,[]);
-  console.log('PASS: dispatch Fetch, eligible source filtering, order reference, saved lineage and duplicate billing protection.');
-} finally {await fixture.close();}
+// Partial line selection and reservations in the actual invoice editor.
+import assert from 'node:assert/strict';import {launchFixture} from './browser-fixture.mjs';
+import {freshDocument} from '../src/process-store.js';
+const f=await launchFixture(5198);const {page,store,open,errors}=f;
+try{
+ const source={...freshDocument('Delivery Challan'),number:'DC-QA',party:'QA Customer',status:'DELIVERED',date:'2026-11-23',lines:[{id:'source-1',code:'QA-P1',description:'Fixture product',quantity:'5',uom:'NOS',rate:'100',discount:'0',cgst:'9',sgst:'9',igst:'0'}],references:{'Sales Orders':'SO-QA'}};
+ store.set('dfab-process-Delivery Challan',{'DC-QA':source});store.set('dfab-erp-Delivery Challan',[['DC-QA','QA Customer','SO-QA','QA-P1','5','KA01','Delivered']]);
+ await page.reload();await page.locator('.command-launcher').waitFor();
+ const picker=async()=>{const back=page.getByRole('button',{name:'Back to register',exact:true});if(await back.count())await back.click();await open('Sales Invoice');await page.getByRole('button',{name:'Fetch',exact:true}).click();const dialog=page.getByRole('dialog',{name:'Fetch into Sales Invoice',exact:true});await dialog.getByLabel('Fetch source type',{exact:true}).selectOption('Delivery Challan');await dialog.getByLabel('Fetch source document',{exact:true}).selectOption('DC-QA');return dialog;};
+ let dialog=await picker();await dialog.getByLabel('Fetch quantity 1',{exact:true}).fill('3');await dialog.getByRole('button',{name:'Fetch selected items (1)',exact:true}).click();assert.equal(await page.getByLabel('Line 1 quantity',{exact:true}).inputValue(),'3');assert.equal(await page.getByLabel('Line 1 code',{exact:true}).inputValue(),'QA-P1');await page.getByRole('button',{name:'Save as Draft',exact:true}).click();await page.getByRole('button',{name:'Edit',exact:true}).waitFor();
+ dialog=await picker();assert.equal(await dialog.getByLabel('Fetch quantity 1',{exact:true}).inputValue(),'2');await dialog.getByLabel('Fetch quantity 1',{exact:true}).fill('3');await dialog.getByRole('button',{name:'Fetch selected items (1)',exact:true}).click();await dialog.getByRole('alert').filter({hasText:'pending quantity'}).waitFor();await dialog.getByLabel('Fetch quantity 1',{exact:true}).fill('2');await dialog.getByRole('button',{name:'Fetch selected items (1)',exact:true}).click();await page.getByRole('button',{name:'Save as Draft',exact:true}).click();await page.getByRole('button',{name:'Edit',exact:true}).waitFor();
+ const invoices=Object.values(store.get('dfab-process-Sales Invoice'));assert.equal(invoices.length,2);assert.equal(invoices.reduce((sum,d)=>sum+Number(d.lines[0].quantity),0),5);assert.ok(invoices.every(d=>d.references['Sales Orders']==='SO-QA'&&d.source.number==='DC-QA'));
+ dialog=await picker();assert.equal(await dialog.getByRole('button',{name:'Fetch selected items (0)',exact:true}).isEnabled(),false);assert.deepEqual(errors,[]);console.log('PASS: partial dispatch Fetch, pending quantities, excessive selection rejection, persisted lineage and reservation of all five source items.');
+}finally{await f.close();}

@@ -42,7 +42,7 @@ test('payment allocations include deductions, prevent overpayment and require re
 });
 test('legacy projections retain original row layout and financial year boundary',()=>{
  const doc={...valid('Sales Orders'),number:'SO/26-27/00001',status:'APPROVED',header:{'PO Number':'PO1'}};
- assert.deepEqual(projectRow(doc,['SO No','Customer','Customer PO','Product','Qty','Delivery','Status']),['SO/26-27/00001','DFAB Customer','PO1','PART','2','-','APPROVED']);
+ assert.deepEqual(projectRow(doc,['SO No','Customer','Customer PO','Product','Qty','Delivery','Status']),['SO/26-27/00001','DFAB Customer','PO1','PART','2','-','Approved']);
  assert.equal(projectRow({...valid('Purchase'),number:'IP1'},['Invoice No','Taxable Amount'])[1],'180');
  assert.equal(financialYear('2026-03-31'),'25-26');assert.equal(financialYear('2026-04-01'),'26-27');
 });

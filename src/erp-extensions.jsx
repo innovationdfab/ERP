@@ -3,6 +3,8 @@ import {ArrowRight, Download, Plus, Save, X} from 'lucide-react';
 import {todayISO,readStored,csvCell} from './erp-utils.js';
 import {writeCloudValueConfirmed} from './backend/cloud-store.js';
 import {canAccess} from './admin-permissions.js';
+import {freshDocument,snapshotForEdit,saveProcessDocument} from './process-store.js';
+import {newLine} from './process-schema.js';
 import {extensionAllowed,policyKey,followupKey,reorderRows,validateReorderPolicy,receivableRows,statementRows,validateFollowup,addDays} from './erp-extensions.js';
 import './erp-extensions.css';
 
@@ -28,7 +30,7 @@ function exportRows(title,headers,rows){
   setTimeout(()=>URL.revokeObjectURL(href),1000);
 }
 
-export function ErpExtensions({title,access,readDocuments,readRows,readDetails,goToPage}){
+export function ErpExtensions({title,access,readDocuments,readRows,readDetails,goToPage,configs}){
   const [policies,setPolicies]=useState(()=>readStored(policyKey,[]));
   const [followups,setFollowups]=useState(()=>readStored(followupKey,[]));
   const [editor,setEditor]=useState(null);
@@ -99,15 +101,16 @@ export function ErpExtensions({title,access,readDocuments,readRows,readDetails,g
     if(!current||current.quantity<=0){setError('The request is already covered. Review the latest stock and open indents.');return;}
     const issue=validateReorderPolicy(current,products,vendors);
     if(issue){setError(issue);return;}
-    const before=readRows('dfab-erp-Purchase Indents');
-    const number=`PI/REORDER/${crypto.randomUUID()}`;
     const vendor=vendors.find(row=>row[0]===current.vendor);
-    const row=[number,'Stores',current.id,String(current.quantity),addDays(todayISO(),current.leadDays),'Draft',{
-      version:1,header:{Date:todayISO(),Series:'INDENT',Vendor:vendor[1],'Reorder Policy ID':current.id,
-        UOM:current.product[4],'Indent Remarks':'Created from Reorder Planning'}}];
+    const document={...freshDocument('Purchase Indents'),party:vendor[1],
+      header:{Department:'Stores','Required Date':addDays(todayISO(),current.leadDays),
+        'Reorder Policy ID':current.id,'Indent Remarks':'Created from Reorder Planning'},
+      lines:[{...newLine(),code:current.id,description:current.product[1],uom:current.product[4],
+        quantity:String(current.quantity),cgst:'0',sgst:'0'}]};
     setBusy(true);setError('');setMessage('');
     try{
-      await writeCloudValueConfirmed('dfab-erp-Purchase Indents',[row,...before],before);
+      const saved=await saveProcessDocument(document,configs,snapshotForEdit());
+      const number=saved.number;
       setMessage(`Draft purchase indent ${number} created for ${current.quantity} ${current.product[4]}.`);
     }catch(problem){setError(problem.message);}
     finally{setBusy(false);}

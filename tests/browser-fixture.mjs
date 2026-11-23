@@ -36,6 +36,13 @@ export async function launchFixture(port){
    else if(endpoint==='erp_admin_active_workflow'||endpoint==='erp_workspace_activity'||endpoint==='erp_workspace_transactions')response=[];
    else if(endpoint==='erp_admin_dashboard')response=dashboard;
    else if(endpoint==='erp_get_ui_state')response=[...store].map(([storage_key,payload])=>({storage_key,payload}));
+   else if(endpoint==='erp-invoice-email')response={configured:false};
+   else if(endpoint==='erp_next_process_no')response=`${args.p_prefix}/${args.p_financial_year}/${String(store.size+Date.now()%100000).padStart(5,'0')}`;
+   else if(endpoint==='erp_commit_process'){
+    for(const key of Object.keys(args.p_changes))assert.deepEqual(args.p_expected[key],store.get(key)??null);
+    for(const [key,value]of Object.entries(args.p_changes))store.set(key,value);
+    response=true;
+   }
    else if(endpoint==='erp_put_ui_state_if_unchanged'){
     assert.deepEqual(args.p_expected,store.get(args.p_storage_key)??null);
     store.set(args.p_storage_key,args.p_payload);response=true;

@@ -39,6 +39,11 @@ import { referenceFetchValues, dispatchInvoiceSource, referenceSelectionConflict
 import { calculateInvoice } from './invoice-calculations.js';
 import { InvoiceProducts, InvoiceCharges, InvoiceExpenses } from './invoice-line-editor.jsx';
 import { imantraTransactions, imantraForwardStatuses, imantraReportDefinitions, imantraReportRows, validateImantraDocument, imantraReferenceSource, imantraForwardPrefill } from './imantra-integration.js';
+import {ProcessWorkspace,ProcessHub,ProcessPayments} from './process-workspace.jsx';
+import {schemas as processSchemas} from './process-schema.js';
+import {processDocuments,requestProcessOpen} from './process-store.js';
+import {documentAmounts} from './process-rules.js';
+import './process-workspace.css';
 import {isRangedStockReport,postedStockMovements,stockBalances,stockMovementSources,stockReportRows,validateStockChange} from './imantra-stock.js';
 import {configuredSourceValue} from './admin-lineage.js';
 
@@ -588,10 +593,11 @@ function NavNode({node:raw,path,depth,openMenus,toggleMenu,activePage,goToPage,c
 }
 
 function renderPage(activePage,ctx){
-  if(Object.hasOwn(extensionPages,activePage))return <ErpExtensions title={activePage} access={ctx.adminAccess} readDocuments={getReferenceRecords} readRows={arrayRows} readDetails={objectRows} goToPage={ctx.goToPage}/>;
+  const transactionConfigs=Object.fromEntries(Object.entries(coreConfigs).map(([page,config])=>[page,{...config,workflowOverride:ctx.workflowOverrides?.[page]}]));
+  if(Object.hasOwn(extensionPages,activePage))return <ErpExtensions title={activePage} access={ctx.adminAccess} readDocuments={getReferenceRecords} readRows={arrayRows} readDetails={objectRows} goToPage={ctx.goToPage} configs={transactionConfigs}/>;
   if(activePage==='Admin Control'&&!ctx.adminAccess?.is_admin)return <main className="content page-shell admin-root"><div className="admin-title-row"><div><span className="admin-eyebrow">DFAB ONEERP · ADMINISTRATION</span><h1>Admin Control Center</h1><p>Connections, employee access, governance and audit</p></div></div><div className="admin-preview-warning"><ShieldCheck size={22}/><div><b>Administrator role required for live changes.</b><p>The Admin section is available to browse without a second login, but workflow publishing, employee invitations, database operations and permission updates require an authorized company administrator.</p></div></div><div className="admin-public-grid">{[['Workflow connections','Draft, validate and publish controlled document handoffs'],['Employees & logins','Invite, manage and deactivate staff'],['Access rights','Assign module-specific actions to departments and roles'],['Department setup','Manage departments and cost centres'],['Data governance','Map database sections to owner modules'],['Audit trail','Inspect changes made by administrators']].map(([name,description])=><section className="admin-card" key={name}><h2>{name}</h2><p>{description}</p></section>)}</div></main>;
   if(activePage==='Admin Control'||['Users','User Roles','Role Permissions'].includes(activePage)) return <AdminControl initialTab={activePage==='Users'?'users':activePage==='User Roles'||activePage==='Role Permissions'?'roles':'overview'} onWorkflowPublished={ctx.refreshActiveWorkflow} storageKeys={Object.keys(exportCloudSnapshot())} storageCounts={Object.fromEntries(Object.entries(exportCloudSnapshot()).map(([key,value])=>[key,Array.isArray(value)?value.length:(value&&typeof value==='object'?Object.keys(value).length:0)]))}/>;
-  if(activePage==='Workflow Guide') return <WorkflowGuide goToPage={ctx.goToPage}/>;
+  if(activePage==='Workflow Guide') return <ProcessHub configs={transactionConfigs} goToPage={ctx.goToPage} access={ctx.adminAccess}/>;
   if(activePage==='Settings') return <WorkspaceSettings access={ctx.adminAccess}/>;
   if(activePage==='Change Password') return <LocalSecurityPage/>;
   if(activePage==='Home') return <HomePage goToPage={ctx.goToPage} access={ctx.adminAccess}/>;
@@ -620,7 +626,8 @@ function renderPage(activePage,ctx){
   if(activePage==='Process Price List') return <PriceListPage mode="process" access={ctx.adminAccess}/>;
   if(activePage==='Vendor Price List') return <PriceListPage mode="vendor" access={ctx.adminAccess}/>;
   if(activePage==='Customer Price List') return <PriceListPage mode="customer" access={ctx.adminAccess}/>;
-  if(activePage==='Sales Invoice') return <SalesInvoicePage access={ctx.adminAccess} navigationReference={ctx.navigationReference}/>;
+  if(processSchemas[activePage])return <ProcessWorkspace key={activePage} title={activePage} configs={transactionConfigs} access={ctx.adminAccess} goToPage={ctx.goToPage} Suggest={DatabaseSuggestInput} navigationReference={ctx.navigationReference}/>;
+  if(['Customer Payments','Vendor Payments'].includes(activePage))return <ProcessPayments title={activePage} configs={transactionConfigs} access={ctx.adminAccess} goToPage={ctx.goToPage} Suggest={DatabaseSuggestInput}/>;
   if(activePage==='Database Backup') return <DatabaseBackupPage access={ctx.adminAccess}/>;
   if(liveReportConfigs[activePage]) return <LiveReportPage reportKey={activePage} access={ctx.adminAccess}/>;
   if(activePage==='User Roles') return <SystemUserRolesPage/>;
@@ -1439,7 +1446,7 @@ const liveReportLayouts={
   'Stock Report':{title:'Productwise Stock Report',params:[...reportParams.dates,rp('Product','product')]},
   'Groupwise Stock Report':{title:'Groupwise Stock Report',params:[...reportParams.dates,rp('Product','product')]},
   'Vendor Master List':{title:'Vendor Master List',params:[rp('Vendor','vendor')]},
-  'Vendor Payment History':{title:'Customer Payment Report',params:[...reportParams.dates,rp('Customer','customer')]},
+  'Vendor Payment History':{title:'Vendor Payment History',params:[...reportParams.dates,rp('Vendor','vendor')]},
   'Customer Master List':{title:'Customer Master List',params:[rp('Customer','customer')]},
   'Product Rack List':{title:'Product Rack List',params:[]},
   'Vendor Price List Report':{title:'Vendor Price List',params:[rp('Product','product'),rp('Vendor','vendor')]},
@@ -1694,6 +1701,8 @@ function getReferenceRecords(module){
     return matching?describeDocument(page,names,matching).fields:null;
   };
   return records.map(record=>{
+    const process=readStored(`dfab-process-${module}`,{})?.[record.number];
+    if(process){const totals=documentAmounts(process);record={...record,lines:process.lines,fields:{...process.header,...record.fields,Date:process.date,Amount:process.total,'Taxable Amount':totals.taxable,Tax:totals.cgst+totals.sgst+totals.igst,Qty:process.lines.reduce((n,l)=>n+Number(l.quantity||0),0),Product:process.lines.map(l=>l.code||l.description).join(', '),Item:process.lines.map(l=>l.code||l.description).join(', ')}};}
     const fields=resolveWorkflowContext(module,record.fields,lookup,links);
     return {...record,fields,party:fields.Customer||fields.Vendor||fields.Supplier};
   });
@@ -1724,7 +1733,11 @@ function useSaveMasterDocument(rowsKey,rows,setRows,detailsKey,details,setDetail
 }
 function pendingDocuments(access){
   const values=[];
+  for(const page of Object.keys(processSchemas))if(canAdminAccess(access,page,'view'))for(const doc of processDocuments(page,coreConfigs)){
+    if(['APPROVAL PENDING','PENDING APPROVAL'].includes(doc.status))values.push({page,reference:doc.number,party:doc.party,amount:doc.total,status:doc.status});
+  }
   for(const [page,config] of Object.entries(coreConfigs)){
+    if(processSchemas[page])continue;
     if(page==='Pending Approvals'||!canAdminAccess(access,page,'view')||!config.statuses?.some(status=>/^(approval pending|pending approval)$/i.test(status)))continue;
     for(const doc of getReferenceRecords(page)){
       if(/^(approval pending|pending approval)$/i.test(doc.fields.Status||''))values.push({
@@ -1732,12 +1745,16 @@ function pendingDocuments(access){
       });
     }
   }
-  if(canAdminAccess(access,'Sales Invoice','view'))for(const doc of getReferenceRecords('Sales Invoice')){
+  if(!processSchemas['Sales Invoice']&&canAdminAccess(access,'Sales Invoice','view'))for(const doc of getReferenceRecords('Sales Invoice')){
     if(doc.fields.Status==='APPROVAL PENDING')values.push({page:'Sales Invoice',reference:doc.number,party:doc.party,amount:doc.fields.Amount,status:doc.fields.Status});
   }
   if(canAdminAccess(access,'Pending Approvals','view'))for(const row of arrayRows('dfab-erp-Pending Approvals')){
     if(Array.isArray(row)&&row[4]==='Pending'&&!values.some(value=>value.page===row[0]&&value.reference===row[1])){
-      values.push({page:row[0],reference:row[1],party:row[2],amount:row[3],status:row[4]});
+      const aliases={'Purchase Order':'Purchase Orders','Sales Order':'Sales Orders','Sales Quotation':'Sales Quotations','Work Orders':'Work Order'};
+      const page=aliases[row[0]]||row[0];const source=processSchemas[page]?processDocuments(page,coreConfigs).find(d=>d.number===row[1]):null;
+      if(source&&!['APPROVAL PENDING','PENDING APPROVAL'].includes(source.status))continue;
+      if(values.some(value=>value.page===page&&value.reference===row[1]))continue;
+      values.push({page,reference:row[1],party:row[2],amount:row[3],status:source?source.status:'Needs source reconciliation',unresolved:!source});
     }
   }
   return values;
@@ -1749,10 +1766,10 @@ function PendingApprovalsPage({access,goToPage}){
   return <main className="content page-shell live-report-page">
     <h1>Pending Approvals</h1><div className="divider"/>
     <section className="card live-report-sheet">
-      <div className="table-controls"><span>{docs.length} pending</span><label>Search <input value={search} onChange={event=>setSearch(event.target.value)}/></label></div>
+      <div className="table-controls"><span>{docs.filter(d=>!d.unresolved).length} pending{docs.some(d=>d.unresolved)&&` · ${docs.filter(d=>d.unresolved).length} needs reconciliation`}</span><label>Search <input value={search} onChange={event=>setSearch(event.target.value)}/></label></div>
       <div className="table-wrap"><table><thead><tr>{['Document','Reference','Party or owner','Amount','Status'].map(label=><th scope="col" key={label}>{label}</th>)}</tr></thead>
         <tbody>{docs.length?docs.map(row=><tr key={JSON.stringify([row.page,row.reference])}><td>{row.page}</td>
-          <td>{canAdminAccess(access,row.page,'view')&&row.page!=='Pending Approvals'&&(Object.hasOwn(coreConfigs,row.page)||row.page==='Sales Invoice')
+          <td>{!row.unresolved&&canAdminAccess(access,row.page,'view')&&row.page!=='Pending Approvals'&&(Object.hasOwn(coreConfigs,row.page)||row.page==='Sales Invoice')
             ?<button type="button" className="link-button" onClick={()=>goToPage(row.page,null,row.reference)}>{row.reference}</button>:row.reference}</td>
           <td>{row.party||'—'}</td><td>{row.amount??'—'}</td><td>{row.status}</td></tr>):
           <tr><td className="empty-cell" colSpan="5">No matching approvals.</td></tr>}</tbody>

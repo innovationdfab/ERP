@@ -1,0 +1,32 @@
+import assert from 'node:assert/strict';
+import {launchFixture} from './browser-fixture.mjs';
+const fixture=await launchFixture(5199);const {page,store,open,errors}=fixture;
+page.on('dialog',d=>d.accept());
+const section=async name=>page.getByRole('navigation',{name:'Form sections',exact:true}).getByRole('button',{name,exact:true}).click();
+const field=async(label,value)=>{await section('Details');const input=page.locator('.process-document-panel').getByLabel(label,{exact:true});const index=await input.evaluate(el=>el.closest('[data-field-page]')?.getAttribute('data-field-page'));if(index)await page.getByRole('button',{name:`Header page ${index}`,exact:true}).click();if(await input.getAttribute('type')==='date')await input.fill(value);else if(await input.evaluate(el=>el.tagName)==='SELECT')await input.selectOption(value);else await input.fill(value);};
+const line=async()=>{await section('Items');for(const [name,value] of [['description','QA fabrication'],['code','QA-P1'],['quantity','2'],['uom','NOS'],['rate','100']])await page.getByLabel(`Line 1 ${name}`,{exact:true}).fill(value);};
+const assignment=async()=>{await section('Assignment');await page.getByLabel('Next department',{exact:true}).selectOption('Production / NPD');await page.getByLabel('Next responsible user',{exact:true}).fill('QA operator');await page.getByLabel('Task target date',{exact:true}).fill('2026-12-31');};
+const submit=async()=>{const approval=page.getByRole('button',{name:'Submit for Approval',exact:true});if(await approval.count()){await approval.click();await page.getByRole('button',{name:'Approve',exact:true}).click();}else await page.getByRole('button',{name:'Submit & Release',exact:true}).click();await page.getByRole('button',{name:'Edit',exact:true}).waitFor();};
+const onward=async target=>{await page.getByRole('button',{name:`Continue to ${target}`,exact:true}).click();await page.getByRole('heading',{name:['Customer Payments','Vendor Payments'].includes(target)?target:`Edit ${target}`,exact:true}).waitFor();};
+const qc=async()=>{await section('Quality');await page.getByLabel('Inspection inspector',{exact:true}).fill('QA inspector');await page.getByLabel('Inspection result',{exact:true}).selectOption('Passed');await page.getByLabel('Inspection accepted',{exact:true}).fill('2');await assignment();await submit();};
+try{
+ await open('Sales Enquiries');await page.getByRole('button',{name:'Create new',exact:true}).click();await field('Prospect','QA Customer');await line();await assignment();await submit();
+ await onward('Sales Quotations');await assignment();await submit();
+ await onward('Sales Orders');for(const [name,value]of [['Customer PO Dt.','2026-11-23'],['C Number','C-QA'],['A Number','A-QA']])await field(name,value);await assignment();await submit();
+ await onward('Purchase Orders');await field('Vendor','Fixture vendor');await assignment();await submit();
+ await onward('GRN');for(const [name,value]of [['Supplier Invoice No.','V-QA'],['Supplier Invoice Dt.','2026-11-23'],['Work Order No','WO-QA']])await field(name,value);await assignment();await submit();
+ await onward('Inward QC');await qc();
+ assert.equal(store.get('dfab-erp-GRN')[0][5],'Accepted');
+ await onward('Work Order');await assignment();await submit();
+ await onward('Route Cards');await section('Items');await page.getByRole('tab',{name:'Operations',exact:true}).click();await page.getByRole('button',{name:'Add Process',exact:true}).click();for(const [name,value]of [['process','Weld'],['machine','QA machine'],['quantity','2'],['status','Completed'],['qcStatus','Passed']]){const el=page.getByLabel(`Operation 1 ${name}`,{exact:true});if(await el.evaluate(el=>el.tagName)==='SELECT')await el.selectOption(value);else await el.fill(value);}await assignment();await submit();
+ await onward('Production Output');await assignment();await submit();
+ await onward('Outward QC');await qc();
+ await onward('Delivery Challan');await assignment();await submit();await page.getByRole('button',{name:'Mark dispatched',exact:true}).click();await page.getByRole('button',{name:'Confirm delivery',exact:true}).click();
+ await onward('Sales Invoice');await assignment();await submit();
+ const invoice=Object.values(store.get('dfab-process-Sales Invoice')).find(d=>d.party==='QA Customer');assert.equal(invoice.total,236);
+ await onward('Customer Payments');await page.getByRole('button',{name:'Add',exact:true}).first().click();await page.getByLabel('Payment Type',{exact:true}).selectOption('Cash');await page.getByLabel('Amount Paid',{exact:true}).fill('237');await page.getByRole('button',{name:'Save payment',exact:true}).click();await page.getByRole('alert').filter({hasText:'exceed'}).waitFor();await page.getByLabel('Amount Paid',{exact:true}).fill('236');await page.getByRole('button',{name:'Save payment',exact:true}).click();await page.getByRole('button',{name:'Close source order',exact:true}).click();await page.getByRole('status').filter({hasText:'closed after delivery and payment'}).waitFor();
+ assert.equal(store.get('dfab-process-payments-Sales Invoice')[0].amount,'236');
+ console.log('PASS: manufacturing enquiry → quotation → approved SO → PO → GRN → passed QC → WO → route operations → output → passed QC → delivery → invoice → receipt → enquiry closure.');
+ await open('Job Work Inward');await page.getByRole('button',{name:'Create new',exact:true}).click();await field('Process','Labour Job Work');await field('Vendor','QA Labour Customer');await line();await assignment();await submit();await onward('Inward QC');await qc();await onward('Sales Orders');for(const [name,value]of [['Customer PO Dt.','2026-11-23'],['C Number','C-L'],['A Number','A-L']])await field(name,value);await assignment();await submit();assert.equal(await page.getByRole('button',{name:'Continue to Purchase Orders',exact:true}).count(),0);await onward('Work Order');await assignment();await submit();console.log('PASS: labour inward → passed QC → approved SO → WO skips purchasing and preserves customer and item lineage.');
+ await page.setViewportSize({width:390,height:844});await page.getByRole('button',{name:'Edit',exact:true}).click();await section('Items');assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);await page.screenshot({path:'test-results/production-mobile.png'});assert.deepEqual(errors,[]);console.log('PASS: mobile editor stays within viewport; no runtime errors.');
+}finally{await fixture.close();}

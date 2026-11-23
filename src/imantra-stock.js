@@ -12,6 +12,8 @@ const specs = [
   {key:'Shortage Stock',item:1,qty:3,status:5,allowed:['Adjusted'],direction:-1,date:null,reference:0},
   {key:'Production Output',item:2,qty:3,status:5,allowed:['Accepted'],direction:1,date:null,reference:0},
   {key:'Scrap Entry',item:2,qty:3,status:5,allowed:['Disposed'],direction:-1,date:null,reference:0},
+  {key:'Route Cards',item:2,qty:4,status:5,allowed:['Accepted'],direction:1,date:null,reference:0,processOnly:true},
+  {key:'Delivery Challan',item:3,qty:4,status:6,allowed:['Dispatched','Delivered'],direction:-1,date:null,reference:0,processOnly:true},
   {key:'Stock Adjustment',item:1,qty:3,status:6,allowed:['Posted'],direction:1,date:5,reference:0}
 ];
 export const stockMovementSources=specs.map(rule=>rule.key);
@@ -21,10 +23,19 @@ export function postedStockMovements(readRows){
   for(const rule of specs){
     for(const row of readRows(`dfab-erp-${rule.key}`)||[]){
       if(!Array.isArray(row)||!rule.allowed.includes(String(row[rule.status]||'')))continue;
-      const qty=num(row[rule.qty])*rule.direction;
-      const item=String(row[rule.item]??'').trim();
-      if(!item||item==='-'||!qty)continue;
-      records.push({item,qty,source:rule.key,reference:String(row[rule.reference]??''),date:isoDate(rule.date===null?row.at(-1)?.header?.Date:row[rule.date]),rate:rule.rate===undefined?null:num(row[rule.rate])});
+      const extra=row.at(-1)?.version===1?row.at(-1):null;
+      if(rule.processOnly&&!extra?.processVersion)continue;
+      const lines=extra?.processVersion?extra.lines:null;
+      if(lines?.length){
+        for(const line of lines){
+          const qty=num(line.quantity)*rule.direction*(rule.key==='Stock Adjustment'&&extra.header?.['Adjustment direction']==='Decrease'?-1:1),item=String(line.code||line.description||'').trim();
+          if(item&&qty)records.push({item,qty,source:rule.key,reference:String(row[rule.reference]??''),date:isoDate(extra.header?.Date),rate:num(line.rate)>0?num(line.rate):null});
+        }
+      }else{
+        const qty=num(row[rule.qty])*rule.direction,item=String(row[rule.item]??'').trim();
+        if(!item||item==='-'||!qty)continue;
+        records.push({item,qty,source:rule.key,reference:String(row[rule.reference]??''),date:isoDate(rule.date===null?extra?.header?.Date:row[rule.date]),rate:rule.rate===undefined?null:num(row[rule.rate])});
+      }
     }
   }
   return records;

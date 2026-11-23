@@ -21,7 +21,7 @@
 .process-document-panel .process-section[hidden],.process-document-panel [data-field-page][hidden]{display:none!important}
 .process-document-panel .process-section-head{margin-bottom:12px;gap:10px}
 .process-document-panel .process-form-grid{gap:12px 18px}
-.process-document-panel .process-form-grid label{gap:5px;font-size:12px}
+.process-document-panel .process-form-grid label{gap:5px;font-size:12px;align-self:start;align-content:start}
 .process-document-panel .process-form-grid :is(input,select){min-height:36px;padding:8px 10px}
 .process-document-panel textarea{min-height:58px}
 .process-field-pages{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:15px}
@@ -63,3 +63,6 @@
 .process-workspace>.process-visible-actions>p{margin:4px 0 0;font-size:11px;line-height:1.4}
 .process-workspace:is(.process-editing,.process-view)>.page-title-row>.action-pills>button{height:auto!important;min-height:32px;white-space:normal;line-height:1.4}
 @media(max-width:700px){.process-register-page>.page-title-row{align-items:flex-start;flex-direction:column;gap:8px}.process-workspace.process-register-page>.page-title-row>.action-pills{width:100%;justify-content:flex-start}.process-workspace>.process-visible-actions{max-height:110px}.process-workspace .action-pills .process-fetch-trigger{min-width:80px}}
+
+.process-print-copy{display:none}.process-lines td:first-child{min-width:35px}.process-lines td:nth-child(2){position:sticky;left:0;z-index:2;background:#fff;min-width:54px}.process-lines th:nth-child(2){position:sticky;left:0;z-index:3;min-width:54px}.process-lines td:nth-child(3){min-width:160px}.process-workspace button{overflow-wrap:normal;word-break:normal;white-space:nowrap}.process-workspace .action-pills{min-width:0}.process-workspace .process-operation .process-form-grid{grid-template-columns:repeat(auto-fit,minmax(160px,1fr))}
+@media print{.process-workspace.process-view>*:not(.process-print-copy){display:none!important}.process-workspace .process-print-copy{display:block!important}.process-print-copy table{min-width:0!important;table-layout:auto}.process-print-copy th,.process-print-copy td{padding:5px!important;font-size:9px!important}}

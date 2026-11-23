@@ -1,3 +1,5 @@
+import catalog from './admin-catalog.json' with {type:'json'};
+import {imantraTransactions} from './imantra-integration.js';
 /** Field labels and options inspected in the signed-in iMANTRA UI on 2 Nov 2026.
  * SOP-only controls are kept in a separate Workflow section. */
 const split = text => text ? text.split('|') : [];
@@ -38,6 +40,24 @@ const raw = {
  'Route Cards':['RC','Customer','Route Card','WO No|Master Route Card No|Revision|Project Name|Managed By',false]
 };
 export const schemas=Object.fromEntries(Object.entries(raw).map(([name,[code,party,series,fields,approval,files]])=>[name,{name,code,party,series:split(series),fields:split(fields),approval,files:split(files)}]));
+// Additional transaction headers retain their current labels and storage keys.
+for(const [name,config] of Object.entries(imantraTransactions)){
+ if(name==='Delivery Channel')continue;
+ const party=config.fields.find(field=>/^(Customer|Vendor|Supplier|Prospect)$/.test(field))||'';
+ schemas[name]={name,code:name.replace(/[^A-Z]/g,'').slice(0,5)||'TX',party,series:[name],fields:config.fields.slice(1).filter(field=>field!==party&&!/^(Item|Product|Qty|Quantity Change|Amount|Value)$/.test(field)),approval:config.statuses.includes('Approval Pending'),files:[],next:config.next};
+}
+schemas['Indent To Order']={name:'Indent To Order',code:'ITO',party:'Vendor',series:['INDENT TO ORDER'],fields:['Indent No'],approval:false,files:[],next:'Purchase Orders'};
+const movedToLines=/^(Product|Item|Material|Qty|Quantity Change|Rate|UOM|Amount|Taxable Amount|Value|Customer|Vendor|Supplier|Prospect|Date|PO Date|Invoice Date)$/;
+const referenceAliases={'SO No':['SO Ref No','Sale Order No'],'PO No':['PO Ref No'],'WO No':['Work Order Number','Work Order No','Work Order No.','Ref Work Order Number'],'Work Order':['WO No','Work Order No.']};
+for(const [name,schema] of Object.entries(schemas)){
+ const legacy=catalog.find(p=>p.name===name);
+ for(const label of legacy?.fields?.slice(1)||[]){
+  if(movedToLines.test(label)||schema.fields.includes(label)||(referenceAliases[label]||[]).some(alias=>schema.fields.includes(alias)))continue;
+  schema.fields.push(label);
+ }
+}
+schemas['Stock Adjustment'].fields.push('Adjustment direction');
+export const QUALITY_MODULES=['Inward QC','Inward Quality','Outward QC','In-process QC','Job Work QC'];
 export const SOP_FLOWS={
  manufacturing:['Sales Enquiries','Sales Quotations','Sales Orders','Purchase Orders','GRN','Inward QC','Work Order','Route Cards','Production Output','Outward QC','Delivery Challan','Sales Invoice','Customer Payments'],
  labour:['Job Work Inward','Inward QC','Sales Orders','Work Order','Route Cards','Production Output','Outward QC','Delivery Challan','Sales Invoice','Customer Payments']
@@ -52,6 +72,7 @@ export function optionsFor(name,label){
  if(label==='Quotation Category')return ['MAIL'];
  if(label==='Invoice Category')return ['Labour Job','Manufacturing and Supply'];
  if(label==='Departments')return ['Arc / Spot / Stud Weld','Assembly','Bending','Buffing Hardware','Clinching Hardware','Electrical Hardware','Fabrication Hardware','Packing Material','Powder Coating','Raw Material','Sanding Hardware','Sheets','Welding Hardware'];
+ if(label==='Adjustment direction')return ['Increase','Decrease'];
  if(label==='Priority')return ['Low','Medium','High','Urgent'];
  if(label==='Currency Type')return ['INR','USD','EUR','GBP'];
  if(label==='Category')return name==='Work Order'?['JOBWORK','REGULAR']:name==='Purchase Orders'?['IMPORT','LOCAL']:name==='Delivery Challan'?['SERVICE']:name==='Credit Note'?['EXPORT','LOCAL']:['LOCAL'];
@@ -60,17 +81,20 @@ export function optionsFor(name,label){
 }
 export function inputType(label){
  if(/date|\bdt\.?|valid upto/i.test(label))return 'date';
- if(/amount|goods value|estimated value/i.test(label))return 'number';
+ if(/amount|goods value|estimated value|qty|quantity|cost/i.test(label))return 'number';
  return /remarks|scope of work/i.test(label)?'textarea':'text';
 }
 export function nextStages(doc){
+ if(doc.workflowNext)return [doc.workflowNext];
  const flow=SOP_FLOWS[doc.flow]||SOP_FLOWS.manufacturing,index=flow.indexOf(doc.module);
  const primary=doc.module==='Route Cards'&&doc.productionIncluded?'Outward QC':index>=0?flow[index+1]:null;
  const branches={'Purchase Indents':'Purchase Orders','Material Request':'Material Issue','Material Issue':'Route Cards','Outsource Issue DC':'Outsource Receipt','Outsource Receipt':'Inward QC','Sales Return':'Credit Note','Job Work Return DC':'Sales Invoice','Purchase':'Vendor Payments'};
- const result=primary?[primary]:branches[doc.module]?[branches[doc.module]]:[];
+ const result=primary?[primary]:branches[doc.module]?[branches[doc.module]]:schemas[doc.module]?.next?[schemas[doc.module].next]:[];
  if(doc.module==='Work Order')result.push('Material Request','Outsource Issue DC');
  if(doc.module==='Inward QC'&&doc.flow!=='labour')result.push('Purchase');
  if(doc.module==='Route Cards')result.push('Outsource Issue DC');
+ if(doc.module==='Purchase Indents')result.push('Indent To Order');
+ if(doc.module==='Job Work Inward')result.splice(0,result.length,'Inward QC');
  return [...new Set(result)];
 }
 export const newLine=()=>({id:crypto.randomUUID(),code:'',description:'',quantity:'1',uom:'',rate:'0',discount:'0',cgst:'9',sgst:'9',igst:'0',hsn:'',group:'',type:'',drawing:'',revision:'',remarks:''});

@@ -115,7 +115,7 @@ try {
   assert.deepEqual(unexpected,[]);
   await open('Pending Approvals');
   await page.getByRole('button',{name:'QA-INDENT',exact:true}).click();
-  await page.getByRole('button',{name:'QA-INDENT',exact:true}).waitFor();
+  await page.locator('.page-subtitle').filter({hasText:'QA-INDENT'}).waitFor();
   await open('Activity Log');
   await page.getByText('fixture-log',{exact:true}).waitFor();
   await open('Settings');

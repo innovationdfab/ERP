@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {fetchSourceTypes,fetchSourceIssue,fetchAvailability,applyFetch,validateFetchedDocument} from '../src/process-fetch.js';
 import {schemas,nextStages} from '../src/process-schema.js';
+import {imantraReferenceSource} from '../src/imantra-integration.js';
 import {REFERENCE_FETCH_SOURCES} from '../src/process-fetch.js';
 import {freshDocument} from '../src/process-store.js';
 const source=()=>({...freshDocument('Sales Orders'),number:'SO/1',party:'Customer A',status:'APPROVED',date:'2026-11-02',header:{'Project Name/Code':'Project A','PO Number':'PO/CUST/1','Customer PO Dt.':'2026-10-31','C Number':'C1'},assignment:{user:'Source user',department:'Accounts',due:'2026-11-03'},lines:[{id:'a',code:'P1',description:'Part',quantity:'10',uom:'Nos',rate:'100',discount:'5',cgst:'9',sgst:'9',igst:'0',drawing:'D1'},{id:'b',code:'P1',description:'Same code, other drawing',quantity:'4',uom:'Nos',rate:'50',cgst:'9',sgst:'9',igst:'0',drawing:'D2'}]});
@@ -95,7 +96,7 @@ test('every supported Fetch source transfers real item values and lineage throug
  let covered=0;
  for(const module of Object.keys(schemas))for(const kind of fetchSourceTypes(module)){
   let s={...source(),module:kind,number:`${kind}/TEST`,inspection:{result:'Passed'},operations:[{status:'Completed',quantity:'14',qcRequired:true,qcStatus:'Passed'}]};
-  if(!(REFERENCE_FETCH_SOURCES[module]||[]).includes(kind)){
+  if(!(REFERENCE_FETCH_SOURCES[module]||[]).includes(kind)&&!schemas[module].fields.some(f=>imantraReferenceSource[f]===kind)){
    const choices=['manufacturing','labour'].flatMap(flow=>[false,true].map(productionIncluded=>({...s,flow,productionIncluded})));
    s=choices.find(candidate=>nextStages(candidate).includes(module));assert.ok(s,`${kind} → ${module}`);
   }

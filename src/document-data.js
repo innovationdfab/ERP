@@ -1,3 +1,4 @@
+import {documentAmounts,lineAmounts} from './process-rules.js';
 import { calculateInvoice } from './invoice-calculations.js';
 import { detailsFromRow, invoiceHeaderKeys } from './reference-forms.js';
 import { normalizeReference, numberValue, recordToObject } from './workflow-integrity.js';
@@ -46,7 +47,8 @@ export function documentReportRows(name,columns,readDocuments,readRows,canRead=(
         Project:fields['Project Name'],'Net Amount':fields.Amount,'E-Invoice Status':fields.Sync};
       const detail=readRows('dfab-invoice-details-v1',{})?.[fields['Invoice No']];
       let totals;
-      if(detail)try {totals=calculateInvoice(lines,String(detail.form?.taxRate??''),detail.charges,detail.expenses);}catch { /* Leave unavailable amounts blank. */ }
+      if(detail?.processVersion){const amounts=documentAmounts({lines,charges:detail.processCharges||[],adjustment:detail.adjustment});totals={taxable:amounts.taxable,total:amounts.gross,cgst:amounts.cgst,sgst:amounts.sgst,igst:amounts.igst,details:lines.map(line=>{const a=lineAmounts(line);return {...a,tax:a.cgst+a.sgst+a.igst};})};}
+      else if(detail)try {totals=calculateInvoice(lines,String(detail.form?.taxRate??''),detail.charges,detail.expenses);}catch { /* Leave unavailable amounts blank. */ }
       // Confirm calculated figures agree with the saved invoice before reporting them.
       if(totals&&Math.abs(totals.total-(numberValue(fields.Amount)??Infinity))>0.009)totals=undefined;
       if(name==='Sales Register Headerwise')return [project({...header,'Taxable Amount':totals?.taxable,
@@ -64,7 +66,7 @@ export function documentReportRows(name,columns,readDocuments,readRows,canRead=(
     for(const {fields} of payments) {
       if(!(sales?['Part Paid','Settled']:['Paid']).includes(fields.Status))continue;
       const key=normalizeReference(fields.Invoice);
-      if(key&&key!=='-')paid.set(key,(paid.get(key)??0)+(numberValue(fields.Amount)??0));
+      if(key&&key!=='-')paid.set(key,(paid.get(key)??0)+(numberValue(fields.Amount)??0)+(numberValue(fields['TDS Amount'])??0)+(numberValue(fields['LD Amount'])??0));
     }
     return readDocuments(sales?'Sales Invoice':'Purchase').flatMap(({number,fields})=>{
       if(!(sales?['APPROVED']:['Posted','Paid']).includes(fields.Status))return [];
@@ -150,6 +152,7 @@ export function documentReportRows(name,columns,readDocuments,readRows,canRead=(
     'Inward QC Register':['Inward QC',{'IQC No':'QC No',Product:'Item','Inspected Qty':'Qty'}],
     'DC Register':['Delivery Challan',{'DC Date':'Date','Sales Order No':'SO No','Dispatch Qty':'Qty','Vehicle No':'Vehicle'}],
     'DC Register Headerwise':['Delivery Challan',{'DC Date':'Date','Sales Order No':'SO No','Vehicle No':'Vehicle',Transporter:'Transporter Name'}],
+    'Purchase Invoice Itemwise Register':['Purchase',{'Purchase Invoice No':'Invoice No',Product:'Item','Net Amount':'Amount'}],
     'Purchase Invoice Register':['Purchase',{'Purchase Invoice No':'Invoice No','Vendor Invoice No':'Invoice No.','Tax Amount':'Tax','Net Amount':'Amount'}],
     'Credit Note Register':['Credit Note',{'Invoice No':'Invoice','Net Amount':'Amount'}],
     'Proforma Invoice Register':['Proforma Invoice',{'Sales Order No':'SO No','Net Amount':'Amount'}],
@@ -161,9 +164,11 @@ export function documentReportRows(name,columns,readDocuments,readRows,canRead=(
   const definition=mappings[name];
   if(!definition)return null;
   const [module,aliases]=definition;
-  return readDocuments(module).map(({fields})=>project({...fields,
-    ...Object.fromEntries(Object.entries(aliases).map(([key,source])=>[key,hasDocumentValue(fields[source])?fields[source]:fields[key]]))
-  }));
+  const itemReports=new Set(['Purchase Order Register','GRN Register','Inward QC Register','DC Register','Outsource Receipt Register','Rejection Note Register','Jobwork Inward Register','Purchase Invoice Itemwise Register']);
+  return readDocuments(module).flatMap(({fields,lines})=>{
+    const entries=itemReports.has(name)&&lines?.length?lines.map(line=>{const amounts=lineAmounts(line);return {...fields,Product:line.code||line.description,Item:line.code||line.description,Description:line.description,Qty:line.quantity,'Received Qty':line.quantity,UOM:line.uom,Rate:line.rate,'Taxable Amount':amounts.taxable,'Tax Amount':amounts.cgst+amounts.sgst+amounts.igst,Amount:amounts.gross};}):[fields];
+    return entries.map(fields=>project({...fields,...Object.fromEntries(Object.entries(aliases).map(([key,source])=>[key,hasDocumentValue(fields[source])?fields[source]:fields[key]]))}));
+  });
 }
 
 function sumLinkedQuantities(documents,reference,quantity,statuses){

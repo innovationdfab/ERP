@@ -94,7 +94,7 @@ export function receivableRows(readDocuments,readDetails,asOn=todayISO()){
         const postedDate=dateFields.map(field=>isoDate(fields[field])).find(Boolean);
         const amount=numberValue(fields.Amount);
         if(!postedDate||amount===null||amount<0){unknown++;continue;}
-        if(postedDate<=asOn)total+=amount;
+        if(postedDate<=asOn)total+=amount+(numberValue(fields['TDS Amount'])??0)+(numberValue(fields['LD Amount'])??0);
       }
       return {total:money(total),unknown};
     };

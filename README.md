@@ -2,12 +2,14 @@
 
 Manufacturing ERP with the existing DFAB UI, Supabase Auth and PostgreSQL persistence. This release uses the uploaded Employee Passwords Login project as its base.
 
+**For this production-flow release, start with [PRODUCTION-FLOWS-UPDATE.md](PRODUCTION-FLOWS-UPDATE.md). Apply its SQL bundle before deploying this frontend.**
+
 For the session renewal and Vercel Node.js update, follow `DEPLOYMENT-SESSION-FIX.md`.
 
 ## Update an existing installation
 
 1. Back up the existing Supabase project.
-2. With the baseline migrations below already installed, run `supabase/ERP_QA_EXTENSIONS_UPDATE.sql` in the Supabase SQL Editor. This combines the workspace fixes and extension migration in execution order.
+2. With the baseline migrations below already installed, run `supabase/ERP_QA_EXTENSIONS_UPDATE.sql` in the Supabase SQL Editor. This combines the workspace fixes and extension migration in execution order. Then apply `supabase/ERP_PRODUCTION_FLOWS_UPDATE.sql` for the transaction engine and Zoho email permissions.
 3. Keep your existing `VITE_SUPABASE_URL` and `VITE_SUPABASE_PUBLISHABLE_KEY` values. The variable names are listed in `.env.example`.
 4. Run `npm ci`, `npm run verify`, and `npm run build`. Use `npm run dev` for local development.
 5. In Admin Control, assign staff view/create/edit/export rights for the new ERP Extensions pages and the source modules listed in `QA-AND-EXTENSIONS.md`.
@@ -24,6 +26,7 @@ Apply these scripts in order on a fresh staging database. The production bootstr
 5. `supabase/ERP_ADMIN_OPERATIONS_V2.sql`
 6. `supabase/ERP_INITIAL_LOGIN_PASSWORD_POLICY.sql`
 7. `supabase/ERP_QA_EXTENSIONS_UPDATE.sql`
+8. `supabase/ERP_PRODUCTION_FLOWS_UPDATE.sql`
 
 Employee provisioning uses the existing `erp-admin-invite` Edge Function. Its deployment requirements are in `EMPLOYEE-PASSWORD-SUPABASE-RELEASE.md`.
 

@@ -18,7 +18,7 @@ try{
    const trigger=page.getByRole('button',{name,exact:true}).first();
    if(!await trigger.isEnabled())continue;
    await trigger.click();
-   const fields=await page.locator('.premium-form-page input,.premium-form-page select,.premium-form-page textarea,.transaction-editor-page input,.transaction-editor-page select,.transaction-editor-page textarea,.erp-modal input,.erp-modal textarea,.erp-modal select,.extension-editor input,.extension-editor select,.extension-editor textarea').count();
+   const fields=await page.locator('.process-document-panel input,.process-document-panel select,.process-document-panel textarea,.premium-form-page input,.premium-form-page select,.premium-form-page textarea,.transaction-editor-page input,.transaction-editor-page select,.transaction-editor-page textarea,.erp-modal input,.erp-modal textarea,.erp-modal select,.extension-editor input,.extension-editor select,.extension-editor textarea').count();
    assert.ok(fields>0,`${route} ${name} must open editable fields`);
    const sections=page.locator('nav[aria-label="Form sections"] button');
    for(const section of await sections.all()){
@@ -28,7 +28,7 @@ try{
    await page.setViewportSize({width:390,height:844});
    assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false,`${route} ${name} mobile`);
    await page.setViewportSize({width:1440,height:1000});
-   const cancel=page.getByRole('button',{name:/^(Cancel|Back to records|Close)$/}).filter({visible:true});
+   const cancel=page.getByRole('button',{name:/^(Cancel|Back to records|Back to register|Close)$/}).filter({visible:true});
    if(await cancel.count())await cancel.last().click();else await page.keyboard.press('Escape');
    assert.deepEqual(errors,[]);
    coverage.push({route,action:name,fields});

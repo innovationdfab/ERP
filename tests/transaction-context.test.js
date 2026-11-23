@@ -26,7 +26,7 @@ test('context preserves the manufacturing, labour, material and outsourcing bran
 test('stock pages do not imply that they are manufacturing milestones',()=>{
  for(const module of ['Opening Stock','Excess Stock','Shortage Stock','Scrap Entry']){
   const context=transactionContext({module,flow:'manufacturing'});
-  assert.equal(context.process,'');assert.equal(context.sourceText,'Manual entry');assert.deepEqual(context.next,[]);assert.equal(context.nextText,'No next transaction');
+  assert.equal(context.process,'');assert.equal(context.sourceText,module==='Scrap Entry'?'Production Output / Rejection Note':'Manual entry');assert.deepEqual(context.next,[]);assert.equal(context.nextText,'No next transaction');
  }
 });
 test('actual source identity is displayed instead of a guessed predecessor',()=>{

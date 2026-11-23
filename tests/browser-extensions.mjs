@@ -34,6 +34,11 @@ try{
   else if(endpoint==='erp_admin_my_access')response=restricted?{enabled:true,is_admin:false,rights:{'Receivables Ageing':{view:true},'Sales Invoice':{view:true},'Customer Payments':{view:true}}}:{enabled:true,is_admin:true,rights:{}};
   else if(endpoint==='erp_admin_active_workflow')response=[];
   else if(endpoint==='erp_get_ui_state')response=[...store].map(([storage_key,payload])=>({storage_key,payload}));
+  else if(endpoint==='erp_next_process_no')response=`${args.p_prefix}/${args.p_financial_year}/00001`;
+  else if(endpoint==='erp_commit_process'){
+   for(const key of Object.keys(args.p_changes))assert.deepEqual(args.p_expected[key],store.get(key)??null);
+   for(const [key,value]of Object.entries(args.p_changes))store.set(key,value);response=true;
+  }
   else if(endpoint==='erp_put_ui_state_if_unchanged'){
    if(conflict){conflict=false;await route.fulfill({status:409,json:{message:'Changed in another session. Reload and retry.'}});return;}
    assert.deepEqual(args.p_expected,store.get(args.p_storage_key)??null);
@@ -67,6 +72,7 @@ try{
  await page.getByRole('button',{name:'Create indent',exact:true}).click();
  await page.getByRole('status').filter({hasText:'Draft purchase indent'}).waitFor();
  assert.equal(store.get('dfab-erp-Purchase Indents')[0][3],'17');
+ assert.equal(Object.values(store.get('dfab-process-Purchase Indents'))[0].lines[0].quantity,'17');
  assert.equal(await page.getByRole('button',{name:'Create indent',exact:true}).isDisabled(),true);
  await page.reload();await page.locator('.command-launcher').waitFor();await open('Reorder Planning');
  assert.equal(await page.getByRole('button',{name:'Create indent',exact:true}).isDisabled(),true);
@@ -91,7 +97,8 @@ try{
  assert.match(await page.getByRole('row').filter({hasText:'SI-1'}).innerText(),/700/);
  await page.getByRole('button',{name:'Open invoice',exact:false}).click();
  await page.getByRole('heading',{name:'Sales Invoice',exact:true}).waitFor();
- assert.equal(await page.locator('.sales-table-wrap tbody tr').count(),1);
+ await page.locator('.process-document-panel').waitFor();
+ await page.locator('.page-subtitle').filter({hasText:'SI-1'}).waitFor();
  console.log('Verified ageing, credit allocation, CSV export, follow-up save/edit and linked statement invoice');
  for(const title of ['Reorder Planning','Receivables Ageing','Collection Follow-ups','Customer Statements']){
   await open(title);
