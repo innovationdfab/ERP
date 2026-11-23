@@ -1,0 +1,55 @@
+.login-welding-scene { isolation: isolate; }
+.login-welding-scene::after {
+  content: ''; position: absolute; inset: 0; z-index: -1; pointer-events: none;
+  background-image: linear-gradient(#85b9d807 1px,transparent 1px),linear-gradient(90deg,#85b9d807 1px,transparent 1px);
+  background-size: 36px 36px; mask-image: radial-gradient(ellipse at center,#000,transparent 75%);
+}
+.login-weld-control {
+  position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center;
+  width: 100%; min-width: 0; height: 100%; padding: clamp(12px,2vw,28px);
+  border: 0; background: transparent; color: #b9cede; cursor: pointer; border-radius: inherit;
+}
+.login-weld-control svg { display: block; width: 100%; max-width: 600px; height: auto; overflow: visible; }
+.login-weld-control:focus-visible { outline: 2px solid #80cbf5; outline-offset: -7px; }
+.login-weld-caption { display: inline-flex; align-items: center; justify-content: center; gap: 9px; min-height: 34px; padding: 8px 13px; border: 1px solid #779ab233; border-radius: 30px; background: #142b3a80; color: #c0d0df; font-size: 12px; line-height: 1.5; text-align: center; }
+.login-weld-indicator { width: 6px; height: 6px; flex: 0 0 auto; border-radius: 50%; background: #69849a; }
+.is-welding .login-weld-indicator { background: #8ddfff; box-shadow: 0 0 12px #7edaff80; }
+.weld-active-effects,.weld-light { opacity: 0; transition: opacity .45s ease; }
+.weld-finished-seam { stroke-dasharray: 273; stroke-dashoffset: 273; transition: stroke-dashoffset .5s ease; }
+.is-welding .weld-pass { animation: login-weld-travel 6s ease-in-out infinite; }
+.is-welding .weld-active-effects { opacity: 1; }
+.is-welding .weld-light { opacity: .75; }
+.is-welding .weld-finished-seam { animation: login-weld-seam 6s ease-in-out infinite; }
+.weld-arc-core { filter: drop-shadow(0 0 5px #9edfff); }
+.is-welding .weld-soft-halo { animation: login-weld-glow 1.8s ease-in-out infinite; }
+.weld-particle { stroke: #ffd6a1; stroke-width: 1.5; stroke-linecap: round; stroke-dasharray: 5 100; opacity: 0; }
+.is-welding .weld-particle { animation: login-weld-spark var(--spark-duration) ease-out var(--spark-delay) infinite; }
+.weld-smoke { fill: none; stroke: #aedbfa; stroke-width: 9; stroke-linecap: round; opacity: 0; filter: blur(6px); }
+.is-welding .weld-smoke { animation: login-weld-smoke 3.8s ease-out infinite; }
+.is-welding .smoke-two { animation-delay: -1.9s; }
+.dfab-login-card .login-password-field { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.dfab-login-card .login-password-control { position: relative; display: block; width: 100%; }
+.dfab-login-card .login-password-control input { box-sizing: border-box; padding-right: 50px !important; }
+.dfab-login-card .login-password-toggle {
+  position: absolute; right: 5px; top: 50%; transform: translateY(-50%); display: grid; place-items: center;
+  width: 40px; height: calc(100% - 8px); max-height: 40px; min-height: 0; padding: 0; border: 0; border-radius: 8px;
+  background: transparent; color: #7193ae; cursor: pointer; box-shadow: none;
+}
+.dfab-login-card .login-password-toggle:hover:not(:disabled) { background: #7da9c51a; color: #5397ca; }
+.dfab-login-card .login-password-toggle:focus-visible { outline: 2px solid #61a9dc; outline-offset: -2px; }
+.dfab-login-card .login-password-toggle:disabled { opacity: .4; cursor: not-allowed; }
+@keyframes login-weld-travel { 0%,100% { transform: translateX(-42px); } 50% { transform: translateX(32px); } }
+@keyframes login-weld-seam { 0%,100% { stroke-dashoffset: 72; } 50% { stroke-dashoffset: 0; } }
+@keyframes login-weld-glow { 0%,100% { opacity: .6; } 50% { opacity: 1; } }
+@keyframes login-weld-spark { 0% { stroke-dashoffset: 0; opacity: 0; } 12% { opacity: .9; } 85%,100% { stroke-dashoffset: -100; opacity: 0; } }
+@keyframes login-weld-smoke { 0% { transform: translate(0,0); opacity: 0; } 25% { opacity: .17; } 100% { transform: translate(-12px,-26px); opacity: 0; } }
+@media(max-width:520px) { .login-weld-control { padding: 8px 16px 16px; } .login-weld-control svg { max-height: 260px; } .login-weld-caption { font-size: 11px; } }
+@media(prefers-reduced-motion:reduce) {
+  .dfab-login-stage.lamp-on .dfab-login-card.card-live,
+  .dfab-login-stage.lamp-on .dfab-login-card-shell.revealed,
+  .dfab-login-stage .weld-spark-burst.active { animation: none !important; transition: none !important; }
+  .login-welding-scene * { animation: none !important; transition: none !important; }
+  .is-welding .weld-finished-seam { stroke-dashoffset: 0; }
+  .is-welding .weld-smoke { opacity: .1; }
+  .is-welding .weld-light { opacity: .4; }
+}
