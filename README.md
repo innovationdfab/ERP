@@ -2,6 +2,8 @@
 
 Manufacturing ERP with the existing DFAB UI, Supabase Auth and PostgreSQL persistence. This release uses the uploaded Employee Passwords Login project as its base.
 
+For the session renewal and Vercel Node.js update, follow `DEPLOYMENT-SESSION-FIX.md`.
+
 ## Update an existing installation
 
 1. Back up the existing Supabase project.

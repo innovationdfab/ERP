@@ -20,7 +20,7 @@ import './sap-enterprise.css';
 import './premium-forms.css';
 import { PremiumUploadField, PremiumImportPage, FormSectionHeading, FormDialogBackdrop } from './premium-forms.jsx';
 import { todayISO, isoDate, displayDate, readStored, writeStored, fieldType, validateFields, parseCsv, csvCell, validateBackup, readAttachment } from './erp-utils.js';
-import { signInWithPassword, refreshSession, signOut, getAuthUser, invokeFunction, changeAuthPassword, requestPasswordVerification } from './backend/supabase-rest.js';
+import { signInWithPassword, refreshSession, signOut, getAuthUser, invokeFunction, renewCurrentSession, changeAuthPassword, requestPasswordVerification } from './backend/supabase-rest.js';
 import { requiresInitialPasswordChange, initialPasswordIssue } from './login-policy.js';
 import './login-initial.css';
 import './login-enhancements.css';
@@ -421,6 +421,21 @@ function App(){
     };
     restore();return()=>{cancelled=true};
   },[]);
+  useEffect(()=>{
+    if(!authenticated)return;
+    const renew=()=>{if(document.visibilityState==='visible')renewCurrentSession().catch(error=>setToast(error.message));};
+    const expired=()=>{
+      setAuthenticated(false);setCloudAccessToken('');setAdminToken('');setAdminAccess(null);
+      setLoginValues(values=>({...values,password:''}));setLampOn(true);
+      setLoginError('Your login session ended. Sign in again.');
+    };
+    const timer=setInterval(renew,30000);
+    window.addEventListener('focus',renew);window.addEventListener('online',renew);
+    document.addEventListener('visibilitychange',renew);window.addEventListener('erp-session-expired',expired);
+    renew();
+    return()=>{clearInterval(timer);window.removeEventListener('focus',renew);window.removeEventListener('online',renew);
+      document.removeEventListener('visibilitychange',renew);window.removeEventListener('erp-session-expired',expired);};
+  },[authenticated]);
   // Refresh the current published document routes when an employee returns to the ERP.
   // This is read-only and does not touch existing records or change page state.
   useEffect(()=>{

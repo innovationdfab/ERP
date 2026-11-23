@@ -1,4 +1,5 @@
 /// <reference types="vite/client" />
+import { createSessionRefresh } from './session-refresh.js';
 /**
  * Lightweight Supabase REST/Auth helper with zero runtime dependencies.
  * Used by the ERP cloud persistence and authentication layers. Browser-local ERP record persistence is disabled.
@@ -43,7 +44,7 @@ function headers(accessToken, extra = {}) {
   return result;
 }
 
-async function request(path, options = {}) {
+async function transport(path, options = {}) {
   requireConfig();
   // A stalled network request must not leave ERP forms waiting indefinitely.
   // Abort does not guarantee a previously submitted database write was rolled
@@ -75,12 +76,48 @@ async function request(path, options = {}) {
     const message = identityLogin && /invalid login credentials|invalid email or password/i.test(String(detail))
       ? 'Incorrect email or password. Check the employee credentials configured in Admin.'
       : edgeFunction ? detail
-      : response.status === 401 ? 'Supabase session expired or is invalid. Sign in again.'
+      : response.status === 401 && !/api.?key/i.test(String(detail)) ? 'Supabase session expired or is invalid. Sign in again.'
       : response.status === 403 ? 'Permission denied by Supabase. Contact your ERP administrator.'
       : detail;
-    throw new Error(String(message));
+    throw Object.assign(new Error(String(message)),{status:response.status,code:body?.code||body?.error_code,detail:String(detail)});
   }
   return body;
+}
+
+const sessionKey='dfab-erp-supabase-session';
+const readSession=()=>{
+  try{return typeof localStorage==='undefined'?null:JSON.parse(localStorage.getItem(sessionKey)||'null');}catch{return null;}
+};
+const sessionRefresh=createSessionRefresh({
+  read:readSession,
+  write:value=>localStorage.setItem(sessionKey,JSON.stringify(value)),
+  remove:()=>localStorage.removeItem(sessionKey),
+  refresh:refreshToken=>transport('/auth/v1/token?grant_type=refresh_token',{
+    method:'POST',headers:headers(),body:JSON.stringify({refresh_token:refreshToken})
+  }),
+  notify:()=>{if(typeof window!=='undefined')window.dispatchEvent(new CustomEvent('erp-session-expired'));},
+  lock:task=>typeof navigator!=='undefined'&&navigator.locks
+    ?navigator.locks.request('dfab-erp-auth-refresh',task):task()
+});
+
+export async function renewCurrentSession(){
+  const saved=readSession();
+  return saved?.access_token?sessionRefresh.ensure(saved.access_token):null;
+}
+
+async function request(path,options={}){
+  const supplied=options.headers?.Authorization?.replace(/^Bearer /,'');
+  if(!supplied)return transport(path,options);
+  let token=await sessionRefresh.ensure(supplied);
+  const authorized=()=>({...options,headers:{...options.headers,Authorization:`Bearer ${token}`}});
+  try{return await transport(path,authorized());}
+  catch(error){
+    if(error.status!==401||path.startsWith('/auth/v1/')||/api.?key/i.test(error.detail||''))throw error;
+    const next=await sessionRefresh.ensure(token,{force:true});
+    if(next===token)throw error;
+    token=next;
+    return transport(path,authorized());
+  }
 }
 
 export async function signInWithPassword(email, password) {
