@@ -1,0 +1,6 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {recoverInvoiceHeader,reconciliationIssues} from '../src/document-reconciliation.js';
+const doc={module:'Sales Invoice',date:'2026-11-24',party:'Customer',lines:[{code:'P',quantity:1}],total:118,header:{'Currency Type':'USD','Due Date':'2026-12-24'}};
+test('invoice recovery fills only real saved values and preserves authoritative headers',()=>{assert.deepEqual(recoverInvoiceHeader({'Currency Type':'USD'},{date:'2026-11-24',dueDate:'2026-12-24',creditDays:30,currency:'INR'}),{'Currency Type':'USD',Date:'2026-11-24','Due Date':'2026-12-24','Credit Days':30});assert.deepEqual(recoverInvoiceHeader({},{}),{});});
+test('reconciliation identifies missing currency, due dates, dates, amount and legacy review independently',()=>{assert.deepEqual(reconciliationIssues(doc),[]);const result=reconciliationIssues({...doc,date:'',total:0,legacy:true,header:{}});for(const value of ['Original document date','Verify original item details and amounts','Confirm original amount','Invoice currency','Invoice due date'])assert.ok(result.includes(value));assert.ok(reconciliationIssues({...doc,header:{...doc.header,'Due Date':'2026-11-23'}}).includes('Due date precedes invoice date'));});

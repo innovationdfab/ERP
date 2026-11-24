@@ -33,6 +33,7 @@ try{
   else if(endpoint==='user')response={id:'fixture',email:'qa@example.test',app_metadata:{}};
   else if(endpoint==='erp_admin_my_access')response=restricted?{enabled:true,is_admin:false,rights:{'Receivables Ageing':{view:true},'Sales Invoice':{view:true},'Customer Payments':{view:true}}}:{enabled:true,is_admin:true,rights:{}};
   else if(endpoint==='erp_admin_active_workflow')response=[];
+  else if(endpoint==='erp-invoice-email')response={configured:false,missingConfiguration:['ZOHO_SMTP_PASSWORD']};
   else if(endpoint==='erp_get_ui_state')response=[...store].map(([storage_key,payload])=>({storage_key,payload}));
   else if(endpoint==='erp_next_process_no')response=`${args.p_prefix}/${args.p_financial_year}/00001`;
   else if(endpoint==='erp_commit_process'){

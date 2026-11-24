@@ -1,0 +1,7 @@
+import React,{useState} from 'react';
+import {rpc,renewCurrentSession} from './backend/supabase-rest.js';
+export function ReleaseReadiness(){
+ const [busy,setBusy]=useState(false),[status,setStatus]=useState(null),[error,setError]=useState('');
+ const check=async()=>{setBusy(true);setStatus(null);setError('');try{const accessToken=await renewCurrentSession();if(!accessToken)throw new Error('Sign in again before checking the database.');const result=await rpc('erp_release_readiness',{}, {accessToken});setStatus(result);}catch(e){setError(/not found|does not exist|schema cache/i.test(e.message)?'Database check is not installed. Run RUN-THIS-UPDATE.sql, then check again.':e.message||'Could not check the database.');}finally{setBusy(false);}};
+ return <div className="process-callout"><div className="process-section-head"><strong>Database update check</strong><button type="button" className="action-pill gray" onClick={check} disabled={busy}>{busy?'Checking…':'Check database update'}</button></div>{!status&&!error&&<p>Verify the deployed invoice due-date and cross-source quantity guards.</p>}{error&&<p role="alert" className="process-error">{error}</p>}{status&&<p role="status">{status.invoice_terms===true&&status.invoice_reservations===true?'Database checks passed: invoice terms and cross-source reservations are installed.':'Database update required. Run RUN-THIS-UPDATE.sql and check again.'}</p>}</div>;
+}

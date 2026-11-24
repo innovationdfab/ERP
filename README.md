@@ -1,5 +1,7 @@
 # DFAB OneERP
 
+**Latest release: [LIVE-FIXES-UPDATE.md](LIVE-FIXES-UPDATE.md). Start here for the cross-source invoice fix, database verification, data-review checklist and Zoho email fix.**
+
 **Current release: [AUDIT-FIXES-UPDATE.md](AUDIT-FIXES-UPDATE.md). It describes the filter/workflow fixes, SQL update and verification results.**
 
 Manufacturing ERP with the existing DFAB UI, Supabase Auth and PostgreSQL persistence. This release uses the uploaded Employee Passwords Login project as its base.

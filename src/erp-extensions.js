@@ -103,7 +103,7 @@ export function receivableRows(readDocuments,readDetails,asOn=todayISO()){
     const due=isoDate(form.dueDate||form['Due Date']);
     const age=due?Math.max(0,daysBetween(due,asOn)):null;
     const balance=money(amount-receipts.total-credited.total);
-    return [{...invoice,customer:invoice.fields.Customer||form.customer,currency:form.currency||'',date,due,amount,
+    return [{...invoice,customer:invoice.fields.Customer||form.customer,currency:form.currency||form['Currency Type']||'',date,due,amount,
       received:receipts.paid,tds:receipts.tds,ld:receipts.ld,settled:receipts.total,credited:credited.total,balance,age,unknownAllocations:receipts.unknown+credited.unknown,
       bucket:!due?'Due date missing':due>=asOn?'Current':age<=30?'1–30 days':age<=60?'31–60 days':age<=90?'61–90 days':'90+ days'}];
   });

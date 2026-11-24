@@ -36,13 +36,36 @@ export function fetchSourceIssue(source,target){
 }
 const sameSource=(doc,source)=>doc.source?.module===source.module&&doc.source?.number===source.number;
 const active=doc=>doc.status!=='REJECTED';
+// Follow saved line ancestry rather than product codes or editable header refs.
+// The sales-order line is the commercial quantity budget across every invoice path.
+export function invoiceLineScope(doc,line,documents){
+ const seen=new Set();
+ for(let depth=0;depth<64;depth++){
+  const key=JSON.stringify([doc.module,doc.number,line.id]);
+  if(seen.has(key))return null;seen.add(key);
+  if(doc.module==='Sales Orders'||!doc.source)return {key,quantity:Number(line.quantity)};
+  const parent=documents.find(d=>d.module===doc.source.module&&d.number===doc.source.number);
+  const original=parent?.lines?.find(l=>l.id===line.sourceLineId)||parent?.lines?.find(l=>l.id===line.id);
+  if(!parent||!original)return null;
+  doc=parent;line=original;
+ }
+ return null;
+}
 export function fetchAvailability(source,target,documents,currentNumber=''){
- const children=documents.filter(d=>d.module===target&&d.number!==currentNumber&&sameSource(d,source)&&active(d));
+ const candidates=documents.filter(d=>d.module===target&&d.number!==currentNumber&&active(d));
+ const children=candidates.filter(d=>sameSource(d,source));
  return source.lines.map(line=>{
-  // Older Continue handoffs retained the original line id. New Fetch lines keep
-  // that identity explicitly, even when two products share the same code.
-  const picked=children.reduce((sum,d)=>sum+(d.lines||[]).filter(l=>(l.sourceLineId===line.id||l.id===line.id)).reduce((n,l)=>n+Number(l.quantity||0),0),0);
-  return {line,quantity:Number(line.quantity),picked,pending:Math.max(0,Number(line.quantity)-picked)};
+  const direct=children.reduce((sum,d)=>sum+(d.lines||[]).filter(l=>(l.sourceLineId===line.id||l.id===line.id)).reduce((n,l)=>n+Number(l.quantity||0),0),0);
+  let pending=Math.max(0,Number(line.quantity)-direct);
+  if(target==='Sales Invoice'){
+   const scope=invoiceLineScope(source,line,documents);
+   if(!scope||!Number.isFinite(scope.quantity))pending=0;
+   else {
+    const used=candidates.reduce((sum,d)=>sum+(d.lines||[]).filter(l=>invoiceLineScope(d,l,documents)?.key===scope.key).reduce((n,l)=>n+Number(l.quantity||0),0),0);
+    pending=Math.max(0,Math.min(pending,scope.quantity-used));
+   }
+  }
+  return {line,quantity:Number(line.quantity),picked:Math.max(direct,Number(line.quantity)-pending),pending};
  });
 }
 const aliasGroups=[

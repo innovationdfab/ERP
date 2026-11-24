@@ -1,3 +1,4 @@
+import {recoverInvoiceHeader} from './document-reconciliation.js';
 import {validateStockChange} from './imantra-stock.js';
 import {readStored,isoDate,todayISO} from './erp-utils.js';
 import {exportCloudSnapshot,commitProcessChanges,nextProcessNumber} from './backend/cloud-store.js';
@@ -18,7 +19,7 @@ export function processDocuments(module,configs){
   const source=Object.fromEntries(fields.map((c,i)=>[c,row[i]]));
   const detail=invoice?readStored('dfab-invoice-details-v1',{})[num]:detailsFromRow(fields,row);
   const invoiceHeader=detail?.form||{};
-  const mappings={dc:'DC Number',po:'Buyer PO No.',vehicle:'Vehicle No.',project:'Project Name',terms:'Terms of payment',dispatch:'Mode of Dispatch',country:'Country of Shipment/Destination',attention:'Kind Attention',scope:'Scope Of Work',currency:'Currency Type'};
+  const mappings={dc:'DC Number',po:'Buyer PO No.',vehicle:'Vehicle No.',project:'Project Name',terms:'Terms of payment',dispatch:'Mode of Dispatch',country:'Country of Shipment/Destination',attention:'Kind Attention',scope:'Scope Of Work',currency:'Currency Type',date:'Date',dueDate:'Due Date',creditDays:'Credit Days'};
   const header={...detail?.header,...source};for(const[k,v]of Object.entries(invoiceHeader))header[mappings[k]||k]=v;
   let lines=detail?.lines;
   if(!lines&&invoice&&row[10]){try{lines=JSON.parse(row[10]);}catch{/* Retain summary-only legacy invoices. */}}
@@ -26,7 +27,7 @@ export function processDocuments(module,configs){
   lines=lines.map((l,i)=>({...newLine(),...l,id:l.id||`${module}:${num}:line:${i}`,cgst:l.cgst??String(Number(invoiceHeader.taxRate??18)/2),sgst:l.sgst??String(Number(invoiceHeader.taxRate??18)/2)}));
   docs.push({module,number:num,flow:invoiceHeader.category==='Labour Job'?'labour':'manufacturing',party:source.Customer||source.Vendor||source.Supplier||source.Prospect||'',date:isoDate(header.Date||source['PO Date']||source['Invoice Date']),series:invoiceHeader.series||schemas[module]?.series[0]||'',header,lines,charges:[],operations:[],status:String(source.Status||source['QC Status']||source.Stage||'DRAFT').toUpperCase(),assignment:{department:detail?.assignment?.department||'',user:header['Next Task Assigned to']||'',due:isoDate(header['Target Date'])||''},references:detail?.references||{},history:detail?.history||[],attachments:detail?.files||{},legacy:true,total:Number(String(source.Amount||source['Taxable Amount']||0).replace(/[^0-9.-]/g,''))||0,legacyRow:row});
  }
- return docs.map(d=>configs[module]?.workflowOverride?{...d,workflowNext:configs[module].workflowOverride.target_page,workflowGates:configs[module].workflowOverride.gate_statuses,workflowMap:configs[module].workflowOverride.field_map}:d);
+ return docs.map(d=>{if(d.module!=='Sales Invoice')return d;const header=recoverInvoiceHeader(d.header,readStored('dfab-invoice-details-v1',{})[d.number]?.form);return {...d,header,date:isoDate(d.date)||isoDate(header.Date)};}).map(d=>configs[module]?.workflowOverride?{...d,workflowNext:configs[module].workflowOverride.target_page,workflowGates:configs[module].workflowOverride.gate_statuses,workflowMap:configs[module].workflowOverride.field_map}:d);
 }
 export function freshDocument(module,flow='manufacturing'){
  return {module,flow,defaultCurrency:module==='Sales Invoice',number:'',date:todayISO(),series:schemas[module]?.series[0]||'',party:'',status:'DRAFT',header:module==='Sales Invoice'?{'Currency Type':'INR','Credit Days':'0','Due Date':todayISO()}:{},lines:[newLine()],charges:[],operations:[],assignment:{department:OWNERS[nextStages({module,flow})[0]]||'',user:'',due:''},inspection:{inspector:'',result:'Pending',accepted:'0',rejected:'0',remarks:''},attachments:{},references:{},history:[],adjustment:'0'};

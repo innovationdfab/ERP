@@ -1,7 +1,7 @@
 import {createClient} from 'npm:@supabase/supabase-js@2.119.2';
 import nodemailer from 'npm:nodemailer@10.6.1';
 import {invoiceMailHtml} from '../../../src/invoice-mail.js';
-const origins=(Deno.env.get('ERP_ALLOWED_ORIGINS')||'http://localhost:5173').split(',').map(s=>s.trim());
+const origins=(Deno.env.get('ERP_ALLOWED_ORIGINS')||'https://erp-lyart-beta.vercel.app,http://localhost:5173').split(',').map(s=>s.trim());
 Deno.serve(async request=>{
  const origin=request.headers.get('Origin')||'';
  const headers={'Content-Type':'application/json','Cache-Control':'no-store','Vary':'Origin',...(origins.includes(origin)?{'Access-Control-Allow-Origin':origin}:{}),'Access-Control-Allow-Headers':'authorization, apikey, content-type, x-client-info','Access-Control-Allow-Methods':'POST, OPTIONS'};
@@ -18,7 +18,10 @@ Deno.serve(async request=>{
  const host=Deno.env.get('ZOHO_SMTP_HOST')||'',user=Deno.env.get('ZOHO_SMTP_USER')||'',pass=Deno.env.get('ZOHO_SMTP_PASSWORD')||'',from=Deno.env.get('ZOHO_FROM_EMAIL')||user;
  const configured=!!host&&!!user&&!!pass&&!!key&&/^(smtp|smtppro)\.zoho\.(com|in|eu|com\.au|jp|ca|com\.cn)$/.test(host);
  let body;try{body=await request.json();}catch{return reply(400,{error:'Invalid request.'});}
- if(body.action==='status')return reply(200,{configured});
+ if(body.action==='status'){
+  const missingConfiguration=['ZOHO_SMTP_HOST','ZOHO_SMTP_USER','ZOHO_SMTP_PASSWORD','SUPABASE_SERVICE_ROLE_KEY'].filter(name=>!Deno.env.get(name));
+  return reply(200,{configured,missingConfiguration,...(host&&!/^(smtp|smtppro)\.zoho\.(com|in|eu|com\.au|jp|ca|com\.cn)$/.test(host)?{setupIssue:'ZOHO_SMTP_HOST must be the SMTP host for your Zoho account region.'}:{})});
+ }
  if(!configured)return reply(503,{error:'Zoho SMTP is not configured.'});
  if(body.action!=='send'||typeof body.invoice!=='string'||typeof body.to!=='string'||!/^\S+@\S+\.\S+$/.test(body.to)||/[\r\n]/.test(body.to)||!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(body.requestId))return reply(400,{error:'Invoice, recipient and request identifier required.'});
  const {data:job,error:startError}=await caller.rpc('erp_invoice_email_start',{p_invoice:body.invoice,p_to:body.to,p_request:body.requestId});

@@ -1,6 +1,6 @@
 import {freshDocument} from '../src/process-store.js';
 import {projectRow,documentAmounts} from '../src/process-rules.js';
-import {applyFetch} from '../src/process-fetch.js';
+import {applyFetch,fetchAvailability} from '../src/process-fetch.js';
 import catalog from '../src/admin-catalog.json' with {type:'json'};
 // Fresh in-memory PostgreSQL only. Install/link @electric-sql/pglite or set ERP_PGLITE_DIR.
 import assert from 'node:assert/strict';
@@ -24,7 +24,7 @@ try{
   if(process.env.ERP_SQL_BUNDLE){await db.exec(readFileSync(process.env.ERP_SQL_BUNDLE,'utf8'));console.log('Applied full single-file SQL bundle');}
   else for(const migration of [
     'DFAB_ERP_PRODUCTION','ERP_FLOW_INTEGRITY_UPGRADE','ERP_PRODUCTION_GUARDRAILS','ERP_ADMIN_CONTROL',
-    'ERP_ADMIN_OPERATIONS_V2','ERP_INITIAL_LOGIN_PASSWORD_POLICY','ERP_WORKSPACE_INTEGRITY','ERP_EXTENSIONS','ERP_PRODUCTION_FLOWS_UPDATE','ERP_AUDIT_FIXES_UPDATE'
+    'ERP_ADMIN_OPERATIONS_V2','ERP_INITIAL_LOGIN_PASSWORD_POLICY','ERP_WORKSPACE_INTEGRITY','ERP_EXTENSIONS','ERP_PRODUCTION_FLOWS_UPDATE','ERP_AUDIT_FIXES_UPDATE','ERP_LIVE_FIXES_UPDATE'
   ]){
     await db.exec(readFileSync(new URL(`../supabase/${migration}.sql`,import.meta.url),'utf8'));
     console.log('Applied',migration);
@@ -68,6 +68,18 @@ try{
   const invoice=applyFetch(doc('Sales Invoice','SQL-INV','2'),dispatch,{[dispatch.lines[0].id]:'2'},documents);invoice.number='SQL-INV';invoice.status='APPROVED';
   state=await pack(invoice);await commit(state.changes,state.expected);documents.push(invoice);
   await assert.rejects(commit(state.changes,state.expected),/changed/);
+  const direct=applyFetch(doc('Sales Invoice','SQL-DIRECT'),order,{[order.lines[0].id]:'8'},documents);direct.number='SQL-DIRECT';direct.status='DRAFT';
+  const duplicateCross=structuredClone(direct);duplicateCross.lines[0].quantity='9';state=await pack(duplicateCross);await assert.rejects(commit(state.changes,state.expected),/across all source paths/);
+  assert.equal((await snapshot()).get('dfab-process-Sales Invoice')['SQL-DIRECT'],undefined);
+  duplicateCross.legacy=true;state=await pack(duplicateCross);await assert.rejects(commit(state.changes,state.expected),/across all source paths/);delete duplicateCross.legacy;
+  direct.lines[0].quantity='3';state=await pack(direct);await commit(state.changes,state.expected);documents.push(direct);
+  assert.equal(fetchAvailability(dispatch,'Sales Invoice',documents)[0].pending,5);
+  direct.status='REJECTED';state=await pack(direct);await commit(state.changes,state.expected,'reject');
+  assert.equal(fetchAvailability(dispatch,'Sales Invoice',documents)[0].pending,8);
+  assert.deepEqual((await db.query('select erp_release_readiness() as status')).rows[0].status,{invoice_terms:true,invoice_reservations:true});
+  await assert.rejects(db.query('select erp_commit_process_base_v2(\'{}\',\'{}\',\'save\')'),/permission denied/);
+  console.log('PASS: cross-source invoice draft over-allocation rolls back; partial reservations, rejected release and private RPC/readiness guards.');
+
   const excessive=applyFetch(doc('Sales Invoice','SQL-OVER'),dispatch,{[dispatch.lines[0].id]:'8'},documents);excessive.number='SQL-OVER';excessive.status='APPROVED';excessive.lines[0].quantity='9';state=await pack(excessive);await assert.rejects(commit(state.changes,state.expected),/pending source quantity/);
   const forged=structuredClone(order);forged.number='SQL-FORGED';state=await pack(forged);state.changes['dfab-process-Sales Orders']['SQL-FORGED'].total=1;await assert.rejects(commit(state.changes,state.expected),/total/);
   const stale=structuredClone(order);stale.lines[0].quantity='11';state=await pack(stale);await assert.rejects(commit(state.changes,state.expected),/Linked source/);
@@ -100,6 +112,11 @@ try{
   state=await pack({...dispatch,status:'DELIVERED'});await commit(state.changes,state.expected,'approve');
   state=await pack({...documents.find(d=>d.module==='Work Order'),status:'COMPLETED'});await commit(state.changes,state.expected,'close');
   assert.equal((await snapshot()).get('dfab-process-Work Order')['SQL-WO'].status,'COMPLETED');
+  const identityOrder=doc('Sales Orders','SQL-IDENTITY');identityOrder.lines=[{...identityOrder.lines[0],id:'identity-b',quantity:'4'},{...identityOrder.lines[0],id:'identity-a',quantity:'10'}];state=await pack(identityOrder);await commit(state.changes,state.expected);
+  await db.exec('reset role;');const identityScope=await db.query('select erp_invoice_line_scope($1::jsonb,$2::jsonb) as scope',[JSON.stringify({module:'Sales Invoice',number:'CHECK',source:{module:'Sales Orders',number:identityOrder.number}}),JSON.stringify({id:'identity-b',sourceLineId:'identity-a',quantity:'1'})]);assert.deepEqual(identityScope.rows[0].scope,{identity:['Sales Orders','SQL-IDENTITY','identity-a'],quantity:10});await asUser(admin);
+  const beforeUpdate=await snapshot();await db.exec('reset role;');await db.exec(readFileSync(new URL('../RUN-THIS-UPDATE.sql',import.meta.url),'utf8'));await asUser(admin);
+  assert.deepEqual(await snapshot(),beforeUpdate);state=await pack(duplicateCross);await assert.rejects(commit(state.changes,state.expected),/across all source paths/);
+  console.log('PASS: reapplying the release migration retains business data and the cross-source guard.');
   console.log('PASS: invoice terms reject invalid/missing due dates atomically; fully delivered and paid work order closes under actual SQL guards.');
   console.log('PASS: process SQL commits/projections, source reservations, concurrency, total validation, immutable lineage, maker/approver separation, private authorizations, numbering access and email idempotency.');
 }finally{await db.close();}
