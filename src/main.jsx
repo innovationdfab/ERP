@@ -25,6 +25,7 @@ import { PremiumUploadField, PremiumImportPage, FormSectionHeading, FormDialogBa
 import { todayISO, isoDate, displayDate, readStored, writeStored, fieldType, validateFields, parseCsv, csvCell, validateBackup, readAttachment } from './erp-utils.js';
 import { signInWithPassword, refreshSession, signOut, getAuthUser, invokeFunction, renewCurrentSession, changeAuthPassword, requestPasswordVerification } from './backend/supabase-rest.js';
 import { requiresInitialPasswordChange, initialPasswordIssue } from './login-policy.js';
+import { loginFailureMessage } from './login-failure.js';
 import './login-initial.css';
 import './login-enhancements.css';
 import { LoginWelding } from './login-welding.jsx';
@@ -488,12 +489,15 @@ function App(){
     e.preventDefault();
     if(!loginValues.userId.trim()||!loginValues.password){setLoginError('Enter your employee email and password to continue.');return;}
     setAuthLoading(true);setLoginError('');setLoginMessage('');
+    let credentialsVerified=false;
+    let loginStage='authentication';
     try{
       const email=loginValues.userId.trim().toLowerCase();
       const auth=await signInWithPassword(email,loginValues.password);
       const token=auth?.access_token;
       if(!token)throw new Error('Supabase did not return an access token.');
       const identity=await getAuthUser(token);
+      credentialsVerified=true;
       const storedSession={access_token:token,refresh_token:auth.refresh_token||'',expires_at:auth.expires_at||null,user:email};
       localStorage.setItem('dfab-erp-user-email',email);
       localStorage.setItem('dfab-erp-supabase-session',JSON.stringify(storedSession));
@@ -507,7 +511,9 @@ function App(){
         return;
       }
       setCloudAccessToken(token);
+      loginStage='ERP access';
       const permissions=await establishAdminAccess(token);
+      loginStage='ERP data';
       await initializeCloudStore(token);
       const restored=permissions.is_admin?await restorePreviousErpDataOnce():{restored:false};
       if(restored.restored)await initializeCloudStore(token);
@@ -518,8 +524,10 @@ function App(){
       if(restored.restored)setToast(`Supabase synced: ${verifiedData.products} products · ${verifiedData.customers} customers · ${verifiedData.vendors} vendors · ${verifiedData.invoices} invoices`);
     }catch(error){
       setCloudAccessToken('');setAdminToken('');setAdminAccess(null);
-      localStorage.removeItem('dfab-erp-supabase-session');
-      setLoginError(error?.message||'Login failed.');
+      // Preserve an authenticated session when a downstream ERP RPC is missing.
+      // A valid employee password must not be mistaken for an Auth failure.
+      if(!credentialsVerified)localStorage.removeItem('dfab-erp-supabase-session');
+      setLoginError(loginFailureMessage(error,{credentialsVerified,stage:loginStage}));
     }finally{setAuthLoading(false)}
   };
   const finishInitialPasswordSetup=async e=>{
@@ -539,7 +547,7 @@ function App(){
       setLoginValues({userId:email,password:''});
       setShowLoginPassword(false);setLampOn(true);
       setLoginMessage('Password updated. Sign in with your new password.');
-    }catch(error){setPasswordSetupError(error.message||'Could not set your new password.');}
+    }catch(error){setPasswordSetupError(error?.status===404?'Password setup service was not found (404). Deploy erp-admin-invite to the same Supabase project as your ERP login and verify the function URL.':error.message||'Could not set your new password.');}
     finally{setPasswordSetupLoading(false)}
   };
   const cancelInitialPasswordSetup=()=>{
