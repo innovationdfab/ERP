@@ -82,11 +82,12 @@ Deno.serve(async request => {
 
     if (action === 'create') {
       const email = String(body.email || '').trim().toLowerCase();
-      const name = String(body.name || '').trim();
+      // Derive a display label for legacy ERP profiles; the Add Login form requires only email, role and password.
+      const name = (email.split('@')[0] || 'Employee').replace(/[._-]+/g,' ').trim().slice(0,100);
       const roleIds = Array.isArray(body.role_ids) ? body.role_ids : [];
-      const departmentId = body.department_id || null;
-      if (!emailPattern.test(email) || email.length > 254 || name.length < 2 || name.length > 100 || roleIds.length === 0 || roleIds.length > 20 || !roleIds.every((id: unknown) => typeof id === 'string' && uuid.test(id)) || (departmentId && (typeof departmentId !== 'string' || !uuid.test(departmentId)))) {
-        return respond(400, { error: 'Valid employee email, name, department and role are required.' });
+      const departmentId = null;
+      if (!emailPattern.test(email) || email.length > 254 || name.length < 2 || roleIds.length !== 1 || !roleIds.every((id: unknown) => typeof id === 'string' && uuid.test(id))) {
+        return respond(400, { error: 'Enter a valid email address and select exactly one role.' });
       }
       if (roleIds.some((id: string) => !roles.some((role: {id: string; active: boolean}) => role.id === id && role.active))) {
         return respond(400, { error: 'Choose an active role belonging to your organization.' });
@@ -99,39 +100,15 @@ Deno.serve(async request => {
       if (dashboard.users.some((profile: {email?: string}) => profile.email?.toLowerCase() === email)) {
         return respond(409, { error: 'This employee already exists. Use Edit or Set temporary password; no duplicate was created.' });
       }
-      // An admin account cannot have a company-wide known initial password.
-      const requestedAdmin = roleIds.some((id: string) => roles.some((role: {id: string; code: string; system_role?: boolean}) => role.id === id && (role.code === 'ADMIN' || role.system_role === true)));
-      if (body.password != null && typeof body.password !== 'string') return respond(400, { error: 'Password must be plain text.' });
-      const suppliedPassword = typeof body.password === 'string' ? body.password : '';
-      if (requestedAdmin && suppliedPassword) return respond(400, { error: 'Administrator access requires an individual invitation; do not set a shared password.' });
-      if (suppliedPassword && (!validPersonalPassword(suppliedPassword) || suppliedPassword === temporaryPassword)) {
-        return respond(400, { error: 'Use a different 12–128 character temporary password with letters and numbers.' });
+      if (typeof body.password !== 'string' || !validPersonalPassword(body.password)) {
+        return respond(400, { error: 'Set an individual password of 12–128 characters containing letters and numbers.' });
       }
-      if (!requestedAdmin && !suppliedPassword) {
-        return respond(400, { error: 'Enter an individual temporary password for this employee. It must have 12–128 characters with letters and numbers.' });
-      }
-      // A privileged email invitation must return to the real ERP site, not the
-      // Supabase project default URL (which often produces a 404). Only use
-      // origins explicitly allowed by this server's configuration.
-      const preferredRedirect = (Deno.env.get('ERP_AUTH_REDIRECT_URL') || '').trim();
-      const httpsOrigin = allowedOrigins.find(value => value.startsWith('https://'));
-      const inviteOrigin = preferredRedirect || httpsOrigin || origin;
-      let invitationRedirect = '';
-      if (inviteOrigin) {
-        try {
-          const parsed = new URL(inviteOrigin);
-          if (!allowedOrigins.includes(parsed.origin) || (parsed.protocol !== 'https:' && parsed.hostname !== 'localhost')) {
-            return respond(503, { error: 'Administrator invitation redirect must be an ERP_ALLOWED_ORIGINS website. Configure ERP_AUTH_REDIRECT_URL to your deployed HTTPS ERP URL.' });
-          }
-          invitationRedirect = parsed.origin + '/';
-        } catch {
-          return respond(503, { error: 'ERP_AUTH_REDIRECT_URL is invalid.' });
-        }
-      }
-      if (requestedAdmin && !invitationRedirect) return respond(503, { error: 'Set your deployed ERP URL in ERP_ALLOWED_ORIGINS before inviting an administrator.' });
-      const { data: created, error: createError } = requestedAdmin
-        ? await elevated.auth.admin.inviteUserByEmail(email, { data: { full_name: name }, redirectTo: invitationRedirect })
-        : await elevated.auth.admin.createUser({ email, password: suppliedPassword, email_confirm: true, user_metadata: { full_name: name }, app_metadata: { [initialFlag]: true } });
+      const suppliedPassword = body.password;
+      const { data: created, error: createError } = await elevated.auth.admin.createUser({
+        email, password: suppliedPassword, email_confirm: true,
+        user_metadata: { full_name: name },
+        app_metadata: { [initialFlag]: false },
+      });
       if (createError || !created?.user?.id) return respond(400, { error: createError?.message || 'Employee Auth account could not be created.' });
       // New Auth account trigger creates ERP profile with no access. Assign the
       // selected roles only after successful creation; failure stays locked.
@@ -172,52 +149,50 @@ Deno.serve(async request => {
           email, needs_reconciliation: true,
         });
       }
-      return respond(200, { created: true, verified: true, email, user_id: created.user.id, temporary_password: !requestedAdmin, invited: requestedAdmin });
+      return respond(200, { created: true, verified: true, email, user_id: created.user.id });
     }
 
     if (action === 'reset') {
       const id = typeof body.user_id === 'string' ? body.user_id : '';
-      if (!uuid.test(id)) return respond(400, { error: 'Invalid employee ID.' });
+      if (!uuid.test(id) || id === actor.id) return respond(400, { error: 'Select another valid employee account.' });
       const profile = dashboard.users.find((item: {user_id: string}) => item.user_id === id);
-      if (!profile || profile.active !== true) return respond(404, { error: 'Active employee not found in your organization.' });
-      if (isProtected(id)) return respond(403, { error: 'Administrator accounts and your own account cannot use the shared initial password. Use an individual password reset.' });
-      if (body.password != null && typeof body.password !== 'string') return respond(400, { error: 'Password must be plain text.' });
+      if (!profile?.active) return respond(404, { error: 'Enabled ERP account not found.' });
       const suppliedPassword = typeof body.password === 'string' ? body.password : '';
-      if (suppliedPassword && (!validPersonalPassword(suppliedPassword) || suppliedPassword === temporaryPassword)) {
-        return respond(400, { error: 'Use a different 12–128 character temporary password with letters and numbers.' });
-      }
-      if (!suppliedPassword && (temporaryPassword.length < 8 || temporaryPassword.length > 128)) return respond(503, { error: 'ERP_INITIAL_PASSWORD secret is not configured. Enter an individual strong password or configure the server default.' });
+      if (!validPersonalPassword(suppliedPassword)) return respond(400, { error: 'Enter a password with 12–128 characters, including letters and numbers.' });
       const { data: existing, error: fetchError } = await elevated.auth.admin.getUserById(id);
-      if (fetchError || !existing.user) return respond(404, { error: 'Employee Auth account not found. ' + (fetchError?.message || '') });
+      if (fetchError || !existing.user) return respond(404, { error: 'Supabase Auth account not found.' });
       const { error: resetError } = await elevated.auth.admin.updateUserById(id, {
-        password: suppliedPassword || temporaryPassword,
-        app_metadata: { ...(existing.user.app_metadata || {}), [initialFlag]: true },
+        password: suppliedPassword,
+        app_metadata: { ...(existing.user.app_metadata || {}), [initialFlag]: false },
       });
       if (resetError) return respond(400, { error: resetError.message });
       return respond(200, { reset: true, user_id: id });
     }
-
-    if (action === 'bulk-reset') {
-      const ids = Array.isArray(body.user_ids) ? [...new Set(body.user_ids)] : [];
-      if (!ids.length || ids.length > 40 || ids.some(id => typeof id !== 'string' || !uuid.test(id))) {
-        return respond(400, { error: 'Select 1–40 active employees per batch.' });
-      }
-      if (temporaryPassword.length < 8 || temporaryPassword.length > 128) return respond(503, { error: 'ERP_INITIAL_PASSWORD secret is not configured.' });
-      const errors: Array<{user_id: string; error: string}> = [];
-      let updated = 0;
-      for (const id of ids) {
-        const profile = dashboard.users.find((item: {user_id: string}) => item.user_id === id);
-        if (!profile?.active || isProtected(id)) { errors.push({ user_id: id, error: 'Not a permitted active non-admin employee.' }); continue; }
-        const { data: existing, error: fetchError } = await elevated.auth.admin.getUserById(id);
-        if (fetchError || !existing.user) { errors.push({ user_id: id, error: 'Supabase Auth account not found.' }); continue; }
-        const { error: resetError } = await elevated.auth.admin.updateUserById(id, {
-          password: temporaryPassword,
-          app_metadata: { ...(existing.user.app_metadata || {}), [initialFlag]: true },
-        });
-        if (resetError) errors.push({ user_id: id, error: resetError.message });
-        else updated++;
-      }
-      return respond(200, { updated, failures: errors, partial: errors.length > 0 });
+    if (action === 'restore') {
+      const id = typeof body.user_id === 'string' ? body.user_id : '';
+      if (!uuid.test(id) || id === actor.id) return respond(403, { error: 'Select another account.' });
+      const profile = dashboard.users.find((item: {user_id: string}) => item.user_id === id);
+      if (!profile) return respond(404, { error: 'ERP account not found.' });
+      const { error: restoreError } = await elevated.auth.admin.updateUserById(id, { ban_duration: 'none' });
+      if (restoreError) return respond(400, { error: 'Could not restore Supabase Auth login: '+restoreError.message });
+      return respond(200, { restored:true, user_id:id });
+    }
+    if (action === 'revoke') {
+      const id = typeof body.user_id === 'string' ? body.user_id : '';
+      if (!uuid.test(id) || id === actor.id) return respond(403, { error: 'You cannot delete your own login.' });
+      const profile = dashboard.users.find((item: {user_id: string}) => item.user_id === id);
+      if (!profile?.active) return respond(404, { error: 'Active login not found.' });
+      // The existing audited erp_admin_save_user RPC enforces last-admin protection.
+      // Disable access first using the existing audited ERP RPC, then revoke Auth sign-in.
+      const { error: accessError } = await caller.rpc('erp_admin_save_user', {
+        p_user_id:id, p_department_id:profile.department_id || null,
+        p_display_name:profile.display_name || profile.email || 'Employee',
+        p_active:false, p_role_ids:[],
+      });
+      if (accessError) return respond(422, { error: `Could not disable ERP access: ${accessError.message}` });
+      const { error: banError } = await elevated.auth.admin.updateUserById(id, { ban_duration: '876000h' });
+      if (banError) return respond(503, { error: 'ERP access disabled but Supabase Auth ban failed: '+banError.message+'. Review account before retrying.' });
+      return respond(200, { revoked:true, user_id:id });
     }
     return respond(400, { error: 'Unsupported employee login action.' });
   } catch (error) {

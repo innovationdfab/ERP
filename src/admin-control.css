@@ -532,3 +532,12 @@
 .admin-simple .admin-invite-access {display:grid;gap:16px;max-width:720px;}
 .admin-simple .admin-invite-role-select {display:grid;gap:8px;min-width:0;}
 .admin-simple .admin-invite-role-select select {width:100%;max-width:520px;}
+
+/* Focused login editor: keep the rest of the Admin layout unchanged. */
+.admin-simple .admin-login-simple-form {grid-template-columns:repeat(2,minmax(0,1fr));gap:18px 20px;max-width:850px;}
+.admin-simple .admin-login-edit-actions {display:flex;flex-wrap:wrap;align-items:center;gap:16px;margin:18px 0;}
+@media(max-width:720px){.admin-simple .admin-login-simple-form{grid-template-columns:1fr;}}
+
+/* Role data is loaded from Supabase; show an informative, compact access summary. */
+.admin-role-access-summary,.admin-role-setup-hint{display:block;margin-top:7px;font-size:12px;line-height:1.5;font-weight:500;color:var(--admin-muted,#64748b)}
+.admin-role-setup-hint{color:#a16207}

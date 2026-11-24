@@ -1,0 +1,109 @@
+{
+  "baseline": "DFAB-OneERP-SOP-Upgrade.zip",
+  "baseline_sha256": "db531ba725f436a6ef4b8c69b76db903040dee1e021bbdfbd2e489c11226cfba",
+  "unchanged_files": [
+    ".env.example",
+    ".gitignore",
+    "DATABASE-DRIVEN-UPDATE.md",
+    "DATABASE-SETUP.md",
+    "ERP-REVIEW.md",
+    "FLOW-AUTOFETCH-VERIFICATION.md",
+    "FULL-DATA-RESTORE.md",
+    "PRESERVATION-CHECK.json",
+    "README.md",
+    "RESTORED-DATA-UPDATE.md",
+    "SAP-ENTERPRISE-UPGRADE.md",
+    "START-HERE-SOP.md",
+    "VERIFICATION-SOP.md",
+    "VERIFICATION.md",
+    "dfab-erp-home.code-workspace",
+    "erp.code-workspace",
+    "eslint.config.js",
+    "index.html",
+    "package-lock.json",
+    "package.json",
+    "src/assets/dfab-logo.png",
+    "src/backend/cloud-store.js",
+    "src/backend/supabase-rest.js",
+    "src/erp-utils.js",
+    "src/main.jsx",
+    "src/premium-forms.css",
+    "src/premium-forms.jsx",
+    "src/process-rules.js",
+    "src/process-schema.js",
+    "src/restored-seed-data.js",
+    "src/sap-enterprise.css",
+    "src/styles.css",
+    "src/ui-refinements.css",
+    "supabase/DFAB_ERP_PRODUCTION.sql",
+    "supabase/DFAB_PROCESS_UPGRADE.sql",
+    "tests/browser-advanced.mjs",
+    "tests/browser-premium.mjs",
+    "tests/browser-routes.json",
+    "tests/browser-smoke.mjs",
+    "tests/database-process.mjs",
+    "tests/erp-utils.test.js",
+    "tests/process-rules.test.js"
+  ],
+  "unchanged_count": 42,
+  "modified_files": [
+    {
+      "path": "src/process-store.js",
+      "before_sha256": "a270932d8425a343caa6f24efd54af5f63bdec2c359859d1108b6b4af3a6f0a5",
+      "after_sha256": "7cddbdb77b2213738e984d0fef07d5fbfe2be65c99813a8bfa3e3c0c3633b9b3"
+    },
+    {
+      "path": "src/process-workspace.css",
+      "before_sha256": "74475e902b6790fa6e945700d23efb152533238a9eedfe40661d4142beb3068c",
+      "after_sha256": "012f2b385dbdc5150117845d6e2fe985f74c095218d50fa44d4dbe69e2fedbaf"
+    },
+    {
+      "path": "src/process-workspace.jsx",
+      "before_sha256": "6abb303cca3acd66ae9c1a96e659a0dc929b8e992115a10311f9b1280a8fda52",
+      "after_sha256": "a1cf65e002303b490cb5173fb8145c290a8465789429498b8f0992128e5abbe0"
+    },
+    {
+      "path": "tests/browser-process.mjs",
+      "before_sha256": "946586ff1340fecc5b0ee0c1b2e65eddc8861a41e179809e658bf5aa55202134",
+      "after_sha256": "c00c84d1558ab57e19522422be9d736a8159b7bdbe1629595c06dce122ba13f8"
+    }
+  ],
+  "missing_files": [],
+  "added_files": [
+    "FETCH-LOCK-CHECK.json",
+    "FETCH-UPDATE.md",
+    "src/process-fetch-ui.jsx",
+    "src/process-fetch.js",
+    "tests/process-fetch.test.js"
+  ],
+  "verification": {
+    "lint": "passed",
+    "configured_typecheck": "passed (existing utility/backend scope)",
+    "unit_tests": "23/23 passed",
+    "production_build": "passed; existing non-blocking bundle-size/lucide warnings",
+    "browser": {
+      "results": [
+        "Original torch login + Supabase hydration",
+        "0 existing/new routes rendered",
+        "30 transaction editors, draft saves, read-only tabs and deletes",
+        "Enquiry \u2192 quotation with charge/attachment \u2192 approved order and preserved source lines",
+        "Save failure/retry + labour inward \u2192 QC passed \u2192 sales order gate",
+        "Invoice \u2192 receipt allocation, overpayment rejection, history",
+        "Payment compatibility projection and finance report balances",
+        "Route process pricing save",
+        "Fetch selection/quantity errors, partial draft reservation, reference mapping, atomic lineage, overwrite cancellation and keyboard close",
+        "Reload restores session and confirmed document details",
+        "Desktop/tablet/mobile document overflow checks",
+        "No runtime errors"
+      ],
+      "errors": []
+    },
+    "route_sweep": {
+      "routeCount": 128,
+      "status": "passed",
+      "source": "Completed route sweep before the Rejection Note form fix; all editor interactions rerun after that fix."
+    },
+    "production_database": "Not changed. Browser tests use a local mocked Supabase transport.",
+    "setup": "Existing DFAB_PROCESS_UPGRADE.sql required; no new SQL migration."
+  }
+}

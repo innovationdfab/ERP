@@ -583,7 +583,7 @@ function App(){
       setLoginValues({userId:email,password:''});
       setShowLoginPassword(false);setLampOn(true);
       setLoginMessage('Password updated. Sign in with your new password.');
-    }catch(error){setPasswordSetupError(error?.status===404?'Your email and password were accepted, but first-login password setup returned 404 at /functions/v1/erp-admin-invite. Verify this function is deployed in the same Supabase project configured by VITE_SUPABASE_URL; then retry. Your account does not need to be created again.':error.message||'Could not set your new password.');}
+    }catch(error){setPasswordSetupError(error?.status===404?`Your saved password was accepted. The required first-login password service returned 404 at ${error?.endpoint||'/functions/v1/erp-admin-invite'}. Deploy the latest erp-admin-invite function in the Supabase project used by this ERP. Do not create this account again.`:error.message||'Could not set your new password.');}
     finally{setPasswordSetupLoading(false)}
   };
   const cancelInitialPasswordSetup=()=>{

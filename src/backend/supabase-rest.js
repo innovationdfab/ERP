@@ -79,7 +79,7 @@ async function transport(path, options = {}) {
       : response.status === 401 && !/api.?key/i.test(String(detail)) ? 'Supabase session expired or is invalid. Sign in again.'
       : response.status === 403 ? 'Permission denied by Supabase. Contact your ERP administrator.'
       : detail;
-    throw Object.assign(new Error(String(message)),{status:response.status,code:body?.code||body?.error_code,detail:String(detail)});
+    throw Object.assign(new Error(String(message)),{status:response.status,code:body?.code||body?.error_code,detail:String(detail),endpoint:path.split('?')[0]});
   }
   return body;
 }
