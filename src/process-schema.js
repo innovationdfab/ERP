@@ -18,7 +18,7 @@ const raw = {
  'Production Output':['OP','Customer','OUTPUT','Remarks|PO Number|Ref Work Order Number|Target Date|Next Task Assigned to',false],
  'Outward QC':['OQ','Vendor','Outward QC',`${quality}|Stage|Weld Repair Drawing Number|Pipe Welding Drawing Number|Dispatch Date|MPT Test Date|Remarks`,false],
  'Delivery Challan':['DC','Vendor','DELIVERY CHALLAN','Consignee|Category|Approximate Goods Value|Tran Ref No|PO Number|MGP/Customer DC Number|Project Name|Eway Bill No|Vehicle No.|Transporter Name|Eway Bill Date|Valid Upto|Kind Attention|Remarks|Bill Of Loading/LR-RR No.|MGP/Customer Dc Date|PO Date|Managed By|Scope Of Work|C Number|A Number',true],
- 'Sales Invoice':['SI','Customer','LOCAL|EXPORT',`Invoice Category|${shipping}`,false,'Documents Upload'],
+ 'Sales Invoice':['SI','Customer','LOCAL|EXPORT',`Invoice Category|${shipping}|Credit Days|Due Date`,false,'Documents Upload'],
  'Purchase':['IP','Vendor','PURCHASE INVOICE','Order Remarks|Invoice No.|Invoice Date|Sale Order Number|Project Name|Approved By|Purchased By|Work Order Number',true],
  'Job Work Inward':['JI','Vendor','Job Work Inward','Remarks|PO Number|DC NO.|DC Date.|Approximate Goods Value.|Kind Attention|SUB Vendor|Project Name|C Number|A Number|Next Task Assigned to|Target Date',true,'Attachment'],
  'Job Work Return DC':['RJ','Vendor','Job Work Return','Remarks|E-Way Bill No|E-Way Bill Date|Valid Upto|Transporter Name|Vehicle No.|Estimated Goods Value',false],
@@ -81,7 +81,7 @@ export function optionsFor(name,label){
 }
 export function inputType(label){
  if(/date|\bdt\.?|valid upto/i.test(label))return 'date';
- if(/amount|goods value|estimated value|qty|quantity|cost/i.test(label))return 'number';
+ if(/amount|goods value|estimated value|qty|quantity|cost|credit days/i.test(label))return 'number';
  return /remarks|scope of work/i.test(label)?'textarea':'text';
 }
 export function nextStages(doc){

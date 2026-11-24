@@ -11,7 +11,7 @@
     "typecheck": "tsc --noEmit --allowJs --checkJs --target es2022 --module esnext --lib es2022,dom src/erp-utils.js",
     "test": "node --test tests/*.test.js",
     "verify": "npm run lint && npm run typecheck && npm test && npm run build",
-    "test:browser": "node tests/browser-workspace.mjs && node tests/browser-reference-forms.mjs && node tests/browser-form-actions.mjs && node tests/browser-premium.mjs && node tests/browser-extensions.mjs && node tests/browser-session.mjs && node tests/browser-dispatch-fetch.mjs && node tests/browser-production-flows.mjs",
+    "test:browser": "node tests/browser-workspace.mjs && node tests/browser-reference-forms.mjs && node tests/browser-form-actions.mjs && node tests/browser-premium.mjs && node tests/browser-extensions.mjs && node tests/browser-session.mjs && node tests/browser-dispatch-fetch.mjs && node tests/browser-production-flows.mjs && node tests/browser-audit-fixes.mjs",
     "test:premium": "node tests/browser-premium.mjs",
     "test:sql": "node tests/workspace-sql.mjs && node tests/production-sql.mjs"
   },

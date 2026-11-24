@@ -5,6 +5,7 @@ import { readFileSync } from 'node:fs';
 // Run the actual source against an isolated fake Supabase RPC. This validates
 // browser save ordering without credentials, live tables, or an altered UI.
 const source = readFileSync(new URL('../src/backend/cloud-store.js', import.meta.url), 'utf8')
+  .replace("import {confirmedOperation} from '../operation-feedback.js';",`import {confirmedOperation} from '${new URL('../src/operation-feedback.js',import.meta.url).href}';`)
   .replace("import { backendConfigured, rpc } from './supabase-rest.js';", 'const backendConfigured = true; const rpc = (...args) => globalThis.__erpProductionTestRpc(...args);');
 const cloudModule = await import(`data:text/javascript;base64,${Buffer.from(source).toString('base64')}`);
 const { initializeCloudStore, writeCloudValue, readCloudValue, flushCloudWrites,
@@ -13,7 +14,7 @@ const { initializeCloudStore, writeCloudValue, readCloudValue, flushCloudWrites,
 function createRpc(initial = {}) {
   const saved = new Map(Object.entries(initial));
   const calls = [];
-  let denyWrites = false;
+  let denyWrites = false;let rejectConfirmed=false;let rejectStatus=400;
   let missingBatch = false;
   let missingCas = false;
   globalThis.__erpProductionTestRpc = async (name, params = {}) => {
@@ -27,6 +28,7 @@ function createRpc(initial = {}) {
     }
     if (name === 'erp_next_process_no') return 'SO/LOCAL/26-27/00001';
     if (name === 'erp_commit_process') {
+      if(rejectConfirmed){rejectConfirmed=false;throw Object.assign(Error('Party required'),{status:rejectStatus,code:'P0001'});}
       for (const key of Object.keys(params.p_changes)) {
         if (denyWrites || JSON.stringify(saved.get(key) ?? null) !== JSON.stringify(params.p_expected[key])) throw Error('ERP records changed');
       }
@@ -43,7 +45,7 @@ function createRpc(initial = {}) {
     }
     throw Error(`Unexpected mock RPC ${name}`);
   };
-  return { saved, calls, setDenyWrites: value => { denyWrites = value; }, setMissingBatch: value => { missingBatch = value; }, setMissingCas: value => { missingCas = value; } };
+  return { saved, calls, rejectOnce:(status=400)=>{rejectConfirmed=true;rejectStatus=status;}, setDenyWrites: value => { denyWrites = value; }, setMissingBatch: value => { missingBatch = value; }, setMissingCas: value => { missingCas = value; } };
 }
 
 test('queued saves use the last committed database payload and do not lose rapid edits', async () => {
@@ -166,3 +168,7 @@ test('process numbers require an active session and use the authenticated number
   await assert.rejects(nextProcessNumber('Sales Orders','SO/LOCAL','26-27'),/valid document number/);
   setCloudAccessToken('');
 });
+
+ test('confirmed validation rejection leaves later atomic saves available without reload',async()=>{const mock=createRpc({'dfab-erp-Test':[]});await initializeCloudStore('test-jwt');mock.rejectOnce();await assert.rejects(commitProcessChanges({'dfab-erp-Test':[['bad']]},{'dfab-erp-Test':[]}),/Party required/);assert.deepEqual(readCloudValue('dfab-erp-Test'),[]);await commitProcessChanges({'dfab-erp-Test':[['valid']]},{'dfab-erp-Test':[]});assert.deepEqual(mock.saved.get('dfab-erp-Test'),[['valid']]);setCloudAccessToken('');});
+
+ test('request timeout keeps uncertain atomic writes locked until reload',async()=>{const mock=createRpc({'dfab-erp-Test':[]});await initializeCloudStore('test-jwt');mock.rejectOnce(408);await assert.rejects(commitProcessChanges({'dfab-erp-Test':[['uncertain']]},{'dfab-erp-Test':[]}),/Party required/);await assert.rejects(commitProcessChanges({'dfab-erp-Test':[['retry']]},{'dfab-erp-Test':[]}),/failed|unsaved/i);assert.deepEqual(mock.saved.get('dfab-erp-Test'),[]);setCloudAccessToken('');});

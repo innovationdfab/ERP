@@ -21,9 +21,10 @@ try{
   create function auth.jwt() returns jsonb language sql stable as $$select coalesce(nullif(current_setting('request.jwt.claims',true),'')::jsonb,'{}'::jsonb)$$;
   grant usage on schema auth to anon,authenticated,service_role;
   insert into auth.users(id,email) values('${admin}','qa-admin@example.test');`);
-  for(const migration of [
+  if(process.env.ERP_SQL_BUNDLE){await db.exec(readFileSync(process.env.ERP_SQL_BUNDLE,'utf8'));console.log('Applied full single-file SQL bundle');}
+  else for(const migration of [
     'DFAB_ERP_PRODUCTION','ERP_FLOW_INTEGRITY_UPGRADE','ERP_PRODUCTION_GUARDRAILS','ERP_ADMIN_CONTROL',
-    'ERP_ADMIN_OPERATIONS_V2','ERP_INITIAL_LOGIN_PASSWORD_POLICY','ERP_WORKSPACE_INTEGRITY','ERP_EXTENSIONS','ERP_PRODUCTION_FLOWS_UPDATE'
+    'ERP_ADMIN_OPERATIONS_V2','ERP_INITIAL_LOGIN_PASSWORD_POLICY','ERP_WORKSPACE_INTEGRITY','ERP_EXTENSIONS','ERP_PRODUCTION_FLOWS_UPDATE','ERP_AUDIT_FIXES_UPDATE'
   ]){
     await db.exec(readFileSync(new URL(`../supabase/${migration}.sql`,import.meta.url),'utf8'));
     console.log('Applied',migration);
@@ -59,7 +60,9 @@ try{
    const next=applyFetch(doc(module,number),predecessor,{[predecessor.lines[0].id]:'10'},documents);next.number=number;next.status=status;
    if(module.includes('QC'))next.inspection={inspector:'QA',result:'Passed',accepted:'10',rejected:'0'};
    if(module==='Route Cards')next.operations=[{process:'Weld',machine:'QA Machine',type:'In-house',quantity:'10',status:'Completed',qcRequired:true,qcStatus:'Passed'}];
-   state=await pack(next);await commit(state.changes,state.expected);documents.push(next);predecessor=next;
+   state=await pack(next);await commit(state.changes,state.expected);
+   if(['Inward QC','Outward QC'].includes(module)){predecessor.status='ACCEPTED';state=await pack(predecessor);await commit(state.changes,state.expected,'approve');}
+   documents.push(next);predecessor=next;
   }
   const dispatch=predecessor;
   const invoice=applyFetch(doc('Sales Invoice','SQL-INV','2'),dispatch,{[dispatch.lines[0].id]:'2'},documents);invoice.number='SQL-INV';invoice.status='APPROVED';
@@ -75,7 +78,7 @@ try{
   await assert.rejects(db.query('select * from erp_process_write_authorizations'),/permission denied/);
   await assert.rejects(db.query('select erp_next_process_no($1,$2,$3)',['GRN','GRN','26-27']),/create permission/);
   await asUser(admin);
-  const negative=doc('Stock Adjustment','SQL-NEGATIVE','1');negative.status='RELEASED';negative.header['Adjustment direction']='Decrease';state=await pack(negative);await assert.rejects(commit(state.changes,state.expected),/below zero/);
+  const negative=doc('Stock Adjustment','SQL-NEGATIVE','31');negative.status='RELEASED';negative.header['Adjustment direction']='Decrease';state=await pack(negative);await assert.rejects(commit(state.changes,state.expected),/below zero/);
   const premature={...documents.find(d=>d.module==='Work Order'),status:'COMPLETED'};state=await pack(premature);await assert.rejects(commit(state.changes,state.expected,'close'),/payment|full source|delivery/);
   const pay={id:'payment-qa-1',module:'Sales Invoice',invoice:'SQL-INV',date:'2026-11-23',party:'SQL Customer',amount:'200',tds:'36',ld:'0',type:'Cash',reference:''};
   const payKey='dfab-process-payments-Sales Invoice',projection='dfab-erp-Customer Payments';let snap=await snapshot();
@@ -87,5 +90,16 @@ try{
   const email=await db.query("select erp_invoice_email_start('SQL-INV','qa@example.test','aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa') as result");assert.equal(email.rows[0].result.created,true);
   const duplicate=await db.query("select erp_invoice_email_start('SQL-INV','qa@example.test','aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa') as result");assert.equal(duplicate.rows[0].result.created,false);
   await assert.rejects(db.query("select erp_invoice_email_start('SQL-INV','other@example.test','aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa')"),/identity changed/);
+  const remainder=applyFetch(doc('Sales Invoice','SQL-INV-REMAINDER','8'),dispatch,{[dispatch.lines[0].id]:'8'},documents);remainder.number='SQL-INV-REMAINDER';remainder.status='APPROVED';
+  const badTerms=structuredClone(remainder);badTerms.header['Due Date']='2026-02-30';state=await pack(badTerms);await assert.rejects(commit(state.changes,state.expected),/date|range/i);
+  const missingTerms=structuredClone(remainder);delete missingTerms.header['Due Date'];state=await pack(missingTerms);await assert.rejects(commit(state.changes,state.expected),/due date/i);
+  state=await pack(remainder);await commit(state.changes,state.expected);
+  const finalReceipt={...pay,id:'final-payment',invoice:remainder.number,amount:'944',tds:'0',ld:'0'};snap=await snapshot();
+  const finalRow=[finalReceipt.id,finalReceipt.party,finalReceipt.invoice,finalReceipt.date,'944','Settled',{version:1,header:{'TDS Amount':'0','LD Amount':'0','Invoice Module':'Sales Invoice'}}];
+  await commit({[payKey]:[finalReceipt,...snap.get(payKey)],[projection]:[finalRow,...snap.get(projection)]},{[payKey]:snap.get(payKey),[projection]:snap.get(projection)},'payment');
+  state=await pack({...dispatch,status:'DELIVERED'});await commit(state.changes,state.expected,'approve');
+  state=await pack({...documents.find(d=>d.module==='Work Order'),status:'COMPLETED'});await commit(state.changes,state.expected,'close');
+  assert.equal((await snapshot()).get('dfab-process-Work Order')['SQL-WO'].status,'COMPLETED');
+  console.log('PASS: invoice terms reject invalid/missing due dates atomically; fully delivered and paid work order closes under actual SQL guards.');
   console.log('PASS: process SQL commits/projections, source reservations, concurrency, total validation, immutable lineage, maker/approver separation, private authorizations, numbering access and email idempotency.');
 }finally{await db.close();}

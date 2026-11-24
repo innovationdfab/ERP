@@ -3,7 +3,7 @@ import { rpc, invokeFunction } from './backend/supabase-rest.js';
 let adminToken = '';
 export function setAdminToken(token='') { adminToken=token; }
 function mustToken(){ if(!adminToken) throw new Error('ERP session expired. Sign in again.');return adminToken; }
-const call=(name,args={})=>rpc(name,args,{accessToken:mustToken()});
+const call=async(name,args={})=>{const result=await rpc(name,args,{accessToken:mustToken()});if(/erp_admin_(save|delete|publish|reset_workflow|map_storage|unmap_storage)/.test(name)&&typeof window!=='undefined')window.dispatchEvent(new CustomEvent('erp-operation-feedback',{detail:{title:/delete|unmap/.test(name)?'Deleted':/publish/.test(name)?'Published':'Saved'}}));return result;};
 export async function loadMyAccess() {
   try {
     return await call('erp_admin_my_access');

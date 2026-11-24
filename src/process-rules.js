@@ -2,6 +2,7 @@ import {imantraTransactions} from './imantra-integration.js';
 import {nextStages,schemas,QUALITY_MODULES} from './process-schema.js';
 export const roundMoney=n=>Math.round((n+Number.EPSILON)*100)/100;
 const number=v=>Number(v||0);
+const validDate=value=>!!value&&/^\d{4}-\d{2}-\d{2}$/.test(value)&&Number.isFinite(Date.parse(value+'T12:00:00Z'))&&new Date(value+'T12:00:00Z').toISOString().slice(0,10)===value;
 export function lineAmounts(line){
  const base=roundMoney(number(line.quantity)*number(line.rate));
  const discount=roundMoney(base*number(line.discount)/100);
@@ -18,11 +19,13 @@ export function documentAmounts(doc){
  return result;
 }
 export function validateDocument(doc,{draft=false}={}){
- if(!doc.date||!/^\d{4}-\d{2}-\d{2}$/.test(doc.date)||!Number.isFinite(Date.parse(doc.date+'T12:00:00Z'))||new Date(doc.date+'T12:00:00Z').toISOString().slice(0,10)!==doc.date)return 'Enter a valid document date.';
+ if(!validDate(doc.date))return 'Enter a valid document date.';
  if(!doc.party?.trim()&&Boolean(schemas[doc.module]?.party))return 'Select the customer, prospect, vendor or supplier.';
  if(!draft&&(!doc.assignment?.user?.trim()||!doc.assignment?.department||!doc.assignment?.due))return 'Assign the next task to a user and department with a target date.';
  if(!draft&&doc.assignment.due<doc.date)return 'Target date cannot be before the document date.';
  if(!draft){const required={'Sales Orders':['Customer PO Dt.','C Number','A Number'],'GRN':['Supplier Invoice No.','Supplier Invoice Dt.','PO Ref. Dt.','Work Order No'],'Proforma Invoice':['Advance Payment Amount'],'Inward Quality Rejection':['Supplier Invoice No.','Supplier Invoice Dt.']};for(const label of required[doc.module]||[])if(!String(doc.header?.[label]??'').trim())return `${label} is required before release.`;}
+ if(doc.module==='Sales Invoice'&&doc.header?.['Credit Days']!==undefined&&doc.header['Credit Days']!==''&&(!/^\d+$/.test(doc.header['Credit Days'])||Number(doc.header['Credit Days'])>3650))return 'Credit Days must be a whole number from 0 to 3650.';
+ if(doc.module==='Sales Invoice'&&!draft&&(!validDate(doc.header?.['Due Date'])||doc.header['Due Date']<doc.date))return 'Enter an invoice due date on or after its document date.';
  if(!doc.lines?.length)return 'Add at least one product line.';
  for(const [i,line]of doc.lines.entries()){
   if(!(line.code?.trim()||line.description?.trim()))return `Line ${i+1}: enter a product or description.`;

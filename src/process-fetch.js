@@ -1,6 +1,6 @@
 import {schemas,nextStages,OWNERS} from './process-schema.js';
 import {imantraReferenceSource} from './imantra-integration.js';
-import {canForward,documentAmounts} from './process-rules.js';
+import {canForward,documentAmounts,roundMoney} from './process-rules.js';
 
 // Visible Pickup choices in the signed-in reference, inspected 2 Nov 2026.
 // SOP sources remain available as well; the SOP graph itself is unchanged.
@@ -80,8 +80,10 @@ function mappedHeaders(module,source,documents){
  for(const field of fields){
   if(/remarks|next task|target date|approved by|purchased by|requested by/i.test(field))continue;
   const aliases=aliasGroups.find(group=>group.includes(field))||[field];
-  const value=aliases.map(key=>source.header?.[key]).find(value=>value!==undefined&&value!==null&&value!=='');
-  put(field,value);
+  const upstream=Object.entries(source.references||{}).map(([module,number])=>documents.find(d=>d.module===module&&d.number===number)).filter(Boolean);
+  const candidates=[source,...upstream.sort((a,b)=>['Sales Orders','Sales Quotations'].indexOf(a.module)-['Sales Orders','Sales Quotations'].indexOf(b.module))];
+  const value=candidates.flatMap(d=>aliases.map(key=>d.header?.[key]??d.context?.[key])).find(value=>value!==undefined&&value!==null&&value!=='');
+  put(field,value,field==='Currency Type');
  }
  for(const [kind,number]of Object.entries({...source.references,[source.module]:source.number})){
   const upstream=documents.find(d=>d.module===kind&&d.number===number)||(kind===source.module?source:null);
@@ -101,7 +103,7 @@ export function applyFetch(target,source,selection,documents){
  const ownedParty=target.fetch&&Object.hasOwn(target.fetch,'partyValue')?target.fetch.partyValue:previous&&sourceUsesSameParty(previous,target.module)?previous.party:undefined;
  const canRefreshParty=Boolean(target.fetch)&&ownedParty!==undefined&&target.party===ownedParty;
  if(target.party&&source.party&&sourceUsesSameParty(source,target.module)&&target.party!==source.party&&!canRefreshParty)throw new Error('The source belongs to a different party. Choose a matching document or clear the party first.');
- const currency=source.header?.['Currency Type'];if(currency&&target.header?.['Currency Type']&&currency!==target.header['Currency Type'])throw new Error('Source and destination currencies must match.');
+ const currency=source.header?.['Currency Type']||source.context?.['Currency Type'];if(currency&&!(target.defaultCurrency&&target.header?.['Currency Type']==='INR'&&!target.party&&!target.number)&&target.header?.['Currency Type']&&currency!==target.header['Currency Type'])throw new Error('Source and destination currencies must match.');
  for(const [to,from]of Object.entries(source.workflowMap||{})){
   if(!schemas[target.module].fields.includes(to))continue;
   const value=source.header?.[from]??(/^(Customer|Vendor|Supplier|Prospect)$/.test(from)?source.party:/qty/i.test(from)?source.lines.reduce((n,l)=>n+Number(l.quantity||0),0):/amount/i.test(from)?source.total:undefined);
@@ -117,8 +119,27 @@ export function applyFetch(target,source,selection,documents){
  const matchingParty=sourceUsesSameParty(source,target.module),order=documents.find(d=>d.module==='Sales Orders'&&d.number===source.references?.['Sales Orders']),party=matchingParty?source.party:target.party||(!supplierModules.has(target.module)?order?.party||'':'');
  const assignment={...target.assignment};
  if(!target.number&&target.flow!==source.flow&&!assignment.user&&!assignment.due&&!assignment.instructions&&assignment.department===(OWNERS[nextStages(target)[0]]||''))assignment.department=OWNERS[nextStages({...target,flow:source.flow})[0]]||'';
- const result={...target,assignment,status:'DRAFT',flow:source.flow,party,header,lines,source:{module:source.module,number:source.number},root:source.root||{module:source.module,number:source.number},references:{...source.references,[source.module]:source.number},assignedTo:structuredClone(source.assignment),fetch:{version:2,at:new Date().toISOString(),headerValues,...(matchingParty?{partyValue:party}:{})}};
+ const context={...source.context,...Object.fromEntries(['Project Name','Project Name/Code','PO Number','Buyer PO No.','Currency Type','Terms of payment','Payment Terms'].map(k=>[k,source.header?.[k]||source.context?.[k]]).filter(([,v])=>v))};
+ const result={...target,defaultCurrency:false,context,assignment,status:'DRAFT',flow:source.flow,party,header,lines,source:{module:source.module,number:source.number},root:source.root||{module:source.module,number:source.number},references:{...source.references,[source.module]:source.number},assignedTo:structuredClone(source.assignment),fetch:{version:2,at:new Date().toISOString(),headerValues,...(matchingParty?{partyValue:party}:{})}};
  delete result.legacy;delete result.legacyRow;
+ const commercial=new Set(['Sales Enquiries','Sales Quotations','Sales Orders','Delivery Challan','Sales Invoice','Proforma Invoice','Sales Return','Credit Note']);
+ if(commercial.has(target.module)){
+  const financial=commercial.has(source.module)?source:documents.find(d=>d.module==='Sales Orders'&&d.number===source.references?.['Sales Orders']);
+  if(financial){
+   const weight=l=>Number(l.quantity)*(Number(l.rate)||1)*(1-Number(l.discount||0)/100);
+   const full=financial.lines.reduce((n,l)=>n+weight(l),0);
+   const selected=financial.lines.reduce((sum,f)=>{const qty=lines.filter(l=>(l.rootLineId||l.id)===(f.rootLineId||f.id)||l.sourceLineId===f.id).reduce((n,l)=>n+Number(l.quantity),0);return sum+(Number(f.quantity)?qty/Number(f.quantity)*weight(f):0);},0);
+   const fraction=full?Math.min(1,selected/full):1;
+   const prior=documents.filter(d=>d.module===target.module&&d.number!==target.number&&d.status!=='REJECTED'&&d.fetch?.financial?.module===financial.module&&d.fetch.financial.number===financial.number);
+   const used=prior.reduce((n,d)=>n+Number(d.fetch.financial.fraction||0),0);
+   const amounts=(financial.charges||[]).map((c,i)=>roundMoney(Number(c.amount||0)*Math.min(1,used+fraction))-prior.reduce((n,d)=>n+Number(d.fetch.financial.amounts?.[i]||0),0));
+   const adjustment=roundMoney(Number(financial.adjustment||0)*Math.min(1,used+fraction))-prior.reduce((n,d)=>n+Number(d.fetch.financial.adjustment||0),0);
+   const owned=target.fetch?.financial;
+   if(!target.charges?.length||owned&&JSON.stringify(target.charges)===JSON.stringify(owned.charges))result.charges=(financial.charges||[]).map((c,i)=>({...structuredClone(c),amount:String(roundMoney(amounts[i]))}));
+   if(!Number(target.adjustment)||owned&&String(target.adjustment)===String(owned.adjustment))result.adjustment=String(roundMoney(adjustment));
+   result.fetch.financial={module:financial.module,number:financial.number,fraction,amounts:amounts.map(roundMoney),adjustment:roundMoney(adjustment),charges:structuredClone(result.charges)};
+  }
+ }
  result.total=documentAmounts(result).gross;
  return result;
 }

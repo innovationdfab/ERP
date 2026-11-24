@@ -1,3 +1,4 @@
+import {matchesSearch} from './filter-rules.js';
 import React,{useMemo,useState} from 'react';
 import {ArrowUpRight, ChevronLeft, ChevronRight, Search} from 'lucide-react';
 import {operationPages,operationRows,connectedOperations} from './operations-views.js';
@@ -15,7 +16,7 @@ export function OperationsView({title,readDocuments,readRows,readObject,canRead,
   const [selected,setSelected]=useState(null);
   const config=operationPages[title];
   const results=useMemo(()=>operationRows(title,{readDocuments,readRows,readObject,canRead}),[title,readDocuments,readRows,readObject,canRead]);
-  const filtered=results.filter(row=>row.values.join(' ').toLowerCase().includes(query.trim().toLowerCase()));
+  const filtered=results.filter(row=>matchesSearch(row.values,query));
   const pageCount=Math.max(1,Math.ceil(filtered.length/25));
   const visiblePage=Math.min(page,pageCount);
   const related=selected?connectedOperations(selected.module,selected.reference,readRows('dfab-workflow-links-v1'),readDocuments,canRead):[];

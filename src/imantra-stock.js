@@ -29,7 +29,7 @@ export function postedStockMovements(readRows){
       if(lines?.length){
         for(const line of lines){
           const qty=num(line.quantity)*rule.direction*(rule.key==='Stock Adjustment'&&extra.header?.['Adjustment direction']==='Decrease'?-1:1),item=String(line.code||line.description||'').trim();
-          if(item&&qty)records.push({item,qty,source:rule.key,reference:String(row[rule.reference]??''),date:isoDate(extra.header?.Date),rate:num(line.rate)>0?num(line.rate):null});
+          if(item&&qty)records.push({item,description:line.description,uom:line.uom,qty,source:rule.key,reference:String(row[rule.reference]??''),date:isoDate(extra.header?.Date),rate:num(line.rate)>0?num(line.rate):null});
         }
       }else{
         const qty=num(row[rule.qty])*rule.direction,item=String(row[rule.item]??'').trim();
@@ -93,9 +93,9 @@ export function stockReportRows(name,columns,readRows,details,parameters) {
   return [...allItems].sort((a,b)=>a.localeCompare(b)).flatMap(key=>{
     const movements=grouped.get(key)||[];
     const product=products.get(key);
-    const identity={'Product Code':product?.code??movements[0]?.item,Description:product?.description,
-      'Product Description':product?.description,'Product Type':product?.type,Group:product?.group,
-      UOM:product?.uom,Rack:product?.rack,'Rack Location':product?.rack};
+    const identity={'Product Code':product?.code??movements[0]?.item,Description:product?.description||movements.find(m=>m.description)?.description,
+      'Product Description':product?.description||movements.find(m=>m.description)?.description,'Product Type':product?.type,Group:product?.group,
+      UOM:product?.uom||movements.find(m=>m.uom)?.uom,Rack:product?.rack,'Rack Location':product?.rack};
     const undated=movements.some(move=>!move.date);
     const visible=movements.filter(move=>!dated||(move.date&&(!to||move.date<=to)))
       .sort((a,b)=>a.date.localeCompare(b.date));

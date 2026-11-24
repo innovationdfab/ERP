@@ -1,3 +1,4 @@
+import {confirmedOperation} from '../operation-feedback.js';
 import { backendConfigured, rpc } from './supabase-rest.js';
 
 const cache = new Map();
@@ -81,7 +82,8 @@ function assertWriteAllowed() {
   if (writeErrors.length) throw new Error('ERP database has unsaved changes. Reload after resolving the save error; no more writes will be queued.');
 }
 
-function reportWriteFailure(key, error) {
+function reportWriteFailure(key, error, confirmed=false) {
+  if(confirmed&&Number.isInteger(error.status)&&error.status>=400&&error.status<500&&error.status!==408){emit('erp-storage-error',`Database rejected the action: ${error.message}`);return;}
   writeErrors.push({ key, error });
   // Do not continue displaying optimistic collection data as if it was saved.
   // The last confirmed snapshot remains authoritative until reconciliation.
@@ -126,6 +128,7 @@ export function writeCloudValue(key, value) {
     assertSession(revision);
     committed.set(key, value);
     emit('erp-storage-saved', { key });
+    emit('erp-operation-feedback',{title:confirmedOperation('save',base,value)});
   });
   return true;
 }
@@ -146,6 +149,7 @@ export function removeCloudValue(key) {
     }
     assertSession(revision);
     committed.delete(key);
+    emit('erp-operation-feedback',{title:'Deleted'});
     emit('erp-storage-saved', { key });
   });
   return true;
@@ -203,11 +207,12 @@ export async function writeCloudValueConfirmed(key, value, visibleValue) {
     committed.set(key,value);
     emit('erp-cloud-change',{type:'confirmed-write',key});
     emit('erp-storage-saved',{key});
+    emit('erp-operation-feedback',{title:confirmedOperation('save',expected,value)});
   });
   writeQueue=operation;
   try { await operation; }
   catch(error) {
-    if(revision===sessionRevision&&!(error instanceof QueuedChangeConflict)&&!writeErrors.length)reportWriteFailure(key,error);
+    if(revision===sessionRevision&&!(error instanceof QueuedChangeConflict)&&!writeErrors.length)reportWriteFailure(key,error,true);
     throw error;
   }
 }
@@ -253,6 +258,7 @@ async function commitSections(changes,rpcName) {
       cache.set(item.key,item.payload);
       committed.set(item.key,item.payload);
     }
+    emit('erp-operation-feedback',{title:rpcName==='erp_restore_ui_state'?'Restored':expectedChanges.map(item=>confirmedOperation('save',item.expected,item.payload)).find(title=>title!=='Saved')||'Saved'});
     for(const item of expectedChanges) {
       emit('erp-cloud-change',{type:'confirmed-write',key:item.key});
       emit('erp-storage-saved',{key:item.key});
@@ -261,7 +267,7 @@ async function commitSections(changes,rpcName) {
   writeQueue=operation;
   try {await operation;}
   catch(error) {
-    if(revision===sessionRevision&&!(error instanceof QueuedChangeConflict)&&!writeErrors.length)reportWriteFailure(rpcName,error);
+    if(revision===sessionRevision&&!(error instanceof QueuedChangeConflict)&&!writeErrors.length)reportWriteFailure(rpcName,error,true);
     throw error;
   }
 }
@@ -297,11 +303,13 @@ export async function commitProcessChanges(changes, expected, action = 'save') {
     for (const key of keys) { cache.set(key,payload[key]); committed.set(key,payload[key]); }
     emit('erp-cloud-change',{type:'process-commit'});
     emit('erp-storage-saved',{key:keys.join(', ')});
+    const processKey=keys.find(k=>k.startsWith('dfab-process-')&&!k.startsWith('dfab-process-payments')&&JSON.stringify(base[k])!==JSON.stringify(payload[k]));
+    emit('erp-operation-feedback',{title:confirmedOperation(action,base[processKey],payload[processKey])});
   });
   writeQueue = operation;
   try { await operation; }
   catch (error) {
-    if (revision === sessionRevision && !(error instanceof QueuedChangeConflict) && !writeErrors.length) reportWriteFailure('erp_commit_process',error);
+    if (revision === sessionRevision && !(error instanceof QueuedChangeConflict) && !writeErrors.length) reportWriteFailure('erp_commit_process',error,true);
     throw error;
   }
 }

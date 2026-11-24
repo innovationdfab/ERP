@@ -1,3 +1,4 @@
+import {matchesSearch} from './filter-rules.js';
 import React, {useCallback,useEffect,useMemo,useState} from 'react';
 import {ArrowLeft,ArrowRight,Check,ClipboardList,Database,FileCheck2,GitBranch,Layers3,LoaderCircle,Plus,RefreshCw,Save,Search,ShieldCheck,Trash2,UserPlus,Users,X} from 'lucide-react';
 import {askConfirmation} from './in-app-dialog.jsx';
@@ -71,8 +72,8 @@ export default function AdminControl({initialTab='overview',onWorkflowPublished=
  const connectedCount=knownConnections.length;
  const inspected=traceDocument({page:inspectedPage||knownConnections[0]?.source_page||workflowPages[0]?.page,catalog:data?.catalog||[],edges:knownConnections,storage:data?.storage||[],counts:storageCounts,reports:imantraReportDefinitions});
  const inboundConnections=inspected?(knownConnections||[]).filter(e=>e.target_page===inspected.page):[];
- const visibleConnections=knownConnections.filter(e=>(roleGroup==='All'||(data?.catalog||[]).some(c=>c.page===e.source_page&&c.module_group===roleGroup))&&`${e.source_page} ${e.target_page} ${(e.gate_statuses||[]).join(' ')}`.toLowerCase().includes(filter.toLowerCase()));
- const filteredCatalog=(data?.catalog||[]).filter(c=>(roleGroup==='All'||c.module_group===roleGroup)&&c.page.toLowerCase().includes(filter.toLowerCase()));
+ const visibleConnections=knownConnections.filter(e=>(roleGroup==='All'||(data?.catalog||[]).some(c=>c.page===e.source_page&&c.module_group===roleGroup))&&matchesSearch([e.source_page,e.target_page,e.gate_statuses],filter));
+ const filteredCatalog=(data?.catalog||[]).filter(c=>(roleGroup==='All'||c.module_group===roleGroup)&&matchesSearch([c.page,c.module_group],filter));
  const beginNewTemplate=()=>{setSelectedTemplate('');setTemplate({id:null,version:null,name:'',description:'',edges:normalizedEdges(knownConnections)});setNewMap({from:'',to:''});};
  const buildAutomaticTemplate=async()=>{
   if(generated.error||generated.skipped.length||generated.edges.length!==generated.totalDefined){
@@ -260,14 +261,14 @@ export default function AdminControl({initialTab='overview',onWorkflowPublished=
       <label className="admin-check admin-filter-toggle"><input type="checkbox" checked={showInactive} onChange={e=>setShowInactive(e.target.checked)}/> Include disabled</label>
      </div>
      <div className="admin-table-wrap"><table><thead><tr><th>Employee</th><th>Department</th><th>Access role</th><th>Status</th><th>Manage</th></tr></thead><tbody>
-      {data.users.filter(p=>(showInactive||p.active)&&`${p.display_name} ${p.email}`.toLowerCase().includes(filter.toLowerCase())).map(p=><tr key={p.user_id}>
+      {data.users.filter(p=>(showInactive||p.active)&&matchesSearch([p.display_name,p.email],filter)).map(p=><tr key={p.user_id}>
        <td><b>{p.display_name||'Unnamed employee'}</b><small>{p.email}</small></td><td>{data.departments.find(d=>d.id===p.department_id)?.name||'Not assigned'}</td>
        <td>{(data.user_roles||[]).filter(ur=>ur.user_id===p.user_id).map(ur=>data.roles.find(r=>r.id===ur.role_id)?.name).filter(Boolean).join(', ')||'No access'}</td>
        <td><span className={`admin-state ${p.active?'is-active':'is-disabled'}`}>{p.active?'Active':'Disabled'}</span></td>
        <td><div className="admin-inline-actions"><Button secondary onClick={()=>{selectUser(p);setInviting(false);setError('')}}>Edit</Button>{p.active&&!isAdminEmployee(p)&&<Button secondary disabled={saving} onClick={()=>resetEmployee(p)}>Set initial password</Button>}{p.active&&<Button secondary disabled={saving} onClick={()=>disableEmployee(p)}>Disable</Button>}</div></td>
       </tr>)}
      </tbody></table></div>
-     {!data.users.filter(p=>(showInactive||p.active)&&`${p.display_name} ${p.email}`.toLowerCase().includes(filter.toLowerCase())).length&&<Empty>No employees match. Use “Add employee” to invite someone.</Empty>}
+     {!data.users.filter(p=>(showInactive||p.active)&&matchesSearch([p.display_name,p.email],filter)).length&&<Empty>No employees match. Use “Add employee” to invite someone.</Empty>}
     </Card>
     {(inviting||user)&&<Card editor title={inviting?'Add employee':`Edit ${user.display_name}`} description={inviting?'Non-admin employees receive the configured initial password and must replace it on first login. Administrator accounts receive an individual invitation.':'Update their department and permissions, then save.'}>
      <div className="admin-step-caption">STEP 1 · EMPLOYEE DETAILS</div>
@@ -386,8 +387,8 @@ export default function AdminControl({initialTab='overview',onWorkflowPublished=
     <Card title="Choose a document" description="Modules from the existing ERP, not invented sample workflows.">
      <label className="admin-search admin-lineage-search"><Search size={16}/><input aria-label="Find ERP document" value={filter} onChange={e=>setFilter(e.target.value)} placeholder="Search documents, modules or groups"/></label>
      <div className="admin-lineage-picker" role="listbox" aria-label="ERP document source">
-      {workflowPages.filter(c=>`${c.page} ${c.module_group}`.toLowerCase().includes(filter.toLowerCase())).map(c=><button type="button" role="option" aria-selected={inspected?.page===c.page} key={c.page} className={inspected?.page===c.page?'selected':''} onClick={()=>setInspectedPage(c.page)}><span><b>{c.page}</b><small>{c.module_group}</small></span><ArrowRight size={16}/></button>)}
-      {!workflowPages.some(c=>`${c.page} ${c.module_group}`.toLowerCase().includes(filter.toLowerCase()))&&<Empty>No matching document. Clear the search.</Empty>}
+      {workflowPages.filter(c=>matchesSearch([c.page,c.module_group],filter)).map(c=><button type="button" role="option" aria-selected={inspected?.page===c.page} key={c.page} className={inspected?.page===c.page?'selected':''} onClick={()=>setInspectedPage(c.page)}><span><b>{c.page}</b><small>{c.module_group}</small></span><ArrowRight size={16}/></button>)}
+      {!workflowPages.some(c=>matchesSearch([c.page,c.module_group],filter))&&<Empty>No matching document. Clear the search.</Empty>}
      </div>
     </Card>
     <div className="admin-lineage-details" aria-live="polite">

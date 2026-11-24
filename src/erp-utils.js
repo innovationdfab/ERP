@@ -3,14 +3,23 @@ import { readCloudValue, writeCloudValue } from './backend/cloud-store.js';
 export const todayISO = () => new Date().toLocaleDateString('en-CA', {timeZone:'Asia/Kolkata'});
 export function isoDate(value) {
   if (!value || value === '-') return '';
-  const raw = String(value);
+  const raw = String(value).trim();
   let iso = raw;
+  const stamp=raw.match(/^(\d{4}-\d{2}-\d{2})[T ]\d{2}:\d{2}/);
+  if(stamp)iso=stamp[1];
   if (!/^\d{4}-\d{2}-\d{2}$/.test(iso)) {
-    const match = raw.match(/^(\d{1,2})-([A-Za-z]{3})-(\d{4})$/);
-    if (!match) return '';
-    const month = ['jan','feb','mar','apr','may','jun','jul','aug','sep','oct','nov','dec'].indexOf(match[2].toLowerCase());
-    if (month < 0) return '';
-    iso = `${match[3]}-${String(month+1).padStart(2,'0')}-${match[1].padStart(2,'0')}`;
+    const numeric=raw.match(/^(\d{1,2})[/.\-](\d{1,2})[/.\-](\d{4})$/);
+    if(numeric){
+      let day=Number(numeric[1]),month=Number(numeric[2]);
+      if(month>12&&day<=12)[day,month]=[month,day];
+      iso=`${numeric[3]}-${String(month).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
+    }else{
+      const match = raw.match(/^(\d{1,2})[- ]([A-Za-z]{3,9})[- ](\d{4})$/);
+      if (!match) return '';
+      const month = ['jan','feb','mar','apr','may','jun','jul','aug','sep','oct','nov','dec'].indexOf(match[2].slice(0,3).toLowerCase());
+      if (month < 0) return '';
+      iso = `${match[3]}-${String(month+1).padStart(2,'0')}-${match[1].padStart(2,'0')}`;
+    }
   }
   const [year, month, day] = iso.split('-').map(Number);
   const date = new Date(Date.UTC(year, month-1, day));

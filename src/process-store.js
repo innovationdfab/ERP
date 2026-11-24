@@ -29,7 +29,7 @@ export function processDocuments(module,configs){
  return docs.map(d=>configs[module]?.workflowOverride?{...d,workflowNext:configs[module].workflowOverride.target_page,workflowGates:configs[module].workflowOverride.gate_statuses,workflowMap:configs[module].workflowOverride.field_map}:d);
 }
 export function freshDocument(module,flow='manufacturing'){
- return {module,flow,number:'',date:todayISO(),series:schemas[module]?.series[0]||'',party:'',status:'DRAFT',header:{},lines:[newLine()],charges:[],operations:[],assignment:{department:OWNERS[nextStages({module,flow})[0]]||'',user:'',due:''},inspection:{inspector:'',result:'Pending',accepted:'0',rejected:'0',remarks:''},attachments:{},references:{},history:[],adjustment:'0'};
+ return {module,flow,defaultCurrency:module==='Sales Invoice',number:'',date:todayISO(),series:schemas[module]?.series[0]||'',party:'',status:'DRAFT',header:module==='Sales Invoice'?{'Currency Type':'INR','Credit Days':'0','Due Date':todayISO()}:{},lines:[newLine()],charges:[],operations:[],assignment:{department:OWNERS[nextStages({module,flow})[0]]||'',user:'',due:''},inspection:{inspector:'',result:'Pending',accepted:'0',rejected:'0',remarks:''},attachments:{},references:{},history:[],adjustment:'0'};
 }
 export function financialYear(date){const year=Number(date.slice(0,4))-(Number(date.slice(5,7))<4?1:0);return `${String(year).slice(-2)}-${String(year+1).slice(-2)}`;}
 export function snapshotForEdit(){return structuredClone(exportCloudSnapshot());}
@@ -42,7 +42,7 @@ function addDocument(changes,expected,snapshot,doc,configs){
  setChange(changes,expected,snapshot,rowsKey,idx>=0?rows.map((r,i)=>i===idx?row:r):[row,...rows]);
  if(invoice){
   const key='dfab-invoice-details-v1';
-  const form={date:doc.date,series:doc.series,customer:doc.party,consignee:doc.header.Consignee||'',po:doc.header['Buyer PO No.']||'',project:doc.header['Project Name']||'',dc:doc.header['DC Number']||'',currency:doc.header['Currency Type']||'INR',...doc.header};
+  const form={dueDate:doc.header['Due Date']||'',creditDays:doc.header['Credit Days']||'',date:doc.date,series:doc.series,customer:doc.party,consignee:doc.header.Consignee||'',po:doc.header['Buyer PO No.']||'',project:doc.header['Project Name']||'',dc:doc.header['DC Number']||'',currency:doc.header['Currency Type']||'INR',...doc.header};
   setChange(changes,expected,snapshot,key,{...(snapshot[key]||{}),[doc.number]:{...(snapshot[key]?.[doc.number]||{}),form:{...form,sourceOrder:doc.references?.['Sales Orders']||'',taxRate:'0'},lines:doc.lines,processVersion:1,processCharges:doc.charges,adjustment:doc.adjustment,files:doc.attachments,...documentAmounts(doc),total:doc.total}});
  }
 }
@@ -87,6 +87,7 @@ export async function forwardProcessDocument(doc,target,configs){
  const selected=Object.fromEntries(available.filter(a=>a.pending>0).map(a=>[a.line.id,String(a.pending)]));
  if(!Object.keys(selected).length)throw new Error('All source items have already been assigned to this stage.');
  const targetDoc=applyFetch(freshDocument(target,doc.flow),doc,selected,documents);
+ if(schemas[target]?.party&&!targetDoc.party){pendingOpen={module:target,document:targetDoc,edit:true};return targetDoc;}
  const number=await nextProcessNumber(target,schemas[target]?.code||'DOC',financialYear(todayISO()));
  targetDoc.number=number;
  const snapshot=snapshotForEdit(),changes={},expected={};

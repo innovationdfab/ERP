@@ -89,14 +89,14 @@ export function receivableRows(readDocuments,readDetails,asOn=todayISO()){
     const key=normalizeReference(invoice.number);
     const matches=records=>records.filter(({fields})=>normalizeReference(fields.Invoice)===key);
     const allocated=(records,dateFields)=>{
-      let total=0,unknown=0;
+      let total=0,unknown=0,paid=0,tds=0,ld=0;
       for(const {fields} of matches(records)){
         const postedDate=dateFields.map(field=>isoDate(fields[field])).find(Boolean);
         const amount=numberValue(fields.Amount);
         if(!postedDate||amount===null||amount<0){unknown++;continue;}
-        if(postedDate<=asOn)total+=amount+(numberValue(fields['TDS Amount'])??0)+(numberValue(fields['LD Amount'])??0);
+        if(postedDate<=asOn){paid+=amount;tds+=numberValue(fields['TDS Amount'])??0;ld+=numberValue(fields['LD Amount'])??0;total+=amount+(numberValue(fields['TDS Amount'])??0)+(numberValue(fields['LD Amount'])??0);}
       }
-      return {total:money(total),unknown};
+      return {total:money(total),paid:money(paid),tds:money(tds),ld:money(ld),unknown};
     };
     const receipts=allocated(payments,['Date']);
     const credited=allocated(credits,['Date']);
@@ -104,7 +104,7 @@ export function receivableRows(readDocuments,readDetails,asOn=todayISO()){
     const age=due?Math.max(0,daysBetween(due,asOn)):null;
     const balance=money(amount-receipts.total-credited.total);
     return [{...invoice,customer:invoice.fields.Customer||form.customer,currency:form.currency||'',date,due,amount,
-      received:receipts.total,credited:credited.total,balance,age,unknownAllocations:receipts.unknown+credited.unknown,
+      received:receipts.paid,tds:receipts.tds,ld:receipts.ld,settled:receipts.total,credited:credited.total,balance,age,unknownAllocations:receipts.unknown+credited.unknown,
       bucket:!due?'Due date missing':due>=asOn?'Current':age<=30?'1–30 days':age<=60?'31–60 days':age<=90?'61–90 days':'90+ days'}];
   });
 }

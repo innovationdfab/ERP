@@ -1,3 +1,5 @@
+import {DateInput} from './date-input.jsx';
+import {matchesSearch} from './filter-rules.js';
 import React,{useState} from 'react';
 import {ArrowRight, Download, Plus, Save, X} from 'lucide-react';
 import {todayISO,readStored,csvCell} from './erp-utils.js';
@@ -10,9 +12,9 @@ import './erp-extensions.css';
 
 const columns={
   'Reorder Planning':['Product','Description','UOM','On hand','On order','Open indents','Reorder point','Target','To request','Preferred vendor','Status'],
-  'Receivables Ageing':['Invoice','Customer','Currency','Invoice date','Due date','Ageing bucket','Invoice amount','Received','Credits','Balance'],
+  'Receivables Ageing':['Invoice','Customer','Currency','Invoice date','Due date','Ageing bucket','Invoice amount','Received','TDS','LD','Credits','Balance'],
   'Collection Follow-ups':['Invoice','Customer','Currency','Balance','Next follow-up','Owner','Method','Status','Note'],
-  'Customer Statements':['Invoice','Invoice date','Due date','Invoice amount','Received','Credits','Balance','Ageing bucket']
+  'Customer Statements':['Invoice','Invoice date','Due date','Invoice amount','Received','TDS','LD','Credits','Balance','Ageing bucket']
 };
 const descriptions={
   'Reorder Planning':'Plan replenishment from posted stock, open purchase orders and unconverted indents.',
@@ -57,15 +59,15 @@ export function ErpExtensions({title,access,readDocuments,readRows,readDetails,g
   const invoiceByNumber=new Map(allInvoices.map(row=>[row.number,row]));
   let records=[];
   if(title==='Reorder Planning')records=policyRows.map(row=>({id:row.id,data:row,values:[row.id,row.product?.[1],row.product?.[4],row.stock,row.onOrder,row.requested,row.minimum,row.target,row.quantity,vendors.find(v=>v[0]===row.vendor)?.[1]||row.vendor,row.status]}));
-  if(title==='Receivables Ageing')records=invoices.filter(row=>row.balance>0).map(row=>({id:row.number,data:row,values:[row.number,row.customer,row.currency||'Unspecified',row.date,row.due,row.bucket,row.amount,row.received,row.credited,row.balance]}));
+  if(title==='Receivables Ageing')records=invoices.filter(row=>row.balance>0).map(row=>({id:row.number,data:row,values:[row.number,row.customer,row.currency||'Unspecified',row.date,row.due,row.bucket,row.amount,row.received,row.tds,row.ld,row.credited,row.balance]}));
   if(title==='Collection Follow-ups')records=followups.flatMap(row=>{
     const invoice=invoiceByNumber.get(row.invoice);
     if(!invoice)return [];
     const visibleStatus=invoice.balance<=0?'Invoice settled':row.status;
     return status!=='All'&&visibleStatus!==status?[]:[{id:row.id,data:row,values:[row.invoice,invoice.customer,invoice.currency||'Unspecified',invoice.balance,row.nextDate,row.owner,row.channel,visibleStatus,row.note]}];
   });
-  if(title==='Customer Statements')records=statement.map(row=>({id:row.number,data:row,values:[row.number,row.date,row.due,row.amount,row.received,row.credited,row.balance,row.bucket]}));
-  const filtered=records.filter(row=>row.values.join(' ').toLowerCase().includes(query.toLowerCase().trim()));
+  if(title==='Customer Statements')records=statement.map(row=>({id:row.number,data:row,values:[row.number,row.date,row.due,row.amount,row.received,row.tds,row.ld,row.credited,row.balance,row.bucket]}));
+  const filtered=records.filter(row=>matchesSearch(row.values,query));
   const pageCount=Math.max(1,Math.ceil(filtered.length/20));
   const activePage=Math.min(page,pageCount);
   const start=editing=>{
@@ -136,7 +138,7 @@ export function ErpExtensions({title,access,readDocuments,readRows,readDetails,g
             <label className="extension-checkbox"><input type="checkbox" checked={form.enabled} disabled={busy} onChange={event=>change('enabled',event.target.checked)}/><span>Enabled</span></label>
           </>:<>
             <label><span>Invoice</span><select aria-label="Invoice" required value={form.invoice} disabled={busy||editor!=='new'} onChange={event=>change('invoice',event.target.value)}><option value="">Select outstanding invoice</option>{allInvoices.filter(row=>row.balance>0||row.number===form.invoice).map(row=><option key={row.number} value={row.number}>{row.number} · {row.customer} · {row.currency||'Unspecified'} {row.balance}</option>)}</select></label>
-            <label><span>Next follow-up</span><input aria-label="Next follow-up" type="date" required value={form.nextDate} disabled={busy} onChange={event=>change('nextDate',event.target.value)}/></label>
+            <label><span>Next follow-up</span><DateInput aria-label="Next follow-up" type="date" required value={form.nextDate} disabled={busy} onChange={event=>change('nextDate',event.target.value)}/></label>
             <label><span>Owner</span><input aria-label="Owner" required maxLength={120} value={form.owner} disabled={busy} onChange={event=>change('owner',event.target.value)}/></label>
             <label><span>Contact method</span><select aria-label="Contact method" value={form.channel} disabled={busy} onChange={event=>change('channel',event.target.value)}>{['Phone','Email','Meeting','Other'].map(value=><option key={value}>{value}</option>)}</select></label>
             <label><span>Status</span><select aria-label="Status" value={form.status} disabled={busy} onChange={event=>change('status',event.target.value)}>{['Open','Done'].map(value=><option key={value}>{value}</option>)}</select></label>
@@ -148,7 +150,7 @@ export function ErpExtensions({title,access,readDocuments,readRows,readDetails,g
       <section className="card extension-register">
         <div className="extension-filters">
           <label><span>Search</span><input aria-label="Search" type="search" value={query} onChange={event=>{setQuery(event.target.value);setPage(1);}}/></label>
-          {['Receivables Ageing','Customer Statements'].includes(title)&&<label><span>As of date</span><input aria-label="As of date" type="date" required max={todayISO()} value={asOn} onChange={event=>{if(event.target.value&&event.target.value<=todayISO()){setAsOn(event.target.value);setPage(1);}}}/></label>}
+          {['Receivables Ageing','Customer Statements'].includes(title)&&<label><span>As of date</span><DateInput aria-label="As of date" type="date" required max={todayISO()} value={asOn} onChange={event=>{if(event.target.value&&event.target.value<=todayISO()){setAsOn(event.target.value);setPage(1);}}}/></label>}
           {title==='Customer Statements'&&<>
             <label><span>Customer</span><select aria-label="Customer" value={customer} onChange={event=>{setCustomer(event.target.value);setCurrency(allInvoices.find(row=>row.customer===event.target.value)?.currency||'');setPage(1);}}><option value="">Select customer</option>{customers.map(value=><option key={value}>{value}</option>)}</select></label>
             <label><span>Currency</span><select aria-label="Currency" value={currency} onChange={event=>{setCurrency(event.target.value);setPage(1);}}>{currencies.length?currencies.map(value=><option key={value} value={value}>{value||'Unspecified'}</option>):<option value="">Unspecified</option>}</select></label>

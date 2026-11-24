@@ -1,5 +1,7 @@
 # DFAB OneERP
 
+**Current release: [AUDIT-FIXES-UPDATE.md](AUDIT-FIXES-UPDATE.md). It describes the filter/workflow fixes, SQL update and verification results.**
+
 Manufacturing ERP with the existing DFAB UI, Supabase Auth and PostgreSQL persistence. This release uses the uploaded Employee Passwords Login project as its base.
 
 **For this production-flow release, start with [PRODUCTION-FLOWS-UPDATE.md](PRODUCTION-FLOWS-UPDATE.md). Apply its SQL bundle before deploying this frontend.**
@@ -27,6 +29,9 @@ Apply these scripts in order on a fresh staging database. The production bootstr
 6. `supabase/ERP_INITIAL_LOGIN_PASSWORD_POLICY.sql`
 7. `supabase/ERP_QA_EXTENSIONS_UPDATE.sql`
 8. `supabase/ERP_PRODUCTION_FLOWS_UPDATE.sql`
+9. `supabase/ERP_AUDIT_FIXES_UPDATE.sql`
+
+Alternatively use the current root `DFAB-OneERP-All-In-One.sql` bundle on a fresh database.
 
 Employee provisioning uses the existing `erp-admin-invite` Edge Function. Its deployment requirements are in `EMPLOYEE-PASSWORD-SUPABASE-RELEASE.md`.
 
