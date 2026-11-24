@@ -12,7 +12,8 @@ test('Admin Control opens on a simple overview and all administration areas rema
   assert.ok(control.includes(`['${section}','`),`Missing ${section} section`);
  }
  assert.match(control,/tab==='overview'/);
- assert.match(control,/admin-action-grid/);
+ assert.match(control,/admin-console-navigation/);
+ assert.doesNotMatch(control,/className="admin-action-grid"/);
 });
 
 test('people, roles, departments and workflow CRUD still point to database operations',()=>{

@@ -18,10 +18,9 @@ test('Admin sections are grouped with practical hints and clear navigation',()=>
   assert.ok(admin.includes(`['${section}','`),`Missing Admin tab ${section}`);
  }
  assert.match(admin,/ADMIN_NAV_GROUPS/);
- assert.match(admin,/ADMIN_SECTION_HELP\[tab\]/);
- assert.match(admin,/admin-guided-setup/);
- assert.match(admin,/admin-flow-shortcut/);
- assert.match(css,/admin-grouped-nav/);
+ assert.match(admin,/admin-console-sidebar/);
+ assert.match(admin,/admin-console-submenu/);
+ assert.match(css,/independently scrolling content/);
 });
 test('Changes keep database-backed admin actions and safety gates intact',()=>{
  for(const fn of ['loadAdminDashboard','saveDepartment','saveRole','saveUser','inviteUser','publishTemplate','deleteRole','deleteDepartment','askConfirmation']) assert.ok(admin.includes(fn));

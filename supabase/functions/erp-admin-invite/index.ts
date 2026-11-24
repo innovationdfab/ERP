@@ -28,7 +28,12 @@ Deno.serve(async request => {
     'Access-Control-Allow-Methods': 'POST, OPTIONS',
   };
   const respond = (status: number, body: Record<string, unknown>) => new Response(JSON.stringify(body), { status, headers });
-  if (!corsAllowed) return respond(403, { error: 'Origin not authorized for ERP administration.' });
+  // Expose only the denial message on a rejected origin, so the browser displays
+  // a useful 403 instead of masking the error as `Failed to fetch`. No account
+  // information or authenticated action is returned to the rejected origin.
+  if (!corsAllowed) return new Response(JSON.stringify({ error: 'This website origin is not allowed for ERP administration. Add your exact Vercel URL to ERP_ALLOWED_ORIGINS and redeploy the erp-admin-invite function.' }), {
+    status: 403, headers: { ...headers, 'Access-Control-Allow-Origin': origin },
+  });
   if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers });
   if (request.method !== 'POST') return respond(405, { error: 'POST required.' });
   if (!url || !anonKey || !serviceKey) return respond(503, { error: 'ERP identity service is not configured.' });
