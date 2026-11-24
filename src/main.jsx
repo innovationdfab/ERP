@@ -23,7 +23,7 @@ import './sap-enterprise.css';
 import './premium-forms.css';
 import { PremiumUploadField, PremiumImportPage, FormSectionHeading, FormDialogBackdrop } from './premium-forms.jsx';
 import { todayISO, isoDate, displayDate, readStored, writeStored, fieldType, validateFields, parseCsv, csvCell, validateBackup, readAttachment } from './erp-utils.js';
-import { signInWithPassword, refreshSession, signOut, getAuthUser, invokeFunction, renewCurrentSession, changeAuthPassword, requestPasswordVerification } from './backend/supabase-rest.js';
+import { signInWithPassword, refreshSession, signOut, getAuthUser, invokeFunction, renewCurrentSession, changeAuthPassword, setInvitedAuthPassword, requestPasswordVerification } from './backend/supabase-rest.js';
 import { requiresInitialPasswordChange, initialPasswordIssue } from './login-policy.js';
 import { loginFailureMessage } from './login-failure.js';
 import './login-initial.css';
@@ -362,12 +362,45 @@ function App(){
   const [adminAccess,setAdminAccess]=useState(null);
   const [workflowOverrides,setWorkflowOverrides]=useState({});
   const refreshActiveWorkflow=async()=>{const edges=await loadWorkflowRuntime();setWorkflowOverrides(Object.fromEntries((Array.isArray(edges)?edges:[]).map(edge=>[edge.source_page,edge])));};
-  const establishAdminAccess=async token=>{setAdminToken(token);const access=await loadMyAccess();if(!access?.enabled)throw new Error('This account has no active ERP role. Ask your administrator to assign an access role.');await refreshActiveWorkflow();setAdminAccess(access);return access;};
+  const establishAdminAccess=async token=>{
+    setAdminToken(token);
+    // Employee identity and active ERP role are mandatory. A missing optional
+    // workflow endpoint must not prevent a valid employee from signing in.
+    const access=await loadMyAccess();
+    if(!access?.enabled)throw new Error('This account has no active ERP role. Ask your administrator to assign an access role.');
+    setAdminAccess(access);
+    try { await refreshActiveWorkflow(); }
+    catch (error) {
+      // Keep the built-in document connections; do not replace permission
+      // checks or stored workflow data with client-side guesses.
+      console.warn('ERP workflow configuration could not be loaded; continuing with existing document connections.',error);
+    }
+    return access;
+  };
   const [loginValues,setLoginValues]=useState({userId:localStorage.getItem('dfab-erp-user-email')||'',password:''});
   const [authLoading,setAuthLoading]=useState(false);
   const [loginError,setLoginError]=useState('');
   const [loginMessage,setLoginMessage]=useState('');
   const [passwordSetup,setPasswordSetup]=useState(null);
+  // Supabase invitation redirects carry a short-lived session in the URL hash.
+  // Read only the invitation type and immediately clear its fragment.
+  useEffect(()=>{
+    const fragment=new URLSearchParams(window.location.hash.replace(/^#/,''));
+    if(fragment.get('type')!=='invite')return;
+    const invitationToken=fragment.get('access_token')||'';
+    window.history.replaceState(null,'',window.location.pathname+window.location.search);
+    localStorage.removeItem('dfab-erp-supabase-session');
+    if(!invitationToken){setLoginError('Your invitation link is incomplete. Request a new invitation.');setLampOn(true);return;}
+    let disposed=false;
+    getAuthUser(invitationToken).then(identity=>{
+      if(disposed)return;
+      if(!identity?.email)throw new Error('Invitation identity could not be verified.');
+      setPasswordSetup({email:identity.email,accessToken:invitationToken,invitation:true});
+      setPasswordDraft({password:'',confirm:''});
+      setPasswordSetupError('');
+    }).catch(error=>{if(!disposed){setLampOn(true);setLoginError(error.message||'Invitation expired. Ask your administrator to resend it.');}});
+    return()=>{disposed=true};
+  },[]);
   const [passwordDraft,setPasswordDraft]=useState({password:'',confirm:''});
   const [passwordSetupError,setPasswordSetupError]=useState('');
   const [passwordSetupLoading,setPasswordSetupLoading]=useState(false);
@@ -392,6 +425,8 @@ function App(){
   useEffect(()=>{
     let cancelled=false;
     const restore=async()=>{
+      // An administrator invitation takes precedence over any previous local session.
+      if(new URLSearchParams(window.location.hash.replace(/^#/,'' )).get('type')==='invite'){setSessionChecking(false);return;}
       const savedRaw=localStorage.getItem('dfab-erp-supabase-session');
       if(!savedRaw){setSessionChecking(false);return;}
       setAuthLoading(true);
@@ -537,7 +572,8 @@ function App(){
     if(issue){setPasswordSetupError(issue);return;}
     setPasswordSetupLoading(true);setPasswordSetupError('');
     try{
-      await invokeFunction('erp-admin-invite',{action:'change-initial-password',password:passwordDraft.password},{accessToken:passwordSetup.accessToken});
+      if(passwordSetup.invitation)await setInvitedAuthPassword(passwordSetup.accessToken,passwordDraft.password);
+      else await invokeFunction('erp-admin-invite',{action:'change-initial-password',password:passwordDraft.password},{accessToken:passwordSetup.accessToken});
       // The previous JWT still carries the temporary-password claim. Require a
       // fresh sign-in so permissions are resolved from a newly minted JWT.
       const email=passwordSetup.email;
@@ -547,7 +583,7 @@ function App(){
       setLoginValues({userId:email,password:''});
       setShowLoginPassword(false);setLampOn(true);
       setLoginMessage('Password updated. Sign in with your new password.');
-    }catch(error){setPasswordSetupError(error?.status===404?'Password setup service was not found (404). Deploy erp-admin-invite to the same Supabase project as your ERP login and verify the function URL.':error.message||'Could not set your new password.');}
+    }catch(error){setPasswordSetupError(error?.status===404?'Your email and password were accepted, but first-login password setup returned 404 at /functions/v1/erp-admin-invite. Verify this function is deployed in the same Supabase project configured by VITE_SUPABASE_URL; then retry. Your account does not need to be created again.':error.message||'Could not set your new password.');}
     finally{setPasswordSetupLoading(false)}
   };
   const cancelInitialPasswordSetup=()=>{
@@ -567,7 +603,7 @@ function App(){
   const notifications=useMemo(()=>collectDatabaseNotifications(),[cloudRevision,activePage,notifyOpen]);
 
   if(sessionChecking)return <div className="erp-boot"><div className="boot-orb"><img src={logo} alt="DFAB"/></div><div className="boot-copy"><b>DFAB OneERP</b><span>Restoring secure session</span></div><div className="boot-bar"><i/></div></div>;
-  if(!authenticated && passwordSetup)return <main className="erp-first-login-shell"><section className="erp-first-login-card" aria-labelledby="erp-first-login-title"><div className="erp-first-login-logo"><img src={logo} alt="DFAB"/></div><span className="erp-first-login-kicker">DFAB OneERP · Employee account setup</span><h1 id="erp-first-login-title">Create your personal password</h1><p>Your account was provisioned by your ERP administrator. Replace the temporary password before accessing company information.</p><p className="erp-first-login-email">{passwordSetup.email}</p><form onSubmit={finishInitialPasswordSetup}><label>New password<input type="password" autoComplete="new-password" minLength={12} maxLength={128} required value={passwordDraft.password} onChange={e=>setPasswordDraft(v=>({...v,password:e.target.value}))} placeholder="At least 12 characters"/></label><label>Confirm new password<input type="password" autoComplete="new-password" minLength={12} maxLength={128} required value={passwordDraft.confirm} onChange={e=>setPasswordDraft(v=>({...v,confirm:e.target.value}))} placeholder="Repeat your new password"/></label><small>Use 12 or more characters with letters and numbers. Do not reuse the temporary password.</small>{passwordSetupError&&<p className="erp-first-login-error" role="alert">{passwordSetupError}</p>}<button type="submit" disabled={passwordSetupLoading}>{passwordSetupLoading?'Saving securely…':'Save password'}</button><button type="button" className="erp-first-login-secondary" disabled={passwordSetupLoading} onClick={cancelInitialPasswordSetup}>Return to login</button></form></section></main>;
+  if(!authenticated && passwordSetup)return <main className="erp-first-login-shell"><section className="erp-first-login-card" aria-labelledby="erp-first-login-title"><div className="erp-first-login-logo"><img src={logo} alt="DFAB"/></div><span className="erp-first-login-kicker">DFAB OneERP · Employee account setup</span><h1 id="erp-first-login-title">Create your personal password</h1><p>{passwordSetup.invitation?'Your administrator invited you to DFAB OneERP. Choose a personal password to activate your login.':'Your account was provisioned by your ERP administrator. Replace the temporary password before accessing company information.'}</p><p className="erp-first-login-email">{passwordSetup.email}</p><form onSubmit={finishInitialPasswordSetup}><label>New password<input type="password" autoComplete="new-password" minLength={12} maxLength={128} required value={passwordDraft.password} onChange={e=>setPasswordDraft(v=>({...v,password:e.target.value}))} placeholder="At least 12 characters"/></label><label>Confirm new password<input type="password" autoComplete="new-password" minLength={12} maxLength={128} required value={passwordDraft.confirm} onChange={e=>setPasswordDraft(v=>({...v,confirm:e.target.value}))} placeholder="Repeat your new password"/></label><small>Use 12 or more characters with letters and numbers. Use a unique password you have not used elsewhere.</small>{passwordSetupError&&<p className="erp-first-login-error" role="alert">{passwordSetupError}</p>}<button type="submit" disabled={passwordSetupLoading}>{passwordSetupLoading?'Saving securely…':'Save password'}</button><button type="button" className="erp-first-login-secondary" disabled={passwordSetupLoading} onClick={cancelInitialPasswordSetup}>Return to login</button></form></section></main>;
   if(!authenticated && adminPreviewOpen)return <AdminPreview publicMode={!allowAdminPreview} onClose={()=>setAdminPreviewOpen(false)}/>;
   if(!authenticated)return <main className={`dfab-login-stage ${lampOn?'lamp-on':'lamp-off'}`}><LoginWelding active={lampOn} onToggle={()=>{setLampOn(value=>!value);setShowLoginPassword(false);}}/><section className="dfab-login-side"><div className={`dfab-login-spotlight ${lampOn?'visible':''}`}><div className="spotlight-rim"/><div className={`weld-spark-burst ${lampOn?'active':''}`} aria-hidden="true"><span className="spark-core"/><span className="spark-ring"/><i/><i/><i/><i/><i/><i/></div><div className={`dfab-login-card-shell ${lampOn?'revealed':'prelit'}`}><form className={`dfab-login-card ${lampOn?'card-live':'card-muted'}`} onSubmit={login}><div className="dfab-login-head"><span>DFAB OneERP</span><h1>Welcome back</h1><p>Sign in to continue into the production workspace.</p></div><div className="login-status-row"><span><BadgeCheck size={14}/> Persistent secure session</span><span><MonitorCog size={14}/> Premium production workspace</span></div><label>Email<input type="email" autoFocus={lampOn} autoComplete="username" value={loginValues.userId} onChange={e=>setLoginValues(v=>({...v,userId:e.target.value}))} placeholder="name@company.com" readOnly={!lampOn} disabled={!lampOn}/></label><div className="login-password-field"><label htmlFor="employee-login-password">Password</label><div className="login-password-control"><input id="employee-login-password" autoComplete="current-password" type={showLoginPassword?'text':'password'} value={loginValues.password} onChange={e=>setLoginValues(v=>({...v,password:e.target.value}))} placeholder="Password" readOnly={!lampOn} disabled={!lampOn}/><button type="button" className="login-password-toggle" aria-label={showLoginPassword?'Hide password':'Show password'} aria-controls="employee-login-password" aria-pressed={showLoginPassword} disabled={!lampOn} onClick={()=>setShowLoginPassword(value=>!value)}>{showLoginPassword?<EyeOff size={19} aria-hidden="true"/>:<Eye size={19} aria-hidden="true"/>}</button></div></div>{loginError&&lampOn&&<div className="imantra-login-error" role="alert">{loginError}</div>}{loginMessage&&lampOn&&<div className="erp-login-success" role="status">{loginMessage}</div>}<button className="dfab-login-submit" type="submit" disabled={authLoading||!lampOn}>{authLoading?'Signing in…':lampOn?'Login to ERP':'Weld to unlock'}</button></form><div className={`login-locked-note ${lampOn?'hidden':''}`}><Zap size={16}/><span>Activate the welding torch to illuminate and unlock the login panel.</span></div></div></div></section></main>;
   if(booting)return <div className="erp-boot"><div className="boot-orb"><img src={logo} alt="DFAB"/></div><div className="boot-copy"><b>DFAB OneERP</b><span>Preparing enterprise workspace</span></div><div className="boot-bar"><i/></div></div>;

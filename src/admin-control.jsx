@@ -141,12 +141,12 @@ export default function AdminControl({initialTab='overview',onWorkflowPublished=
  const isAdminRoleSelected=ids=>(data?.roles||[]).some(r=>ids.includes(r.id)&&(r.code==='ADMIN'||r.system_role));
  const passwordIssue=({password,confirm},allowEmpty=false)=>temporaryPasswordIssue(password,confirm,{allowEmpty});
  const sendInvitation=async()=>{
-  if(!/^\S+@\S+\.\S+$/.test(trim(invitation.email))||trim(invitation.name).length<2||!invitation.department_id||!invitation.role_ids.length){setError('Enter the employee’s email, full name, department and role.');return;}
+  if(!/^\S+@\S+\.\S+$/.test(trim(invitation.email))||trim(invitation.name).length<2||!invitation.department_id||!invitation.role_ids.length){setError('Complete all required fields: full name, valid work email, department and at least one role.');return;}
   const adminInvite=isAdminRoleSelected(invitation.role_ids);
   if(adminInvite&&(employeePassword.password||employeePassword.confirm)){setError('Administrator accounts use individual email invitations. Clear the password fields before creating this account.');return;}
-  if(!adminInvite){const issue=passwordIssue(employeePassword,true);if(issue){setError(issue);return;}}
+  if(!adminInvite){const issue=passwordIssue(employeePassword);if(issue){setError(issue);return;}}
   const password=adminInvite?'':employeePassword.password;
-  const ok=await run(()=>inviteUser({...invitation,...(password?{password}:{})}),adminInvite?'Administrator invitation and access saved. The administrator must complete their personal invitation.':'Employee login and ERP access saved in Supabase. Share the temporary password securely; the employee must replace it on first sign-in.',true);
+  const ok=await run(()=>inviteUser({...invitation,...(password?{password}:{})}),adminInvite?'Administrator invitation and ERP access saved. The administrator must use their individual invitation link to set a personal password.':'Employee login and ERP access verified in Supabase. Share the temporary password securely; the employee must replace it on first sign-in.',true);
   if(ok){setInviting(false);setInvitation({...blankInvitation});setEmployeePassword({...blankPasswordFields});setShowEmployeePassword(false);}
  };
  const resetCustomPassword=async()=>{
@@ -182,7 +182,14 @@ export default function AdminControl({initialTab='overview',onWorkflowPublished=
  if(template.edges.some(e=>e.source_page===newMap.from)){setError('That source already has a next step. Edit or remove its existing connection first.');return}
  setTemplate(t=>({...t,edges:[...t.edges,{source_page:newMap.from,target_page:newMap.to,gate_statuses:[],field_map:{}}]}));setNewMap({from:'',to:''});setError('');};
  const toggleRoleId=(ids,id)=>ids.includes(id)?ids.filter(x=>x!==id):[...ids,id];
- const toggleInviteRole=id=>{const role_ids=toggleRoleId(invitation.role_ids,id);setInvitation(v=>({...v,role_ids}));if(isAdminRoleSelected(role_ids)){setEmployeePassword({...blankPasswordFields});setShowEmployeePassword(false);}};
+ const adminRole=(data?.roles||[]).find(r=>r.active&&(r.code==='ADMIN'||r.system_role));
+ const employeeRoles=(data?.roles||[]).filter(r=>r.active&&r.code!=='ADMIN'&&!r.system_role);
+ const selectInviteRole=id=>{setInvitation(v=>({...v,role_ids:id?[id]:[]}));setError('');};
+ const markInviteAdministrator=checked=>{
+  if(checked&&!adminRole){setError('The active Administrator role is not available. Check Admin → Roles & permissions.');return;}
+  setInvitation(v=>({...v,role_ids:checked?[adminRole.id]:[]}));
+  setEmployeePassword({...blankPasswordFields});setShowEmployeePassword(false);setError('');
+ };
  const unmapped=storageKeys.filter(key=>key.startsWith('dfab-')&&key!=='dfab-workflow-links-v1'&&!data?.storage?.some(m=>m.storage_key===key));
  if(loading&&!data)return <main className="content page-shell admin-root"><h1>Admin Control Center</h1><div className="admin-loading"><LoaderCircle className="admin-spin"/> Loading controlled workspace from Supabase…</div>{error&&<Status type="error">{error} <button onClick={load}>Retry</button></Status>}</main>;
  if(!data)return <main className="content page-shell admin-root"><h1>Admin Control Center</h1><Status type="error">{error||'Admin setup is not available.'}</Status><Button onClick={load}><RefreshCw size={15}/> Retry connection</Button></main>;
@@ -271,22 +278,30 @@ export default function AdminControl({initialTab='overview',onWorkflowPublished=
      </section>
      <section className="admin-form-section" aria-labelledby="admin-employee-access-heading">
       <div className="admin-form-section-heading"><span className="admin-form-step">02</span><div><h3 id="admin-employee-access-heading">ERP access & permissions</h3><p>Select the existing role(s). Available modules and approval rights are controlled in Permissions.</p></div></div>
-      <div className="admin-access-summary" aria-live="polite"><ShieldCheck size={16}/>{(inviting?invitation.role_ids:user.role_ids).length} access {(inviting?invitation.role_ids:user.role_ids).length===1?'role':'roles'} selected</div>
-      <div className="admin-check-grid admin-role-picker">{data.roles.filter(r=>r.active||(user?.role_ids||[]).includes(r.id)).map(r=><label key={r.id} className="admin-check"><input type="checkbox" checked={(inviting?invitation.role_ids:user.role_ids).includes(r.id)} onChange={()=>inviting?toggleInviteRole(r.id):setUser(v=>({...v,role_ids:toggleRoleId(v.role_ids,r.id)}))}/><span><b>{r.name}</b><small>{r.code==='ADMIN'?'Full administrator access':r.description||'Module permissions set by this role'}{!r.active?' · Disabled':''}</small></span></label>)}</div>
-      {!data.roles.length&&<Empty>No roles configured. Add a role in Permissions before creating an employee.</Empty>}
+      {inviting? <div className="admin-invite-access">
+       <label className="admin-check admin-toggle-row"><input type="checkbox" checked={isAdminRoleSelected(invitation.role_ids)} onChange={e=>markInviteAdministrator(e.target.checked)} disabled={!adminRole}/><span><b>Mark as Administrator (optional)</b><small>Only select this when the person needs full administrator access. An individual email invitation is required.</small></span></label>
+       {!isAdminRoleSelected(invitation.role_ids)&&<label className="admin-invite-role-select"><span className="admin-label-text">Employee role <i className="admin-required">*</i></span><Select value={invitation.role_ids[0]||''} onChange={e=>selectInviteRole(e.target.value)}><option value="">Select employee role</option>{employeeRoles.map(r=><option key={r.id} value={r.id}>{r.name}</option>)}</Select><small className="admin-field-hint">The selected role determines access after login. No administrator privileges will be assigned.</small></label>}
+       {isAdminRoleSelected(invitation.role_ids)&&<p className="admin-credential-info">Administrator selected. The built-in Administrator role will be assigned; the employee-role dropdown is not applicable.</p>}
+       {!adminRole&&<p className="admin-field-hint">Administrator option unavailable until an active Administrator role exists.</p>}
+       {!isAdminRoleSelected(invitation.role_ids)&&!employeeRoles.length&&<Empty>No active employee roles configured. Add one in Roles & permissions.</Empty>}
+      </div>:<>
+       <div className="admin-access-summary" aria-live="polite"><ShieldCheck size={16}/>{user.role_ids.length} access {user.role_ids.length===1?'role':'roles'} selected</div>
+       <div className="admin-check-grid admin-role-picker">{data.roles.filter(r=>r.active||(user?.role_ids||[]).includes(r.id)).map(r=><label key={r.id} className="admin-check"><input type="checkbox" checked={user.role_ids.includes(r.id)} onChange={()=>setUser(v=>({...v,role_ids:toggleRoleId(v.role_ids,r.id)}))}/><span><b>{r.name}</b><small>{r.code==='ADMIN'?'Full administrator access':r.description||'Module permissions set by this role'}{!r.active?' · Disabled':''}</small></span></label>)}</div>
+       {!data.roles.length&&<Empty>No roles configured. Add a role in Permissions before editing an employee.</Empty>}
+      </>}
      </section>
      <section className="admin-form-section" aria-labelledby="admin-employee-credentials-heading">
       <div className="admin-form-section-heading"><span className="admin-form-step">03</span><div><h3 id="admin-employee-credentials-heading">Login credentials</h3><p>Passwords are managed securely by Supabase Auth, separate from employee details and access roles.</p></div></div>
       {(inviting&&!isAdminRoleSelected(invitation.role_ids)||!inviting&&user?.active&&!isAdminEmployee(user)&&!isAdminRoleSelected(user.role_ids||[]))? <>
        <div className="admin-credential-caption">{inviting?'STEP 3 · INITIAL LOGIN PASSWORD':'EMPLOYEE PASSWORD RESET'}</div>
        <div className="admin-password-section" aria-label={inviting?'Set employee login password':'Reset employee password'}>
-        <p className="admin-help">{inviting?'Enter a temporary password, or leave both fields empty to use the server-configured initial password. The employee must replace it at first sign-in.':'Resetting the password is independent from saving employee details. The old password will stop working and the employee must change the new temporary one at next sign-in.'}</p>
+        <p className="admin-help">{inviting?'Enter and confirm the temporary password for this employee. This exact password will be set in Supabase Auth, and the employee must replace it at first sign-in.':'Resetting the password is independent from saving employee details. The old password will stop working and the employee must change the new temporary one at next sign-in.'}</p>
         <div className="admin-form-grid">
-         <label><span className="admin-label-text">Temporary password <i className="admin-optional">{inviting?'(optional)':'*'}</i></span><input type={showEmployeePassword?'text':'password'} autoComplete="new-password" minLength={12} maxLength={128} value={employeePassword.password} onChange={e=>setEmployeePassword(v=>({...v,password:e.target.value}))} placeholder={inviting?'Leave blank for server default':'Enter new temporary password'} /></label>
-         <label><span className="admin-label-text">Confirm password <i className="admin-optional">{inviting?'(optional)':'*'}</i></span><input type={showEmployeePassword?'text':'password'} autoComplete="new-password" minLength={12} maxLength={128} value={employeePassword.confirm} onChange={e=>setEmployeePassword(v=>({...v,confirm:e.target.value}))} placeholder="Repeat temporary password" /></label>
+         <label><span className="admin-label-text">Temporary password <i className="admin-required">*</i></span><input type={showEmployeePassword?'text':'password'} autoComplete="new-password" minLength={12} maxLength={128} value={employeePassword.password} onChange={e=>setEmployeePassword(v=>({...v,password:e.target.value}))} placeholder="Enter temporary password" /></label>
+         <label><span className="admin-label-text">Confirm password <i className="admin-required">*</i></span><input type={showEmployeePassword?'text':'password'} autoComplete="new-password" minLength={12} maxLength={128} value={employeePassword.confirm} onChange={e=>setEmployeePassword(v=>({...v,confirm:e.target.value}))} placeholder="Repeat temporary password" /></label>
         </div>
         <label className="admin-check admin-reveal-password"><input type="checkbox" checked={showEmployeePassword} onChange={e=>setShowEmployeePassword(e.target.checked)}/> Show passwords while typing</label>
-        {(employeePassword.password||employeePassword.confirm)&&<p className={`admin-password-validator ${passwordIssue(employeePassword,inviting)?'invalid':'valid'}`} role="status">{passwordIssue(employeePassword,inviting)||'Password format and confirmation match.'}</p>}
+        {(employeePassword.password||employeePassword.confirm)&&<p className={`admin-password-validator ${passwordIssue(employeePassword)?'invalid':'valid'}`} role="status">{passwordIssue(employeePassword)||'Password format and confirmation match.'}</p>}
         {!inviting&&<div className="admin-password-actions"><Button secondary disabled={saving||!employeePassword.password||!employeePassword.confirm} onClick={resetCustomPassword}><ShieldCheck size={15}/> Reset to entered password</Button><Button secondary disabled={saving} onClick={()=>resetEmployee(user)}>Use server-configured password</Button></div>}
         <small className="admin-password-safety">Use at least 12 characters, including letters and numbers. Credentials are never saved inside ERP employee records.</small>
        </div>

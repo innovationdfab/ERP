@@ -527,3 +527,8 @@
  .admin-root[data-layout="admin-console"].admin-simple{height:auto;overflow:visible!important}
  .admin-root[data-layout="admin-console"] .admin-console-sidebar{height:auto}
 }
+
+/* Add Login: compact, mutually exclusive administrator / employee role selection. */
+.admin-simple .admin-invite-access {display:grid;gap:16px;max-width:720px;}
+.admin-simple .admin-invite-role-select {display:grid;gap:8px;min-width:0;}
+.admin-simple .admin-invite-role-select select {width:100%;max-width:520px;}

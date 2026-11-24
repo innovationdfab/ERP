@@ -135,6 +135,15 @@ export async function getAuthUser(accessToken) {
   return request('/auth/v1/user', { headers: headers(accessToken) });
 }
 
+/** Set a personal password using the short-lived session supplied by a verified
+ * Supabase Auth invitation link. Never store the invitation tokens or password. */
+export async function setInvitedAuthPassword(accessToken, password) {
+  if (!accessToken) throw new Error('Invitation session is missing. Request a new administrator invitation.');
+  return transport('/auth/v1/user', {
+    method:'PUT', headers:headers(accessToken), body:JSON.stringify({password})
+  });
+}
+
 export async function changeAuthPassword(accessToken, currentPassword, password, nonce = '') {
   if (!accessToken) throw new Error('No active login session.');
   return request('/auth/v1/user', {

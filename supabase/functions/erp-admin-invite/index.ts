@@ -107,29 +107,72 @@ Deno.serve(async request => {
       if (suppliedPassword && (!validPersonalPassword(suppliedPassword) || suppliedPassword === temporaryPassword)) {
         return respond(400, { error: 'Use a different 12–128 character temporary password with letters and numbers.' });
       }
-      if (!requestedAdmin && !suppliedPassword && (temporaryPassword.length < 8 || temporaryPassword.length > 128)) {
-        return respond(503, { error: 'ERP_INITIAL_PASSWORD secret is not configured. Enter an individual strong password or configure the server default.' });
+      if (!requestedAdmin && !suppliedPassword) {
+        return respond(400, { error: 'Enter an individual temporary password for this employee. It must have 12–128 characters with letters and numbers.' });
       }
-      const accountPassword = suppliedPassword || temporaryPassword;
+      // A privileged email invitation must return to the real ERP site, not the
+      // Supabase project default URL (which often produces a 404). Only use
+      // origins explicitly allowed by this server's configuration.
+      const preferredRedirect = (Deno.env.get('ERP_AUTH_REDIRECT_URL') || '').trim();
+      const httpsOrigin = allowedOrigins.find(value => value.startsWith('https://'));
+      const inviteOrigin = preferredRedirect || httpsOrigin || origin;
+      let invitationRedirect = '';
+      if (inviteOrigin) {
+        try {
+          const parsed = new URL(inviteOrigin);
+          if (!allowedOrigins.includes(parsed.origin) || (parsed.protocol !== 'https:' && parsed.hostname !== 'localhost')) {
+            return respond(503, { error: 'Administrator invitation redirect must be an ERP_ALLOWED_ORIGINS website. Configure ERP_AUTH_REDIRECT_URL to your deployed HTTPS ERP URL.' });
+          }
+          invitationRedirect = parsed.origin + '/';
+        } catch {
+          return respond(503, { error: 'ERP_AUTH_REDIRECT_URL is invalid.' });
+        }
+      }
+      if (requestedAdmin && !invitationRedirect) return respond(503, { error: 'Set your deployed ERP URL in ERP_ALLOWED_ORIGINS before inviting an administrator.' });
       const { data: created, error: createError } = requestedAdmin
-        ? await elevated.auth.admin.inviteUserByEmail(email, { data: { full_name: name } })
-        : await elevated.auth.admin.createUser({ email, password: accountPassword, email_confirm: true, user_metadata: { full_name: name }, app_metadata: { [initialFlag]: true } });
+        ? await elevated.auth.admin.inviteUserByEmail(email, { data: { full_name: name }, redirectTo: invitationRedirect })
+        : await elevated.auth.admin.createUser({ email, password: suppliedPassword, email_confirm: true, user_metadata: { full_name: name }, app_metadata: { [initialFlag]: true } });
       if (createError || !created?.user?.id) return respond(400, { error: createError?.message || 'Employee Auth account could not be created.' });
       // New Auth account trigger creates ERP profile with no access. Assign the
       // selected roles only after successful creation; failure stays locked.
-      const { error: assignError } = await caller.rpc('erp_admin_save_user', {
-        p_user_id: created.user.id, p_department_id: departmentId,
-        p_display_name: name, p_active: true, p_role_ids: roleIds,
+      // The additive Admin SQL makes profile creation and role assignment atomic;
+      // it does not depend on the legacy auth.users trigger being installed.
+      const { error: assignError } = await caller.rpc('erp_admin_provision_employee', {
+        p_user_id: created.user.id, p_email: email, p_display_name: name,
+        p_department_id: departmentId, p_role_ids: roleIds,
       });
       if (assignError) {
         // Only remove the just-created Auth user; never touch a pre-existing identity.
         // This avoids leaving new employees with working credentials but no role.
         const { error: rollbackError } = await elevated.auth.admin.deleteUser(created.user.id);
-        return respond(500, { error: rollbackError
-          ? 'Auth account created without ERP access, and automatic rollback failed. An administrator must reconcile this employee before retrying.'
-          : 'Employee creation was rolled back because ERP role assignment failed. Check Supabase permissions and try again.' });
+        const missingMigration = /PGRST202|Could not find the function|schema cache|404/i.test(assignError.message || '');
+        const reason = missingMigration
+          ? 'Admin employee-provisioning SQL is missing. Run supabase/ERP_ADMIN_EMPLOYEE_PROVISIONING_REPAIR.sql in this Supabase project, refresh schema cache, then redeploy the function.'
+          : `ERP profile or role assignment failed: ${assignError.message || 'unknown database error'}`;
+        return respond(missingMigration ? 503 : 422, { error: rollbackError
+          ? `${reason} Auth account may still exist: check Authentication > Users and Saved logins before retrying.`
+          : `${reason} Auth creation was rolled back; other employee accounts were not changed.` });
       }
-      return respond(200, { created: true, email, user_id: created.user.id, temporary_password: !requestedAdmin, invited: requestedAdmin });
+      // Confirm the identity is retrievable and the newly assigned ERP profile is
+      // visible before claiming that this login is usable. Do not replay writes
+      // or delete the account if this read-back fails: provisioning may have
+      // completed already, so an administrator must reconcile the saved entry.
+      const { data: verifiedIdentity, error: identityReadError } = await elevated.auth.admin.getUserById(created.user.id);
+      const { data: verifiedDirectory, error: directoryReadError } = await caller.rpc('erp_admin_dashboard');
+      const verifiedProfile = !directoryReadError && Array.isArray(verifiedDirectory?.users)
+        ? verifiedDirectory.users.find((item: { user_id: string }) => item.user_id === created.user.id)
+        : null;
+      const assignedRoles = !directoryReadError && Array.isArray(verifiedDirectory?.user_roles)
+        ? verifiedDirectory.user_roles.filter((item: { user_id: string; role_id: string }) => item.user_id === created.user.id).map((item: { role_id: string }) => item.role_id)
+        : [];
+      if (identityReadError || !verifiedIdentity?.user || verifiedIdentity.user.email?.toLowerCase() !== email ||
+          !verifiedProfile?.active || !roleIds.every((id: string) => assignedRoles.includes(id))) {
+        return respond(503, {
+          error: 'The employee account was submitted, but login and ERP role verification did not complete. Refresh Saved logins and check Authentication > Users before retrying. Do not create a duplicate account.',
+          email, needs_reconciliation: true,
+        });
+      }
+      return respond(200, { created: true, verified: true, email, user_id: created.user.id, temporary_password: !requestedAdmin, invited: requestedAdmin });
     }
 
     if (action === 'reset') {
