@@ -12,7 +12,7 @@ import './admin-control.css';
 
 const blankDepartment={code:'',name:'',cost_center:'',active:true};
 const blankRole={code:'',name:'',description:'',active:true,rights:[]};
-const blankInvitation={email:'',name:'',role_ids:[]};
+const blankInvitation={email:'',role_ids:[]};
 const blankPasswordFields={password:'',confirm:''};
 const trim=s=>String(s??'').trim();
 const dateTime=s=>s?new Date(s).toLocaleString('en-IN',{dateStyle:'medium',timeStyle:'short'}):'—';
@@ -154,7 +154,7 @@ export default function AdminControl({initialTab='overview',onWorkflowPublished=
   if(!/^\S+@\S+\.\S+$/.test(email)||!invitation.role_ids.length){setError('Enter a valid email and choose one role.');return;}
   const issue=passwordIssue(employeePassword);
   if(issue){setError(issue);return;}
-  const ok=await run(()=>inviteUser({email,name:trim(invitation.name),role_ids:invitation.role_ids,password:employeePassword.password}),
+  const ok=await run(()=>inviteUser({email,role_ids:invitation.role_ids,password:employeePassword.password}),
    'Login created and verified in Supabase Auth. The selected ERP role is saved.',true);
   if(ok){setInviting(false);setInvitation({...blankInvitation});setEmployeePassword({...blankPasswordFields});setShowEmployeePassword(false);}
  };
@@ -238,10 +238,9 @@ export default function AdminControl({initialTab='overview',onWorkflowPublished=
      </tbody></table></div>
      {!data.users.filter(p=>(showInactive||p.active)&&matchesSearch([p.email,p.display_name],filter)).length&&<Empty>No login accounts match.</Empty>}
     </Card>}
-    {(inviting||user)&&<Card editor onClose={closeEmployeeEditor} busy={saving} feedback={error} title={inviting?'Add login':`Edit login · ${user?.email||''}`} description={inviting?'Enter the email, select one ERP role and set the password. Name is optional.':'Change this account’s ERP role or enter a new password to reset its Supabase Auth credentials.'}>
+    {(inviting||user)&&<Card editor onClose={closeEmployeeEditor} busy={saving} feedback={error} title={inviting?'Add login':`Edit login · ${user?.email||''}`} description={inviting?'Enter the email, select one ERP role and set the password.':'Change this account’s ERP role or enter a new password to reset its Supabase Auth credentials.'}>
      <div className="admin-form-grid admin-login-simple-form">
       <label><span className="admin-label-text">Email <i className="admin-required">*</i></span><input type="email" autoComplete="email" maxLength={254} disabled={!inviting} value={inviting?invitation.email:user.email||''} onChange={e=>inviting&&setInvitation(v=>({...v,email:e.target.value}))} placeholder="employee@company.com"/></label>
-      {inviting&&<label><span className="admin-label-text">Name (optional)</span><input type="text" autoComplete="name" maxLength={100} value={invitation.name} onChange={e=>setInvitation(v=>({...v,name:e.target.value}))} placeholder="Employee display name (optional)"/><small>When blank, a display name is generated from the email address.</small></label>}
       <label><span className="admin-label-text">Role <i className="admin-required">*</i></span>
        <Select value={inviting?invitation.role_ids[0]||'':user.role_ids[0]||''} onChange={e=>inviting?selectInviteRole(e.target.value):setUser(v=>({...v,role_ids:e.target.value?[e.target.value]:[]}))}>
         <option value="">Select role</option>{data.roles.filter(r=>r.active||(!inviting&&user?.role_ids.includes(r.id))).map(r=><option key={r.id} value={r.id}>{r.name}{r.active?'':' (disabled)'}</option>)}
