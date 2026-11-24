@@ -83,7 +83,9 @@ Deno.serve(async request => {
     if (action === 'create') {
       const email = String(body.email || '').trim().toLowerCase();
       // Derive a display label for legacy ERP profiles; the Add Login form requires only email, role and password.
-      const name = (email.split('@')[0] || 'Employee').replace(/[._-]+/g,' ').trim().slice(0,100);
+      const suppliedName = typeof body.name === 'string' ? body.name.trim().replace(/\s+/g, ' ').slice(0,100) : '';
+      const inferredName = (email.split('@')[0] || 'Employee').replace(/[._-]+/g,' ').trim().slice(0,100);
+      const name = suppliedName || (inferredName.length >= 2 ? inferredName : 'Employee');
       const roleIds = Array.isArray(body.role_ids) ? body.role_ids : [];
       const departmentId = null;
       if (!emailPattern.test(email) || email.length > 254 || name.length < 2 || roleIds.length !== 1 || !roleIds.every((id: unknown) => typeof id === 'string' && uuid.test(id))) {

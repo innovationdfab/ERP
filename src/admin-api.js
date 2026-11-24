@@ -13,7 +13,12 @@ function explainAdminNetworkFailure(error, operation) {
   const endpoint=operation==='erp-admin-invite'?'Edge Function erp-admin-invite':`database function ${operation}`;
   return new Error(`Cannot connect to Supabase while calling ${endpoint}. Configured project: ${host}. Check your deployed VITE_SUPABASE_URL and publishable key, browser Network tab, and project availability. For employee login creation, also check the Edge Function deployment and CORS preflight (OPTIONS) for your Vercel site. This is a network/configuration failure, not evidence that SQL is missing. If you were saving, refresh Saved logins to confirm whether the operation completed before retrying.`);
 }
-const adminRequest=async(operation,fn)=>{try{return await fn()}catch(error){throw explainAdminNetworkFailure(error,operation)}};
+const adminRequest=async(operation,fn)=>{try{return await fn()}catch(error){
+  if(operation==='erp-admin-invite' && /valid employee email, name, department and role are required/i.test(String(error?.message||''))){
+    throw new Error('Supabase is running an outdated erp-admin-invite Edge Function. Redeploy supabase/functions/erp-admin-invite/index.ts from this release. The current Add Login form requires email, role and password; name is optional and department is not required. No new SQL is needed for this validation error.');
+  }
+  throw explainAdminNetworkFailure(error,operation);
+}};
 const call=async(name,args={})=>{const result=await adminRequest(name,()=>rpc(name,args,{accessToken:mustToken()}));if(/erp_admin_(save|delete|publish|reset_workflow|map_storage|unmap_storage)/.test(name)&&typeof window!=='undefined')window.dispatchEvent(new CustomEvent('erp-operation-feedback',{detail:{title:/delete|unmap/.test(name)?'Deleted':/publish/.test(name)?'Published':'Saved'}}));return result;};
 export async function loadMyAccess() {
   try {
